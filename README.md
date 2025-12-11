@@ -1,7 +1,5 @@
 # Tock
 
-## Table of Contents
-
 [Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
 
 ## Features
@@ -75,6 +73,34 @@ Or specify file explicitly:
 
 ```bash
 tock -f /path/to/activities.txt start -d "Task" -p "Project"
+```
+
+### Shell Completion
+
+To enable shell completion (e.g. for Oh My Zsh):
+
+1. Create a directory for the plugin:
+
+```bash
+mkdir -p ~/.oh-my-zsh/custom/plugins/tock
+```
+
+1. Generate the completion script:
+
+```bash
+tock completion zsh > ~/.oh-my-zsh/custom/plugins/tock/_tock
+```
+
+1. Add `tock` to your plugins list in `~/.zshrc`:
+
+```bash
+plugins=(... tock)
+```
+
+1. Restart your shell:
+
+```bash
+exec zsh
 ```
 
 ## Commands
