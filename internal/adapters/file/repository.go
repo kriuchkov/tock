@@ -185,7 +185,7 @@ func (r *repository) readLines() ([]string, error) {
 func (r *repository) writeLines(lines []string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(r.filePath)
-	if dirErr := os.MkdirAll(dir, 0755); dirErr != nil {
+	if dirErr := os.MkdirAll(dir, 0750); dirErr != nil {
 		return errors.Wrap(dirErr, "create directory")
 	}
 
