@@ -1,0 +1,1926 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>tock: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/kriuchkov/tock/cmd/tock/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/kriuchkov/tock/internal/adapters/cli/calendar.go (0.0%)</option>
+				
+				<option value="file2">github.com/kriuchkov/tock/internal/adapters/cli/calendar_sidebar.go (0.0%)</option>
+				
+				<option value="file3">github.com/kriuchkov/tock/internal/adapters/cli/continue.go (0.0%)</option>
+				
+				<option value="file4">github.com/kriuchkov/tock/internal/adapters/cli/current.go (0.0%)</option>
+				
+				<option value="file5">github.com/kriuchkov/tock/internal/adapters/cli/last.go (0.0%)</option>
+				
+				<option value="file6">github.com/kriuchkov/tock/internal/adapters/cli/list_gui.go (0.0%)</option>
+				
+				<option value="file7">github.com/kriuchkov/tock/internal/adapters/cli/report.go (0.0%)</option>
+				
+				<option value="file8">github.com/kriuchkov/tock/internal/adapters/cli/root.go (0.0%)</option>
+				
+				<option value="file9">github.com/kriuchkov/tock/internal/adapters/cli/start.go (0.0%)</option>
+				
+				<option value="file10">github.com/kriuchkov/tock/internal/adapters/cli/stop.go (0.0%)</option>
+				
+				<option value="file11">github.com/kriuchkov/tock/internal/adapters/file/parser.go (0.0%)</option>
+				
+				<option value="file12">github.com/kriuchkov/tock/internal/adapters/file/repository.go (0.0%)</option>
+				
+				<option value="file13">github.com/kriuchkov/tock/internal/core/models/activity.go (0.0%)</option>
+				
+				<option value="file14">github.com/kriuchkov/tock/internal/services/activity/service.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "github.com/kriuchkov/tock/internal/adapters/cli"
+)
+
+func main() <span class="cov0" title="0">{
+        cli.Execute()
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "sort"
+        "strings"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/kriuchkov/tock/internal/core/models"
+        "github.com/kriuchkov/tock/internal/core/ports"
+
+        "github.com/charmbracelet/bubbles/viewport"
+        tea "github.com/charmbracelet/bubbletea"
+        "github.com/charmbracelet/lipgloss"
+        "github.com/spf13/cobra"
+)
+
+func NewCalendarCmd() *cobra.Command <span class="cov0" title="0">{
+        cmd := &amp;cobra.Command{
+                Use:   "calendar",
+                Short: "Show interactive calendar view",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        p := tea.NewProgram(initialReportModel(service))
+                        if _, err := p.Run(); err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "run program")
+                        }</span>
+                        <span class="cov0" title="0">return nil</span>
+                },
+        }
+        <span class="cov0" title="0">return cmd</span>
+}
+
+type reportModel struct {
+        service      ports.ActivityResolver
+        currentDate  time.Time // The date currently selected
+        viewDate     time.Time // The month currently being viewed
+        report       *dto.Report
+        monthReports map[int]*dto.Report // Cache for daily reports in the month (day -&gt; report)
+        viewport     viewport.Model
+        ready        bool
+        width        int
+        height       int
+        err          error
+}
+
+func initialReportModel(service ports.ActivityResolver) reportModel <span class="cov0" title="0">{
+        now := time.Now()
+        return reportModel{
+                service:      service,
+                currentDate:  now,
+                viewDate:     now,
+                monthReports: make(map[int]*dto.Report),
+        }
+}</span>
+
+func (m reportModel) Init() tea.Cmd <span class="cov0" title="0">{
+        return m.fetchMonthData
+}</span>
+
+func (m reportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) <span class="cov0" title="0">{
+        var (
+                cmd  tea.Cmd
+                cmds []tea.Cmd
+        )
+
+        switch msg := msg.(type) </span>{
+        case tea.KeyMsg:<span class="cov0" title="0">
+                switch msg.String() </span>{
+                case "q", "ctrl+c", "esc":<span class="cov0" title="0">
+                        return m, tea.Quit</span>
+                case "left", "h":<span class="cov0" title="0">
+                        m.currentDate = m.currentDate.AddDate(0, 0, -1)
+                        if m.currentDate.Month() != m.viewDate.Month() </span><span class="cov0" title="0">{
+                                m.viewDate = m.currentDate
+                                return m, m.fetchMonthData
+                        }</span>
+                        <span class="cov0" title="0">m.updateViewportContent()
+                        return m, nil</span>
+                case "right", "l":<span class="cov0" title="0">
+                        m.currentDate = m.currentDate.AddDate(0, 0, 1)
+                        if m.currentDate.Month() != m.viewDate.Month() </span><span class="cov0" title="0">{
+                                m.viewDate = m.currentDate
+                                return m, m.fetchMonthData
+                        }</span>
+                        <span class="cov0" title="0">m.updateViewportContent()
+                        return m, nil</span>
+                case "up":<span class="cov0" title="0">
+                        m.currentDate = m.currentDate.AddDate(0, 0, -7)
+                        if m.currentDate.Month() != m.viewDate.Month() </span><span class="cov0" title="0">{
+                                m.viewDate = m.currentDate
+                                return m, m.fetchMonthData
+                        }</span>
+                        <span class="cov0" title="0">m.updateViewportContent()
+                        return m, nil</span>
+                case "down":<span class="cov0" title="0">
+                        m.currentDate = m.currentDate.AddDate(0, 0, 7)
+                        if m.currentDate.Month() != m.viewDate.Month() </span><span class="cov0" title="0">{
+                                m.viewDate = m.currentDate
+                                return m, m.fetchMonthData
+                        }</span>
+                        <span class="cov0" title="0">m.updateViewportContent()
+                        return m, nil</span>
+                case "n":<span class="cov0" title="0"> // Next month
+                        m.viewDate = m.viewDate.AddDate(0, 1, 0)
+                        m.currentDate = m.viewDate // Reset selection to start of month or keep day? Let's keep day if possible or clamp
+                        return m, m.fetchMonthData</span>
+                case "p":<span class="cov0" title="0"> // Previous month
+                        m.viewDate = m.viewDate.AddDate(0, -1, 0)
+                        m.currentDate = m.viewDate
+                        return m, m.fetchMonthData</span>
+                }
+
+        case tea.WindowSizeMsg:<span class="cov0" title="0">
+                m.width = msg.Width
+                m.height = msg.Height
+
+                detailsWidth := msg.Width - 36
+                if msg.Width &gt; 120 </span><span class="cov0" title="0">{
+                        detailsWidth = msg.Width - 36 - 44
+                }</span>
+
+                <span class="cov0" title="0">if !m.ready </span><span class="cov0" title="0">{
+                        m.viewport = viewport.New(detailsWidth, msg.Height-5)
+                        m.ready = true
+                }</span> else<span class="cov0" title="0"> {
+                        m.viewport.Width = detailsWidth
+                        m.viewport.Height = msg.Height - 5
+                }</span>
+                <span class="cov0" title="0">m.updateViewportContent()</span>
+
+        case monthDataMsg:<span class="cov0" title="0">
+                m.monthReports = msg.reports
+                m.updateViewportContent()</span>
+
+        case errMsg:<span class="cov0" title="0">
+                m.err = msg.err</span>
+        }
+
+        <span class="cov0" title="0">m.viewport, cmd = m.viewport.Update(msg)
+        cmds = append(cmds, cmd)
+
+        return m, tea.Batch(cmds...)</span>
+}
+
+func (m reportModel) View() string <span class="cov0" title="0">{
+        if m.err != nil </span><span class="cov0" title="0">{
+                return fmt.Sprintf("Error: %v", m.err)
+        }</span>
+        <span class="cov0" title="0">if !m.ready </span><span class="cov0" title="0">{
+                return "Initializing..."
+        }</span>
+
+        <span class="cov0" title="0">calendarView := m.renderCalendar()
+        detailsView := m.renderDetails()
+
+        if m.width &gt; 120 </span><span class="cov0" title="0">{
+                sidebarView := m.renderSidebar()
+                return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView, sidebarView)
+        }</span>
+
+        <span class="cov0" title="0">return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView)</span>
+}
+
+// Styles
+var (
+        colorRed   = lipgloss.Color("196")
+        colorBlue  = lipgloss.Color("63")
+        colorGrey  = lipgloss.Color("240")
+        colorLight = lipgloss.Color("255")
+        colorSub   = lipgloss.Color("248")
+        colorDot   = lipgloss.Color("214")
+
+        styleWrapper = lipgloss.NewStyle().
+                        BorderStyle(lipgloss.RoundedBorder()).
+                        BorderForeground(colorGrey).
+                        Padding(0, 1).
+                        MarginRight(1)
+
+        styleHeader = lipgloss.NewStyle().
+                        Foreground(colorLight).
+                        Bold(true).
+                        Align(lipgloss.Center).
+                        Width(28)
+
+        styleWeekday = lipgloss.NewStyle().
+                        Foreground(colorSub).
+                        Width(4).
+                        Align(lipgloss.Center)
+
+        styleDay = lipgloss.NewStyle().
+                        Width(4).
+                        Align(lipgloss.Center)
+
+        styleToday = styleDay.Copy().
+                        Foreground(lipgloss.Color("255")).
+                        Background(colorRed).
+                        Bold(true)
+
+        styleSelected = styleDay.Copy().
+                        Foreground(lipgloss.Color("255")).
+                        Background(colorBlue)
+
+        styleDetailsHeader = lipgloss.NewStyle().
+                                Foreground(colorLight).
+                                Bold(true).
+                                Border(lipgloss.NormalBorder(), false, false, true, false).
+                                BorderForeground(colorGrey).
+                                Width(100)
+
+        styleTime = lipgloss.NewStyle().
+                        Foreground(colorSub).
+                        Width(12)
+
+        styleProject = lipgloss.NewStyle().
+                        Foreground(colorBlue).
+                        Bold(true)
+
+        styleDesc = lipgloss.NewStyle().
+                        Foreground(colorLight)
+
+        styleDuration = lipgloss.NewStyle().
+                        Foreground(lipgloss.Color("214")) // Orange/Gold
+
+        styleSidebar = lipgloss.NewStyle().
+                        BorderStyle(lipgloss.RoundedBorder()).
+                        BorderForeground(colorGrey).
+                        Padding(0, 1).
+                        Width(40)
+)
+
+func (m reportModel) renderCalendar() string <span class="cov0" title="0">{
+        var b strings.Builder
+        now := time.Now()
+
+        // Month Header
+        header := fmt.Sprintf("%s %d", m.viewDate.Month(), m.viewDate.Year())
+        b.WriteString(styleHeader.Render(header) + "\n\n")
+
+        // Weekday headers
+        weekdays := []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+        for _, w := range weekdays </span><span class="cov0" title="0">{
+                b.WriteString(styleWeekday.Render(w))
+        }</span>
+        <span class="cov0" title="0">b.WriteString("\n")
+
+        // Calendar grid
+        firstDay := time.Date(m.viewDate.Year(), m.viewDate.Month(), 1, 0, 0, 0, 0, time.Local)
+        weekday := int(firstDay.Weekday())
+        if weekday == 0 </span><span class="cov0" title="0">{
+                weekday = 7
+        }</span>
+        <span class="cov0" title="0">weekday-- // Mon=0
+
+        // Padding
+        for i := 0; i &lt; weekday; i++ </span><span class="cov0" title="0">{
+                b.WriteString("    ")
+        }</span>
+
+        <span class="cov0" title="0">daysInMonth := time.Date(m.viewDate.Year(), m.viewDate.Month()+1, 0, 0, 0, 0, 0, time.Local).Day()
+        for day := 1; day &lt;= daysInMonth; day++ </span><span class="cov0" title="0">{
+                date := time.Date(m.viewDate.Year(), m.viewDate.Month(), day, 0, 0, 0, 0, time.Local)
+
+                isToday := date.Year() == now.Year() &amp;&amp; date.Month() == now.Month() &amp;&amp; date.Day() == now.Day()
+                isSelected := date.Year() == m.currentDate.Year() &amp;&amp; date.Month() == m.currentDate.Month() &amp;&amp; date.Day() == m.currentDate.Day()
+                hasActivity := false
+                if report, ok := m.monthReports[day]; ok &amp;&amp; report.TotalDuration &gt; 0 </span><span class="cov0" title="0">{
+                        hasActivity = true
+                }</span>
+
+                <span class="cov0" title="0">str := fmt.Sprintf("%d", day)
+                var cellStyle lipgloss.Style
+
+                if isToday </span><span class="cov0" title="0">{
+                        cellStyle = styleToday
+                }</span> else<span class="cov0" title="0"> if isSelected </span><span class="cov0" title="0">{
+                        cellStyle = styleSelected
+                }</span> else<span class="cov0" title="0"> {
+                        cellStyle = styleDay
+                        if hasActivity </span><span class="cov0" title="0">{
+                                cellStyle = cellStyle.Copy().Foreground(colorDot).Bold(true)
+                        }</span> else<span class="cov0" title="0"> {
+                                cellStyle = cellStyle.Copy().Foreground(colorSub)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">if hasActivity &amp;&amp; (isToday || isSelected) </span><span class="cov0" title="0">{
+                        cellStyle = cellStyle.Copy().Underline(true)
+                }</span>
+
+                <span class="cov0" title="0">b.WriteString(cellStyle.Render(str))
+
+                weekday++
+                if weekday &gt; 6 </span><span class="cov0" title="0">{
+                        weekday = 0
+                        b.WriteString("\n")
+                }</span>
+        }
+        <span class="cov0" title="0">b.WriteString("\n\n")
+        b.WriteString(lipgloss.NewStyle().Foreground(colorSub).Render("Use arrows to navigate:\n - 'j'/'k' to scroll details\n - 'n'/'p' for next/prev month\n - 'q' to quit"))
+
+        return styleWrapper.Render(b.String())</span>
+}
+
+func (m reportModel) renderDetails() string <span class="cov0" title="0">{
+        detailsWidth := m.width - 36
+        if m.width &gt; 120 </span><span class="cov0" title="0">{
+                detailsWidth = m.width - 36 - 44
+        }</span>
+
+        <span class="cov0" title="0">return lipgloss.NewStyle().
+                BorderStyle(lipgloss.RoundedBorder()).
+                BorderForeground(colorGrey).
+                Padding(0, 1).
+                Width(detailsWidth).
+                Height(m.height - 2).
+                Render(m.viewport.View())</span>
+}
+
+func (m *reportModel) updateViewportContent() <span class="cov0" title="0">{
+        day := m.currentDate.Day()
+        report, ok := m.monthReports[day]
+
+        var b strings.Builder
+
+        // Header
+        dateStr := m.currentDate.Format("Monday, 02 January 2006")
+        b.WriteString(styleDetailsHeader.Render(dateStr) + "\n\n")
+
+        if !ok || report == nil || report.TotalDuration == 0 </span><span class="cov0" title="0">{
+                b.WriteString(lipgloss.NewStyle().Foreground(colorSub).Render("No events"))
+        }</span> else<span class="cov0" title="0"> {
+                // Flatten and sort activities
+                var activities []models.Activity
+                for _, pr := range report.ByProject </span><span class="cov0" title="0">{
+                        activities = append(activities, pr.Activities...)
+                }</span>
+                <span class="cov0" title="0">sort.Slice(activities, func(i, j int) bool </span><span class="cov0" title="0">{
+                        return activities[i].StartTime.Before(activities[j].StartTime)
+                }</span>)
+
+                <span class="cov0" title="0">for i, act := range activities </span><span class="cov0" title="0">{
+                        isLast := i == len(activities)-1
+                        start := act.StartTime.Format("15:04")
+
+                        // Timeline styles
+                        dot := "●"
+                        line := "│"
+
+                        // Colors
+                        dotStyle := lipgloss.NewStyle().Foreground(colorBlue)
+                        lineStyle := lipgloss.NewStyle().Foreground(colorGrey)
+
+                        // Content
+                        durStr := act.Duration().Round(time.Minute).String()
+                        if act.EndTime != nil </span><span class="cov0" title="0">{
+                                durStr += fmt.Sprintf(" • %s", act.EndTime.Format("15:04"))
+                        }</span>
+
+                        // Row 1: Time | Dot | Project
+                        <span class="cov0" title="0">b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+                                styleTime.Width(6).Align(lipgloss.Right).Render(start),
+                                "  ",
+                                dotStyle.Render(dot),
+                                "  ",
+                                styleProject.Render(act.Project),
+                        ) + "\n")
+
+                        // Row 2:      | Line | Description
+                        if act.Description != "" </span><span class="cov0" title="0">{
+                                b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+                                        lipgloss.NewStyle().Width(6).Render(""),
+                                        "  ",
+                                        lineStyle.Render(line),
+                                        "  ",
+                                        styleDesc.Render(act.Description),
+                                ) + "\n")
+                        }</span>
+
+                        // Row 3:      | Line | Duration
+                        <span class="cov0" title="0">b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+                                lipgloss.NewStyle().Width(6).Render(""),
+                                "  ",
+                                lineStyle.Render(line),
+                                "  ",
+                                styleDuration.Render(durStr),
+                        ) + "\n")
+
+                        // Spacer
+                        if !isLast </span><span class="cov0" title="0">{
+                                b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+                                        lipgloss.NewStyle().Width(6).Render(""),
+                                        "  ",
+                                        lineStyle.Render(line),
+                                ) + "\n")
+                        }</span> else<span class="cov0" title="0"> {
+                                b.WriteString("\n")
+                        }</span>
+                }
+
+                <span class="cov0" title="0">totalDur := report.TotalDuration.Round(time.Minute)
+                b.WriteString(lipgloss.NewStyle().Foreground(colorSub).Render(fmt.Sprintf("Total: %s", totalDur)))
+                b.WriteString("\n")
+
+                // Project breakdown
+                type pStat struct {
+                        Name     string
+                        Duration time.Duration
+                }
+                var stats []pStat
+                for name, pr := range report.ByProject </span><span class="cov0" title="0">{
+                        stats = append(stats, pStat{Name: name, Duration: pr.Duration})
+                }</span>
+                <span class="cov0" title="0">sort.Slice(stats, func(i, j int) bool </span><span class="cov0" title="0">{
+                        return stats[i].Duration &gt; stats[j].Duration
+                }</span>)
+
+                <span class="cov0" title="0">for _, s := range stats </span><span class="cov0" title="0">{
+                        b.WriteString(fmt.Sprintf("- %s: %s\n",
+                                styleProject.Render(s.Name),
+                                styleDuration.Render(s.Duration.Round(time.Minute).String()),
+                        ))
+                }</span>
+        }
+
+        <span class="cov0" title="0">m.viewport.SetContent(b.String())</span>
+}
+
+// Messages and Commands
+
+type monthDataMsg struct {
+        reports map[int]*dto.Report
+}
+
+type errMsg struct{ err error }
+
+func (m reportModel) fetchMonthData() tea.Msg <span class="cov0" title="0">{
+        // Calculate start and end of the month
+        year, month, _ := m.viewDate.Date()
+        startOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
+        endOfMonth := startOfMonth.AddDate(0, 1, 0)
+
+        filter := dto.ActivityFilter{
+                FromDate: &amp;startOfMonth,
+                ToDate:   &amp;endOfMonth,
+        }
+
+        // Get report for the whole month
+        // Note: The service.GetReport aggregates by project.
+        // We need to aggregate by DAY for the calendar view.
+        // The current GetReport returns a single Report struct for the whole period.
+        // It contains a list of Activities. We can process these activities here to group by day.
+
+        report, err := m.service.GetReport(context.Background(), filter)
+        if err != nil </span><span class="cov0" title="0">{
+                return errMsg{errors.Wrap(err, "get report")}
+        }</span>
+
+        // Group by day
+        <span class="cov0" title="0">dailyReports := make(map[int]*dto.Report)
+
+        for _, act := range report.Activities </span><span class="cov0" title="0">{
+                day := act.StartTime.Day()
+
+                // Handle activities spanning days? For now, assign to start day.
+                // Also check if activity is within the month (it should be due to filter)
+                if act.StartTime.Month() != month </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if _, ok := dailyReports[day]; !ok </span><span class="cov0" title="0">{
+                        dailyReports[day] = &amp;dto.Report{
+                                Activities: []models.Activity{},
+                                ByProject:  make(map[string]dto.ProjectReport),
+                        }
+                }</span>
+
+                <span class="cov0" title="0">dr := dailyReports[day]
+                dr.Activities = append(dr.Activities, act)
+                dur := act.Duration()
+                dr.TotalDuration += dur
+
+                // Update project report for the day
+                pr, ok := dr.ByProject[act.Project]
+                if !ok </span><span class="cov0" title="0">{
+                        pr = dto.ProjectReport{
+                                ProjectName: act.Project,
+                                Activities:  []models.Activity{},
+                        }
+                }</span>
+                <span class="cov0" title="0">pr.Duration += dur
+                pr.Activities = append(pr.Activities, act)
+                dr.ByProject[act.Project] = pr</span>
+        }
+
+        <span class="cov0" title="0">return monthDataMsg{reports: dailyReports}</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package cli
+
+import (
+        "fmt"
+        "sort"
+        "strings"
+        "time"
+
+        "github.com/charmbracelet/lipgloss"
+)
+
+func (m reportModel) renderSidebar() string <span class="cov0" title="0">{
+        var b strings.Builder
+
+        // Title
+        b.WriteString(styleHeader.Width(40).Render("Productivity") + "\n\n")
+
+        // Stats
+        var totalDuration time.Duration
+        activeDays := 0
+        maxDailyDuration := time.Duration(0)
+        daysInMonth := time.Date(m.viewDate.Year(), m.viewDate.Month()+1, 0, 0, 0, 0, 0, time.Local).Day()
+
+        currentStreak := 0
+        longestStreak := 0
+
+        for day := 1; day &lt;= daysInMonth; day++ </span><span class="cov0" title="0">{
+                dur := time.Duration(0)
+                if r, ok := m.monthReports[day]; ok </span><span class="cov0" title="0">{
+                        dur = r.TotalDuration
+                }</span>
+
+                <span class="cov0" title="0">if dur &gt; 0 </span><span class="cov0" title="0">{
+                        activeDays++
+                        totalDuration += dur
+                        if dur &gt; maxDailyDuration </span><span class="cov0" title="0">{
+                                maxDailyDuration = dur
+                        }</span>
+                        <span class="cov0" title="0">currentStreak++</span>
+                } else<span class="cov0" title="0"> {
+                        if currentStreak &gt; longestStreak </span><span class="cov0" title="0">{
+                                longestStreak = currentStreak
+                        }</span>
+                        <span class="cov0" title="0">currentStreak = 0</span>
+                }
+        }
+        <span class="cov0" title="0">if currentStreak &gt; longestStreak </span><span class="cov0" title="0">{
+                longestStreak = currentStreak
+        }</span>
+
+        <span class="cov0" title="0">avgDuration := time.Duration(0)
+        if activeDays &gt; 0 </span><span class="cov0" title="0">{
+                avgDuration = totalDuration / time.Duration(activeDays)
+        }</span>
+
+        <span class="cov0" title="0">b.WriteString(fmt.Sprintf("Total:   %s\n", styleDuration.Render(totalDuration.Round(time.Minute).String())))
+        b.WriteString(fmt.Sprintf("Avg/Day: %s\n", styleDuration.Render(avgDuration.Round(time.Minute).String())))
+        b.WriteString(fmt.Sprintf("Max/Day: %s\n", styleDuration.Render(maxDailyDuration.Round(time.Minute).String())))
+        b.WriteString(fmt.Sprintf("Streak:  %d days\n\n", longestStreak))
+
+        // Chart: Weekly Activity
+        b.WriteString(styleHeader.Width(40).Render("Weekly Activity") + "\n\n")
+
+        // Find start of the week for currentDate (Monday)
+        weekday := int(m.currentDate.Weekday())
+        if weekday == 0 </span><span class="cov0" title="0">{
+                weekday = 7
+        }</span>
+        <span class="cov0" title="0">startOfWeek := m.currentDate.AddDate(0, 0, -weekday+1)
+        startOfPrevWeek := startOfWeek.AddDate(0, 0, -7)
+
+        maxDuration := time.Duration(0)
+        var weeklyDurations []time.Duration
+        var prevWeeklyDurations []time.Duration
+
+        for i := 0; i &lt; 7; i++ </span><span class="cov0" title="0">{
+                // Current week
+                day := startOfWeek.AddDate(0, 0, i)
+                dur := time.Duration(0)
+                if day.Month() == m.viewDate.Month() </span><span class="cov0" title="0">{
+                        if r, ok := m.monthReports[day.Day()]; ok </span><span class="cov0" title="0">{
+                                dur = r.TotalDuration
+                        }</span>
+                }
+                <span class="cov0" title="0">weeklyDurations = append(weeklyDurations, dur)
+                if dur &gt; maxDuration </span><span class="cov0" title="0">{
+                        maxDuration = dur
+                }</span>
+
+                // Previous week
+                <span class="cov0" title="0">prevDay := startOfPrevWeek.AddDate(0, 0, i)
+                prevDur := time.Duration(0)
+                if prevDay.Month() == m.viewDate.Month() </span><span class="cov0" title="0">{
+                        if r, ok := m.monthReports[prevDay.Day()]; ok </span><span class="cov0" title="0">{
+                                prevDur = r.TotalDuration
+                        }</span>
+                }
+                <span class="cov0" title="0">prevWeeklyDurations = append(prevWeeklyDurations, prevDur)
+                if prevDur &gt; maxDuration </span><span class="cov0" title="0">{
+                        maxDuration = prevDur
+                }</span>
+        }
+
+        // Render Chart
+        <span class="cov0" title="0">weekdays := []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+        for i := 0; i &lt; 7; i++ </span><span class="cov0" title="0">{
+                dur := weeklyDurations[i]
+                prevDur := prevWeeklyDurations[i]
+                label := weekdays[i]
+
+                // Highlight current day
+                day := startOfWeek.AddDate(0, 0, i)
+                dayStyle := lipgloss.NewStyle().Foreground(colorSub)
+                if day.Day() == m.currentDate.Day() &amp;&amp; day.Month() == m.currentDate.Month() </span><span class="cov0" title="0">{
+                        dayStyle = dayStyle.Foreground(colorDot).Bold(true)
+                }</span>
+
+                <span class="cov0" title="0">bar := ""
+                prevBar := ""
+                if maxDuration &gt; 0 </span><span class="cov0" title="0">{
+                        width := int((float64(dur) / float64(maxDuration)) * 25)
+                        if width &gt; 0 </span><span class="cov0" title="0">{
+                                bar = strings.Repeat("█", width)
+                        }</span> else<span class="cov0" title="0"> if dur &gt; 0 </span><span class="cov0" title="0">{
+                                bar = "▏"
+                        }</span>
+
+                        <span class="cov0" title="0">prevWidth := int((float64(prevDur) / float64(maxDuration)) * 25)
+                        if prevWidth &gt; 0 </span><span class="cov0" title="0">{
+                                prevBar = strings.Repeat("▒", prevWidth)
+                        }</span> else<span class="cov0" title="0"> if prevDur &gt; 0 </span><span class="cov0" title="0">{
+                                prevBar = "▏"
+                        }</span>
+                }
+
+                <span class="cov0" title="0">b.WriteString(fmt.Sprintf("%s %s\n", dayStyle.Width(2).Render(label), lipgloss.NewStyle().Foreground(colorBlue).Render(bar)))
+                b.WriteString(fmt.Sprintf("   %s\n", lipgloss.NewStyle().Foreground(colorGrey).Render(prevBar)))</span>
+        }
+        <span class="cov0" title="0">b.WriteString("\n")
+
+        // Top Projects
+        b.WriteString(styleHeader.Width(40).Render("Top Projects") + "\n")
+
+        projectDurations := make(map[string]time.Duration)
+        for _, r := range m.monthReports </span><span class="cov0" title="0">{
+                for p, pr := range r.ByProject </span><span class="cov0" title="0">{
+                        projectDurations[p] += pr.Duration
+                }</span>
+        }
+
+        <span class="cov0" title="0">type kv struct {
+                Key   string
+                Value time.Duration
+        }
+        var ss []kv
+        for k, v := range projectDurations </span><span class="cov0" title="0">{
+                ss = append(ss, kv{k, v})
+        }</span>
+        <span class="cov0" title="0">sort.Slice(ss, func(i, j int) bool </span><span class="cov0" title="0">{
+                return ss[i].Value &gt; ss[j].Value
+        }</span>)
+
+        <span class="cov0" title="0">maxProjDuration := time.Duration(0)
+        if len(ss) &gt; 0 </span><span class="cov0" title="0">{
+                maxProjDuration = ss[0].Value
+        }</span>
+
+        <span class="cov0" title="0">for i, kv := range ss </span><span class="cov0" title="0">{
+                if i &gt;= 5 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                <span class="cov0" title="0">bar := ""
+                if maxProjDuration &gt; 0 </span><span class="cov0" title="0">{
+                        width := int((float64(kv.Value) / float64(maxProjDuration)) * 20)
+                        if width &gt; 0 </span><span class="cov0" title="0">{
+                                bar = strings.Repeat("█", width)
+                        }</span> else<span class="cov0" title="0"> if kv.Value &gt; 0 </span><span class="cov0" title="0">{
+                                bar = "▏"
+                        }</span>
+                }
+
+                <span class="cov0" title="0">b.WriteString(fmt.Sprintf("%s\n", styleProject.Render(kv.Key)))
+                b.WriteString(fmt.Sprintf("%s %s\n",
+                        lipgloss.NewStyle().Foreground(colorBlue).Render(bar),
+                        styleDuration.Render(kv.Value.Round(time.Minute).String())))
+                b.WriteString("\n")</span>
+        }
+
+        <span class="cov0" title="0">return styleSidebar.Height(m.height - 2).Render(b.String())</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "strconv"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/spf13/cobra"
+)
+
+func NewContinueCmd() *cobra.Command <span class="cov0" title="0">{
+        var description string
+        var project string
+        var at string
+
+        cmd := &amp;cobra.Command{
+                Use:   "continue [NUMBER]",
+                Short: "Continues a previous activity",
+                Args:  cobra.MaximumNArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        ctx := context.Background()
+
+                        number := 0
+                        if len(args) &gt; 0 </span><span class="cov0" title="0">{
+                                var err error
+                                number, err = strconv.Atoi(args[0])
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return errors.Wrap(err, "invalid number")
+                                }</span>
+                        }
+
+                        // Fetch recent activities to find the one to continue
+                        // We need at least number+1 activities
+                        <span class="cov0" title="0">activities, err := service.GetRecent(ctx, number+1)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "get recent activities")
+                        }</span>
+
+                        <span class="cov0" title="0">if number &gt;= len(activities) </span><span class="cov0" title="0">{
+                                return errors.Errorf("activity number %d not found (only %d recent activities available)", number, len(activities))
+                        }</span>
+
+                        <span class="cov0" title="0">activityToContinue := activities[number]
+
+                        // Determine new activity details
+                        newDescription := activityToContinue.Description
+                        if description != "" </span><span class="cov0" title="0">{
+                                newDescription = description
+                        }</span>
+
+                        <span class="cov0" title="0">newProject := activityToContinue.Project
+                        if project != "" </span><span class="cov0" title="0">{
+                                newProject = project
+                        }</span>
+
+                        <span class="cov0" title="0">startTime := time.Now()
+                        if at != "" </span><span class="cov0" title="0">{
+                                // Parse 'at' time. Assuming HH:MM format for today, similar to start command
+                                parsed, err := time.ParseInLocation("15:04", at, time.Local)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return errors.Wrap(err, "parse time")
+                                }</span>
+                                // Combine with today's date
+                                <span class="cov0" title="0">now := time.Now()
+                                startTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)</span>
+                        }
+
+                        <span class="cov0" title="0">req := dto.StartActivityRequest{
+                                Description: newDescription,
+                                Project:     newProject,
+                                StartTime:   startTime,
+                        }
+
+                        startedActivity, err := service.Start(ctx, req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "start activity")
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Printf("Started activity: %s | %s at %s\n", startedActivity.Project, startedActivity.Description, startedActivity.StartTime.Format("15:04"))
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">cmd.Flags().StringVarP(&amp;description, "description", "d", "", "the description of the new activity")
+        cmd.Flags().StringVarP(&amp;project, "project", "p", "", "the project to which the new activity belongs")
+        cmd.Flags().StringVarP(&amp;at, "time", "t", "", "the time for changing the activity status (HH:MM)")
+
+        return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "text/tabwriter"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/spf13/cobra"
+)
+
+func NewCurrentCmd() *cobra.Command <span class="cov0" title="0">{
+        cmd := &amp;cobra.Command{
+                Use:   "current",
+                Short: "Lists all currently running activities",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        ctx := context.Background()
+
+                        isRunning := true
+                        filter := dto.ActivityFilter{
+                                IsRunning: &amp;isRunning,
+                        }
+
+                        activities, err := service.List(ctx, filter)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "list activities")
+                        }</span>
+
+                        <span class="cov0" title="0">if len(activities) == 0 </span><span class="cov0" title="0">{
+                                fmt.Println("No currently running activities.")
+                                return nil
+                        }</span>
+
+                        <span class="cov0" title="0">w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+                        fmt.Fprintln(w, "Start\tDescription\tProject\tDuration")
+
+                        for _, a := range activities </span><span class="cov0" title="0">{
+                                duration := time.Since(a.StartTime).Round(time.Second)
+                                fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.StartTime.Format("2006-01-02 15:04"), a.Description, a.Project, duration)
+                        }</span>
+
+                        <span class="cov0" title="0">w.Flush()
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "text/tabwriter"
+
+        "github.com/go-faster/errors"
+        "github.com/spf13/cobra"
+)
+
+func NewLastCmd() *cobra.Command <span class="cov0" title="0">{
+        var limit int
+
+        cmd := &amp;cobra.Command{
+                Use:   "last",
+                Short: "List recent unique activities",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        ctx := context.Background()
+
+                        activities, err := service.GetRecent(ctx, limit)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "get recent activities")
+                        }</span>
+
+                        <span class="cov0" title="0">if len(activities) == 0 </span><span class="cov0" title="0">{
+                                fmt.Println("No activities found.")
+                                return nil
+                        }</span>
+
+                        <span class="cov0" title="0">w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+                        fmt.Fprintln(w, " #\tDescription\tProject")
+
+                        for i := len(activities) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
+                                a := activities[i]
+                                fmt.Fprintf(w, "[%d]\t%s\t%s\n", i, a.Description, a.Project)
+                        }</span>
+
+                        <span class="cov0" title="0">w.Flush()
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">cmd.Flags().IntVarP(&amp;limit, "number", "n", 10, "Number of recent activities to show")
+        return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/kriuchkov/tock/internal/core/models"
+        "github.com/kriuchkov/tock/internal/core/ports"
+
+        "github.com/charmbracelet/bubbles/table"
+        tea "github.com/charmbracelet/bubbletea"
+        "github.com/charmbracelet/lipgloss"
+        "github.com/spf13/cobra"
+)
+
+func NewListCmd() *cobra.Command <span class="cov0" title="0">{
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List activities (Calendar View)",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        p := tea.NewProgram(initialModel(service))
+                        if _, err := p.Run(); err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "run program")
+                        }</span>
+                        <span class="cov0" title="0">return nil</span>
+                },
+        }
+        <span class="cov0" title="0">return cmd</span>
+}
+
+type model struct {
+        service      ports.ActivityResolver
+        currentDate  time.Time
+        selectedDate time.Time
+        activities   []models.Activity
+        table        table.Model
+        err          error
+        width        int
+        height       int
+}
+
+func initialModel(service ports.ActivityResolver) model <span class="cov0" title="0">{
+        now := time.Now()
+        m := model{
+                service:      service,
+                currentDate:  now,
+                selectedDate: now,
+        }
+        m.initTable()
+        m.updateActivities()
+        return m
+}</span>
+
+func (m *model) initTable() <span class="cov0" title="0">{
+        columns := []table.Column{
+                {Title: "No.", Width: 4},
+                {Title: "Time", Width: 15},
+                {Title: "Project", Width: 20},
+                {Title: "Description", Width: 40},
+                {Title: "Duration", Width: 10},
+        }
+        t := table.New(
+                table.WithColumns(columns),
+                table.WithFocused(true),
+                table.WithHeight(10),
+        )
+
+        s := table.DefaultStyles()
+        s.Header = s.Header.
+                BorderStyle(lipgloss.NormalBorder()).
+                BorderForeground(lipgloss.Color("240")).
+                BorderBottom(true).
+                Bold(true)
+        s.Selected = s.Selected.
+                Foreground(lipgloss.Color("229")).
+                Background(lipgloss.Color("57")).
+                Bold(false)
+        t.SetStyles(s)
+        m.table = t
+}</span>
+
+func (m *model) updateActivities() <span class="cov0" title="0">{
+        filter := dto.ActivityFilter{}
+        activities, err := m.service.List(context.Background(), filter)
+        if err != nil </span><span class="cov0" title="0">{
+                m.err = errors.Wrap(err, "list activities")
+                return
+        }</span>
+        <span class="cov0" title="0">m.renderTable(activities)</span>
+}
+
+func (m *model) navigate(dir int) <span class="cov0" title="0">{
+        activities, err := m.service.List(context.Background(), dto.ActivityFilter{})
+        if err != nil </span><span class="cov0" title="0">{
+                m.err = errors.Wrap(err, "list activities")
+                return
+        }</span>
+
+        <span class="cov0" title="0">current := time.Date(m.selectedDate.Year(), m.selectedDate.Month(), m.selectedDate.Day(), 0, 0, 0, 0, m.selectedDate.Location())
+        var target *time.Time
+
+        for _, a := range activities </span><span class="cov0" title="0">{
+                date := time.Date(a.StartTime.Year(), a.StartTime.Month(), a.StartTime.Day(), 0, 0, 0, 0, a.StartTime.Location())
+                if dir &lt; 0 </span><span class="cov0" title="0">{
+                        if date.Before(current) </span><span class="cov0" title="0">{
+                                if target == nil || date.After(*target) </span><span class="cov0" title="0">{
+                                        d := date
+                                        target = &amp;d
+                                }</span>
+                        }
+                } else<span class="cov0" title="0"> {
+                        if date.After(current) </span><span class="cov0" title="0">{
+                                if target == nil || date.Before(*target) </span><span class="cov0" title="0">{
+                                        d := date
+                                        target = &amp;d
+                                }</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">if target != nil </span><span class="cov0" title="0">{
+                m.selectedDate = *target
+        }</span>
+
+        <span class="cov0" title="0">m.renderTable(activities)</span>
+}
+
+func (m *model) renderTable(activities []models.Activity) <span class="cov0" title="0">{
+        var dayActivities []models.Activity
+        for _, a := range activities </span><span class="cov0" title="0">{
+                if a.StartTime.Year() == m.selectedDate.Year() &amp;&amp;
+                        a.StartTime.Month() == m.selectedDate.Month() &amp;&amp;
+                        a.StartTime.Day() == m.selectedDate.Day() </span><span class="cov0" title="0">{
+                        dayActivities = append(dayActivities, a)
+                }</span>
+        }
+        <span class="cov0" title="0">m.activities = dayActivities
+
+        var rows []table.Row
+        for _, a := range dayActivities </span><span class="cov0" title="0">{
+                duration := a.Duration().Round(time.Minute).String()
+                timeStr := a.StartTime.Format("15:04")
+                if a.EndTime != nil </span><span class="cov0" title="0">{
+                        timeStr += " - " + a.EndTime.Format("15:04")
+                }</span> else<span class="cov0" title="0"> {
+                        timeStr += " - ..."
+                }</span>
+
+                <span class="cov0" title="0">rows = append(rows, table.Row{fmt.Sprintf("%d", len(rows)), timeStr, a.Project, a.Description, duration})</span>
+        }
+        <span class="cov0" title="0">m.table.SetRows(rows)</span>
+}
+
+func (m model) Init() tea.Cmd <span class="cov0" title="0">{
+        return nil
+}</span>
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) <span class="cov0" title="0">{
+        var cmd tea.Cmd
+        switch msg := msg.(type) </span>{
+        case tea.KeyMsg:<span class="cov0" title="0">
+                switch msg.String() </span>{
+                case "q", "ctrl+c":<span class="cov0" title="0">
+                        return m, tea.Quit</span>
+                case "left", "h":<span class="cov0" title="0">
+                        m.navigate(-1)</span>
+                case "right", "l":<span class="cov0" title="0">
+                        m.navigate(1)</span>
+                case "up", "k":<span class="cov0" title="0">
+                        m.table, cmd = m.table.Update(msg)
+                        return m, cmd</span>
+                case "down", "j":<span class="cov0" title="0">
+                        m.table, cmd = m.table.Update(msg)
+                        return m, cmd</span>
+                }
+        case tea.WindowSizeMsg:<span class="cov0" title="0">
+                m.width = msg.Width
+                m.height = msg.Height
+                m.table.SetWidth(msg.Width - 4)</span>
+        }
+        <span class="cov0" title="0">return m, nil</span>
+}
+
+func (m model) View() string <span class="cov0" title="0">{
+        if m.err != nil </span><span class="cov0" title="0">{
+                return fmt.Sprintf("Error: %v", m.err)
+        }</span>
+
+        // Calendar Header
+        <span class="cov0" title="0">header := lipgloss.NewStyle().
+                Bold(true).
+                Foreground(lipgloss.Color("212")).
+                Render(fmt.Sprintf("&lt;&lt; %s &gt;&gt;", m.selectedDate.Format("Monday, 02 Jan 2006")))
+
+        // Table
+        tableView := m.table.View()
+        return lipgloss.JoinVertical(lipgloss.Left, header, "", tableView, "\nPress 'q' to quit, left/right to change date")</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "sort"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+
+        "github.com/spf13/cobra"
+)
+
+func NewReportCmd() *cobra.Command <span class="cov0" title="0">{
+        var (
+                today     bool
+                yesterday bool
+                date      string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "report",
+                Short: "Generate time tracking report",
+                Long:  "Generate a report of tracked activities aggregated by project",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        ctx := context.Background()
+
+                        filter := dto.ActivityFilter{}
+
+                        // Determine date range based on flags
+                        if today </span><span class="cov0" title="0">{
+                                start := time.Now().Truncate(24 * time.Hour)
+                                end := start.Add(24 * time.Hour)
+                                filter.FromDate = &amp;start
+                                filter.ToDate = &amp;end
+                        }</span> else<span class="cov0" title="0"> if yesterday </span><span class="cov0" title="0">{
+                                start := time.Now().Truncate(24 * time.Hour).Add(-24 * time.Hour)
+                                end := start.Add(24 * time.Hour)
+                                filter.FromDate = &amp;start
+                                filter.ToDate = &amp;end
+                        }</span> else<span class="cov0" title="0"> if date != "" </span><span class="cov0" title="0">{
+                                parsedDate, err := time.Parse("2006-01-02", date)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
+                                }</span>
+                                <span class="cov0" title="0">start := parsedDate.Truncate(24 * time.Hour)
+                                end := start.Add(24 * time.Hour)
+                                filter.FromDate = &amp;start
+                                filter.ToDate = &amp;end</span>
+                        }
+
+                        <span class="cov0" title="0">report, err := service.GetReport(ctx, filter)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "generate report")
+                        }</span>
+
+                        // Display report
+                        <span class="cov0" title="0">if len(report.Activities) == 0 </span><span class="cov0" title="0">{
+                                fmt.Println("No activities found for the specified period.")
+                                return nil
+                        }</span>
+
+                        // Sort projects by name for consistent output
+                        <span class="cov0" title="0">projectNames := make([]string, 0, len(report.ByProject))
+                        for name := range report.ByProject </span><span class="cov0" title="0">{
+                                projectNames = append(projectNames, name)
+                        }</span>
+                        <span class="cov0" title="0">sort.Strings(projectNames)
+
+                        fmt.Println("\n📊 Time Tracking Report")
+                        fmt.Println("=" + fmt.Sprintf("%s", "======================="))
+                        fmt.Println()
+
+                        for _, projectName := range projectNames </span><span class="cov0" title="0">{
+                                projectReport := report.ByProject[projectName]
+                                hours := projectReport.Duration.Hours()
+                                minutes := int(projectReport.Duration.Minutes()) % 60
+
+                                fmt.Printf("📁 %s: %dh %dm\n", projectReport.ProjectName, int(hours), minutes)
+                                for _, activity := range projectReport.Activities </span><span class="cov0" title="0">{
+                                        startTime := activity.StartTime.Format("15:04")
+                                        endTime := "--:--"
+                                        if activity.EndTime != nil </span><span class="cov0" title="0">{
+                                                endTime = activity.EndTime.Format("15:04")
+                                        }</span>
+                                        <span class="cov0" title="0">duration := activity.Duration()
+                                        actHours := int(duration.Hours())
+                                        actMinutes := int(duration.Minutes()) % 60
+                                        fmt.Printf("   %s - %s (%dh %dm) | %s\n",
+                                                startTime, endTime, actHours, actMinutes, activity.Description)</span>
+                                }
+                                <span class="cov0" title="0">fmt.Println()</span>
+                        }
+
+                        <span class="cov0" title="0">totalHours := report.TotalDuration.Hours()
+                        totalMinutes := int(report.TotalDuration.Minutes()) % 60
+                        fmt.Printf("⏱️  Total: %dh %dm\n", int(totalHours), totalMinutes)
+                        fmt.Println()
+
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">cmd.Flags().BoolVar(&amp;today, "today", false, "Report for today")
+        cmd.Flags().BoolVar(&amp;yesterday, "yesterday", false, "Report for yesterday")
+        cmd.Flags().StringVar(&amp;date, "date", "", "Report for specific date (YYYY-MM-DD)")
+        return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "path/filepath"
+
+        "github.com/kriuchkov/tock/internal/adapters/file"
+        "github.com/kriuchkov/tock/internal/core/ports"
+        "github.com/kriuchkov/tock/internal/services/activity"
+
+        "github.com/spf13/cobra"
+)
+
+type serviceKey struct{}
+
+func NewRootCmd() *cobra.Command <span class="cov0" title="0">{
+        var filePath string
+
+        cmd := &amp;cobra.Command{
+                Use:   "tock",
+                Short: "A simple timetracker for the command line",
+                PersistentPreRunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        if filePath == "" </span><span class="cov0" title="0">{
+                                filePath = os.Getenv("TOCK_FILE")
+                                if filePath == "" </span><span class="cov0" title="0">{
+                                        home, err := os.UserHomeDir()
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return err
+                                        }</span>
+                                        <span class="cov0" title="0">filePath = filepath.Join(home, ".tock.txt")</span>
+                                }
+                        }
+
+                        <span class="cov0" title="0">repo := file.NewRepository(filePath)
+                        svc := activity.NewService(repo)
+
+                        ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
+                        cmd.SetContext(ctx)
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">cmd.PersistentFlags().StringVarP(&amp;filePath, "file", "f", "", "Path to the activity log file")
+
+        cmd.AddCommand(NewStartCmd())
+        cmd.AddCommand(NewStopCmd())
+        cmd.AddCommand(NewListCmd())
+        cmd.AddCommand(NewReportCmd())
+        cmd.AddCommand(NewLastCmd())
+        cmd.AddCommand(NewContinueCmd())
+        cmd.AddCommand(NewCurrentCmd())
+        cmd.AddCommand(NewCalendarCmd())
+        return cmd</span>
+}
+
+func Execute() <span class="cov0" title="0">{
+        rootCmd := NewRootCmd()
+        if err := rootCmd.Execute(); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintln(os.Stderr, err)
+                os.Exit(1)
+        }</span>
+}
+
+func getService(cmd *cobra.Command) ports.ActivityResolver <span class="cov0" title="0">{
+        return cmd.Context().Value(serviceKey{}).(ports.ActivityResolver)
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package cli
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+
+        "github.com/spf13/cobra"
+)
+
+func NewStartCmd() *cobra.Command <span class="cov0" title="0">{
+        var description string
+        var project string
+        var at string
+
+        cmd := &amp;cobra.Command{
+                Use:   "start",
+                Short: "Start a new activity",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        service := getService(cmd)
+                        startTime := time.Now()
+                        if at != "" </span><span class="cov0" title="0">{
+                                // Parse 'at' time. For simplicity, let's assume HH:MM format for today
+                                parsed, err := time.ParseInLocation("15:04", at, time.Local)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return errors.Wrap(err, "parse time")
+                                }</span>
+                                // Combine with today's date
+                                <span class="cov0" title="0">now := time.Now()
+                                startTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)</span>
+                        }
+
+                        <span class="cov0" title="0">req := dto.StartActivityRequest{
+                                Description: description,
+                                Project:     project,
+                                StartTime:   startTime,
+                        }
+
+                        activity, err := service.Start(context.Background(), req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "start activity")
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Printf("Started activity: %s | %s at %s\n", activity.Project, activity.Description, activity.StartTime.Format("15:04"))
+                        return nil</span>
+                },
+        }
+
+        <span class="cov0" title="0">cmd.Flags().StringVarP(&amp;description, "description", "d", "", "Activity description")
+        cmd.Flags().StringVarP(&amp;project, "project", "p", "", "Project name")
+        cmd.Flags().StringVarP(&amp;at, "time", "t", "", "Start time (HH:MM)")
+        cmd.MarkFlagRequired("description")
+        cmd.MarkFlagRequired("project")
+
+        return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package cli
+
+import (
+        "fmt"
+        "time"
+
+        "github.com/go-faster/errors"
+        "github.com/kriuchkov/tock/internal/core/dto"
+
+        "github.com/spf13/cobra"
+)
+
+func NewStopCmd() *cobra.Command <span class="cov0" title="0">{
+        var at string
+
+        fn := func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                service := getService(cmd)
+                endTime := time.Now()
+                if at != "" </span><span class="cov0" title="0">{
+                        parsed, err := time.ParseInLocation("15:04", at, time.Local)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "parse time")
+                        }</span>
+
+                        <span class="cov0" title="0">now := time.Now()
+                        endTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)</span>
+                }
+
+                <span class="cov0" title="0">req := dto.StopActivityRequest{EndTime: endTime}
+
+                activity, err := service.Stop(cmd.Context(), req)
+                if err != nil </span><span class="cov0" title="0">{
+                        return errors.Wrap(err, "stop activity")
+                }</span>
+
+                <span class="cov0" title="0">fmt.Printf("Stopped activity: %s | %s at %s\n", activity.Project, activity.Description, activity.EndTime.Format("15:04"))
+                return nil</span>
+        }
+
+        <span class="cov0" title="0">cmd := &amp;cobra.Command{
+                Use:   "stop",
+                Short: "Stop the current activity",
+                RunE:  fn,
+        }
+        cmd.Flags().StringVarP(&amp;at, "time", "t", "", "End time (HH:MM)")
+        return cmd</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package file
+
+import (
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/kriuchkov/tock/internal/core/models"
+)
+
+const (
+        timeLayoutMin = "2006-01-02 15:04"
+        timeLayoutSec = "2006-01-02 15:04:05"
+)
+
+func parseActivity(line string) (*models.Activity, error) <span class="cov0" title="0">{
+        parts := strings.Split(line, "|")
+        if len(parts) &lt; 3 </span><span class="cov0" title="0">{
+                return nil, nil // Not an activity line
+        }</span>
+
+        <span class="cov0" title="0">timePart := strings.TrimSpace(parts[0])
+        project := strings.TrimSpace(parts[1])
+        description := strings.TrimSpace(parts[2])
+
+        var start, end time.Time
+        var err error
+
+        if strings.Contains(timePart, " - ") </span><span class="cov0" title="0">{
+                times := strings.Split(timePart, " - ")
+                start, err = parseTime(times[0])
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">end, err = parseTime(times[1])
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov0" title="0">return &amp;models.Activity{
+                        StartTime:   start,
+                        EndTime:     &amp;end,
+                        Project:     project,
+                        Description: description,
+                }, nil</span>
+        }
+
+        <span class="cov0" title="0">start, err = parseTime(timePart)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;models.Activity{
+                StartTime:   start,
+                EndTime:     nil,
+                Project:     project,
+                Description: description,
+        }, nil</span>
+}
+
+func parseTime(s string) (time.Time, error) <span class="cov0" title="0">{
+        t, err := time.ParseInLocation(timeLayoutMin, s, time.Local)
+        if err == nil </span><span class="cov0" title="0">{
+                return t, nil
+        }</span>
+        <span class="cov0" title="0">return time.ParseInLocation(timeLayoutSec, s, time.Local)</span>
+}
+
+func formatActivity(a models.Activity) string <span class="cov0" title="0">{
+        startStr := a.StartTime.Format(timeLayoutMin)
+
+        if a.EndTime != nil </span><span class="cov0" title="0">{
+                endStr := a.EndTime.Format(timeLayoutMin)
+                return fmt.Sprintf("%s - %s | %s | %s", startStr, endStr, a.Project, a.Description)
+        }</span>
+        <span class="cov0" title="0">return fmt.Sprintf("%s | %s | %s", startStr, a.Project, a.Description)</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package file
+
+import (
+        "bufio"
+        "context"
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/kriuchkov/tock/internal/core/models"
+        "github.com/kriuchkov/tock/internal/core/ports"
+)
+
+type repository struct {
+        filePath string
+}
+
+func NewRepository(filePath string) ports.ActivityRepository <span class="cov0" title="0">{
+        return &amp;repository{filePath: filePath}
+}</span>
+
+func (r *repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) <span class="cov0" title="0">{
+        f, err := os.Open(r.filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                        return []models.Activity{}, nil
+                }</span>
+                <span class="cov0" title="0">return nil, err</span>
+        }
+        <span class="cov0" title="0">defer f.Close()
+
+        var activities []models.Activity
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() </span><span class="cov0" title="0">{
+                line := scanner.Text()
+                if strings.TrimSpace(line) == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">act, err := parseActivity(line)
+                if err != nil </span><span class="cov0" title="0">{
+                        // Log warning? Skip?
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if act != nil </span><span class="cov0" title="0">{
+                        if filter.Project != nil &amp;&amp; act.Project != *filter.Project </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">if filter.FromDate != nil &amp;&amp; act.StartTime.Before(*filter.FromDate) </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">if filter.ToDate != nil </span><span class="cov0" title="0">{
+                                activityEnd := act.StartTime
+                                if act.EndTime != nil </span><span class="cov0" title="0">{
+                                        activityEnd = *act.EndTime
+                                }</span>
+                                <span class="cov0" title="0">if activityEnd.After(*filter.ToDate) </span><span class="cov0" title="0">{
+                                        continue</span>
+                                }
+                        }
+                        <span class="cov0" title="0">if filter.IsRunning != nil </span><span class="cov0" title="0">{
+                                if *filter.IsRunning &amp;&amp; act.EndTime != nil </span><span class="cov0" title="0">{
+                                        continue</span>
+                                }
+                                <span class="cov0" title="0">if !*filter.IsRunning &amp;&amp; act.EndTime == nil </span><span class="cov0" title="0">{
+                                        continue</span>
+                                }
+                        }
+                        <span class="cov0" title="0">activities = append(activities, *act)</span>
+                }
+        }
+        <span class="cov0" title="0">return activities, scanner.Err()</span>
+}
+
+func (r *repository) FindLast(ctx context.Context) (*models.Activity, error) <span class="cov0" title="0">{
+        activities, err := r.Find(ctx, dto.ActivityFilter{})
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">if len(activities) == 0 </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+        <span class="cov0" title="0">return &amp;activities[len(activities)-1], nil</span>
+}
+
+func (r *repository) Save(ctx context.Context, activity models.Activity) error <span class="cov0" title="0">{
+        // This is a simplified implementation.
+        // Ideally we should read all lines, identify if we are updating the last line or appending.
+
+        lines, err := r.readLines()
+        if err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Check if we are updating the last activity (e.g. stopping it)
+        // Or appending a new one.
+
+        // If the activity passed has an ID or we can identify it by start time...
+        // But here we don't have IDs.
+        // Logic: If the last activity in file is "running" (no end time) and the new activity has the same start time, update it.
+        // Otherwise append.
+
+        <span class="cov0" title="0">if len(lines) &gt; 0 </span><span class="cov0" title="0">{
+                lastLineIdx := -1
+                // Find last non-empty line
+                for i := len(lines) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
+                        if strings.TrimSpace(lines[i]) != "" </span><span class="cov0" title="0">{
+                                lastLineIdx = i
+                                break</span>
+                        }
+                }
+
+                <span class="cov0" title="0">if lastLineIdx != -1 </span><span class="cov0" title="0">{
+                        lastAct, _ := parseActivity(lines[lastLineIdx])
+                        if lastAct != nil &amp;&amp; lastAct.EndTime == nil &amp;&amp; lastAct.StartTime.Equal(activity.StartTime) </span><span class="cov0" title="0">{
+                                // Update last line
+                                lines[lastLineIdx] = formatActivity(activity)
+                                return r.writeLines(lines)
+                        }</span>
+                }
+        }
+
+        // Append
+        <span class="cov0" title="0">lines = append(lines, formatActivity(activity))
+        return r.writeLines(lines)</span>
+}
+
+func (r *repository) readLines() ([]string, error) <span class="cov0" title="0">{
+        f, err := os.Open(r.filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">defer f.Close()
+
+        var lines []string
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() </span><span class="cov0" title="0">{
+                lines = append(lines, scanner.Text())
+        }</span>
+        <span class="cov0" title="0">return lines, scanner.Err()</span>
+}
+
+func (r *repository) writeLines(lines []string) error <span class="cov0" title="0">{
+        f, err := os.Create(r.filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer f.Close()
+
+        w := bufio.NewWriter(f)
+        for _, line := range lines </span><span class="cov0" title="0">{
+                fmt.Fprintln(w, line)
+        }</span>
+        <span class="cov0" title="0">return w.Flush()</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package models
+
+import (
+        "time"
+)
+
+// Activity represents a time tracking entry
+type Activity struct {
+        Description string
+        Project     string
+        StartTime   time.Time
+        EndTime     *time.Time // nil if active
+}
+
+// Duration returns the duration of the activity.
+// If the activity is active, it returns the duration from StartTime to now.
+func (a Activity) Duration() time.Duration <span class="cov0" title="0">{
+        if a.EndTime != nil </span><span class="cov0" title="0">{
+                return a.EndTime.Sub(a.StartTime)
+        }</span>
+        <span class="cov0" title="0">return time.Since(a.StartTime)</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package activity
+
+import (
+        "context"
+        "time"
+
+        "github.com/kriuchkov/tock/internal/core/dto"
+        "github.com/kriuchkov/tock/internal/core/errors"
+        "github.com/kriuchkov/tock/internal/core/models"
+        "github.com/kriuchkov/tock/internal/core/ports"
+)
+
+type service struct {
+        repo ports.ActivityRepository
+}
+
+func NewService(repo ports.ActivityRepository) ports.ActivityResolver <span class="cov0" title="0">{
+        return &amp;service{repo: repo}
+}</span>
+
+func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error) <span class="cov0" title="0">{
+        last, err := s.repo.FindLast(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">if last != nil &amp;&amp; last.EndTime == nil </span><span class="cov0" title="0">{
+                now := time.Now()
+                // Round to minute if needed, but let's keep precision for now or use helper
+                // For now, just use now.
+                last.EndTime = &amp;now
+                if err := s.repo.Save(ctx, *last); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        <span class="cov0" title="0">newActivity := models.Activity{
+                Description: req.Description,
+                Project:     req.Project,
+                StartTime:   req.StartTime,
+        }
+
+        if newActivity.StartTime.IsZero() </span><span class="cov0" title="0">{
+                newActivity.StartTime = time.Now()
+        }</span>
+
+        <span class="cov0" title="0">if err := s.repo.Save(ctx, newActivity); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return &amp;newActivity, nil</span>
+}
+
+func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*models.Activity, error) <span class="cov0" title="0">{
+        last, err := s.repo.FindLast(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">if last == nil || last.EndTime != nil </span><span class="cov0" title="0">{
+                return nil, errors.ErrNoActiveActivity
+        }</span>
+
+        <span class="cov0" title="0">endTime := req.EndTime
+        if endTime.IsZero() </span><span class="cov0" title="0">{
+                endTime = time.Now()
+        }</span>
+
+        <span class="cov0" title="0">last.EndTime = &amp;endTime
+        if err := s.repo.Save(ctx, *last); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return last, nil</span>
+}
+
+func (s *service) List(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) <span class="cov0" title="0">{
+        return s.repo.Find(ctx, filter)
+}</span>
+
+func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error) <span class="cov0" title="0">{
+        activities, err := s.repo.Find(ctx, filter)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">report := &amp;dto.Report{
+                Activities: []models.Activity{},
+                ByProject:  make(map[string]dto.ProjectReport),
+        }
+
+        for _, a := range activities </span><span class="cov0" title="0">{
+                report.Activities = append(report.Activities, a)
+                duration := a.Duration()
+                report.TotalDuration += duration
+
+                // Aggregate by project
+                projectReport, exists := report.ByProject[a.Project]
+                if !exists </span><span class="cov0" title="0">{
+                        projectReport = dto.ProjectReport{
+                                ProjectName: a.Project,
+                                Duration:    0,
+                                Activities:  []models.Activity{},
+                        }
+                }</span>
+
+                <span class="cov0" title="0">projectReport.Duration += duration
+                projectReport.Activities = append(projectReport.Activities, a)
+                report.ByProject[a.Project] = projectReport</span>
+        }
+        <span class="cov0" title="0">return report, nil</span>
+}
+
+func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, error) <span class="cov0" title="0">{
+        all, err := s.repo.Find(ctx, dto.ActivityFilter{})
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var recent []models.Activity
+        seen := make(map[string]bool)
+
+        for i := len(all) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
+                a := all[i]
+                key := a.Project + "|" + a.Description
+                if !seen[key] </span><span class="cov0" title="0">{
+                        recent = append(recent, a)
+                        seen[key] = true
+                }</span>
+                <span class="cov0" title="0">if len(recent) &gt;= limit </span><span class="cov0" title="0">{
+                        break</span>
+                }
+        }
+        <span class="cov0" title="0">return recent, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

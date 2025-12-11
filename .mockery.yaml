@@ -1,0 +1,8 @@
+all: false
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceName | lower }}.go"
+packages:
+  github.com/kriuchkov/tock/internal/core/ports:
+    interfaces:
+      ActivityResolver:
+      ActivityRepository:
