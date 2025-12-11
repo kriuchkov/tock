@@ -1,0 +1,7 @@
+testfile.bartib
+coverage.out
+demo_activities.txt
+.vscode/
+vendor/
+bin/
+.DS_Store
