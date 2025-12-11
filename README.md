@@ -6,7 +6,7 @@
 
 ## Features
 
-<img src="assets/demo.png" align="right" width="450px" style="margin-right: 20px;" />
+<img src="assets/demo.png" width="820px" />
 
 **Tock** is a powerful time tracking tool for the command line. It saves activity logs as plaintext files and provides an interactive terminal UI for viewing your time.
 
