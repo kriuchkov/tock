@@ -2,29 +2,11 @@
 
 ## Table of Contents
 
-- [Features](#features)
-- [Quick Start](#quick-start)
-  - [Installation](#installation)
-  - [Basic Usage](#basic-usage)
-  - [Configuration](#configuration)
-- [Commands](#commands)
-  - [Start tracking](#start-tracking)
-  - [Stop tracking](#stop-tracking)
-  - [Continue activity](#continue-activity)
-  - [Current activity](#current-activity)
-  - [Recent activities](#recent-activities)
-  - [Calendar View (TUI)](#calendar-view-tui)
-  - [Text Report](#text-report)
-- [File Format](#file-format)
-- [Architecture](#architecture)
-  - [Technology Stack](#technology-stack)
-  - [Project Structure](#project-structure)
-- [Inspiration](#inspiration)
-- [License](#license)
+[Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
 
 ## Features
 
-<img src="assets/demo.png" align="right" width="350px" style="margin-right: 20px;" />
+<img src="assets/demo.png" align="right" width="450px" style="margin-right: 20px;" />
 
 **Tock** is a powerful time tracking tool for the command line. It saves activity logs as plaintext files and provides an interactive terminal UI for viewing your time.
 
@@ -227,7 +209,7 @@ internal/
 
 - **CLI Framework**: [Cobra](https://github.com/spf13/cobra)
 - **TUI Components**: [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Bubbles](https://github.com/charmbracelet/bubbles), [Lipgloss](https://github.com/charmbracelet/lipgloss)
-- **Go Version**: 1.21+
+- **Go Version**: 1.24+
 
 ### Project Structure
 
