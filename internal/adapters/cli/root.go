@@ -31,32 +31,9 @@ func NewRootCmd() *cobra.Command {
 				}
 			}
 
-			var repo ports.ActivityRepository
-
-			if backend == "timewarrior" {
-				if filePath == "" {
-					filePath = os.Getenv("TIMEWARRIORDB")
-					if filePath == "" {
-						home, err := os.UserHomeDir()
-						if err != nil {
-							return err
-						}
-						filePath = filepath.Join(home, ".timewarrior", "data")
-					}
-				}
-				repo = timewarrior.NewRepository(filePath)
-			} else {
-				if filePath == "" {
-					filePath = os.Getenv("TOCK_FILE")
-					if filePath == "" {
-						home, err := os.UserHomeDir()
-						if err != nil {
-							return err
-						}
-						filePath = filepath.Join(home, ".tock.txt")
-					}
-				}
-				repo = file.NewRepository(filePath)
+			repo, err := initRepository(backend, filePath)
+			if err != nil {
+				return err
 			}
 
 			svc := activity.NewService(repo)
@@ -92,4 +69,33 @@ func Execute() {
 
 func getService(cmd *cobra.Command) ports.ActivityResolver {
 	return cmd.Context().Value(serviceKey{}).(ports.ActivityResolver) //nolint:errcheck // always set
+}
+
+func initRepository(backend, filePath string) (ports.ActivityRepository, error) {
+	//nolint:nestif // simple enough
+	if backend == "timewarrior" {
+		if filePath == "" {
+			filePath = os.Getenv("TIMEWARRIORDB")
+			if filePath == "" {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					return nil, err
+				}
+				filePath = filepath.Join(home, ".timewarrior", "data")
+			}
+		}
+		return timewarrior.NewRepository(filePath), nil
+	}
+
+	if filePath == "" {
+		filePath = os.Getenv("TOCK_FILE")
+		if filePath == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, err
+			}
+			filePath = filepath.Join(home, ".tock.txt")
+		}
+	}
+	return file.NewRepository(filePath), nil
 }

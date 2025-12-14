@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+
 	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
@@ -37,7 +38,7 @@ func NewRepository(dataDir string) ports.ActivityRepository {
 	return &repository{dataDir: dataDir}
 }
 
-func (r *repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
 	// Determine date range to scan
 	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	if filter.FromDate != nil {
@@ -92,11 +93,11 @@ func (r *repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]mod
 	return activities, nil
 }
 
-func (r *repository) FindLast(ctx context.Context) (*models.Activity, error) {
+func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 	// Start from current month and go backwards
 	current := time.Now()
 	// Check up to 12 months back
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		monthFile := r.getMonthFilePath(current)
 		acts, err := r.readActivitiesFromFile(monthFile)
 		if err != nil && !os.IsNotExist(err) {
@@ -112,7 +113,7 @@ func (r *repository) FindLast(ctx context.Context) (*models.Activity, error) {
 	return nil, coreErrors.ErrActivityNotFound
 }
 
-func (r *repository) Save(ctx context.Context, activity models.Activity) error {
+func (r *repository) Save(_ context.Context, activity models.Activity) error {
 	// TimeWarrior stores data by start time month
 	filePath := r.getMonthFilePath(activity.StartTime)
 
@@ -159,7 +160,8 @@ func (r *repository) readActivitiesFromFile(path string) ([]models.Activity, err
 
 	var activities []models.Activity
 	for _, iv := range intervals {
-		act, err := fromTWInterval(iv)
+		var act models.Activity
+		act, err = fromTWInterval(iv)
 		if err != nil {
 			continue // Skip invalid
 		}
@@ -184,7 +186,7 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 		}
 
 		var iv twInterval
-		if err := json.Unmarshal([]byte(line), &iv); err != nil {
+		if err = json.Unmarshal([]byte(line), &iv); err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing line in %s: %v\nLine: %s\n", path, err, line)
 			continue
 		}
@@ -207,8 +209,8 @@ func (r *repository) writeIntervalsToFile(path string, intervals []twInterval) e
 
 	w := bufio.NewWriter(f)
 	for _, iv := range intervals {
-		b, err := json.Marshal(iv)
-		if err != nil {
+		var b []byte
+		if b, err = json.Marshal(iv); err != nil {
 			continue
 		}
 		fmt.Fprintln(w, string(b))
@@ -238,7 +240,8 @@ func fromTWInterval(iv twInterval) (models.Activity, error) {
 
 	var end *time.Time
 	if iv.End != "" {
-		e, err := time.Parse(timeLayout, iv.End)
+		var e time.Time
+		e, err = time.Parse(timeLayout, iv.End)
 		if err == nil {
 			eLocal := e.Local()
 			end = &eLocal

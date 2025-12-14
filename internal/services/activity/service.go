@@ -2,7 +2,6 @@ package activity
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -75,7 +74,7 @@ func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*model
 	}
 
 	if endTime.Before(last.StartTime) {
-		return nil, fmt.Errorf("end time cannot be before start time")
+		return nil, errors.New("end time cannot be before start time")
 	}
 
 	last.EndTime = &endTime

@@ -16,7 +16,7 @@ Built with **Go** using Clean Architecture principles.
 - ⚡ **Fast & Lightweight** - Single binary, no dependencies
 - 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
 
-<br clear="right"/>
+<hr clear="right"/>
 
 ## Quick Start
 
