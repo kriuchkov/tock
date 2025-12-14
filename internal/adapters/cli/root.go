@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/kriuchkov/tock/internal/adapters/file"
+	"github.com/kriuchkov/tock/internal/adapters/timewarrior"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
 
@@ -17,23 +18,47 @@ type serviceKey struct{}
 
 func NewRootCmd() *cobra.Command {
 	var filePath string
+	var backend string
 
 	cmd := &cobra.Command{
 		Use:   "tock",
 		Short: "A simple timetracker for the command line",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if filePath == "" {
-				filePath = os.Getenv("TOCK_FILE")
-				if filePath == "" {
-					home, err := os.UserHomeDir()
-					if err != nil {
-						return err
-					}
-					filePath = filepath.Join(home, ".tock.txt")
+			if backend == "" {
+				backend = os.Getenv("TOCK_BACKEND")
+				if backend == "" {
+					backend = "file"
 				}
 			}
 
-			repo := file.NewRepository(filePath)
+			var repo ports.ActivityRepository
+
+			if backend == "timewarrior" {
+				if filePath == "" {
+					filePath = os.Getenv("TIMEWARRIORDB")
+					if filePath == "" {
+						home, err := os.UserHomeDir()
+						if err != nil {
+							return err
+						}
+						filePath = filepath.Join(home, ".timewarrior", "data")
+					}
+				}
+				repo = timewarrior.NewRepository(filePath)
+			} else {
+				if filePath == "" {
+					filePath = os.Getenv("TOCK_FILE")
+					if filePath == "" {
+						home, err := os.UserHomeDir()
+						if err != nil {
+							return err
+						}
+						filePath = filepath.Join(home, ".tock.txt")
+					}
+				}
+				repo = file.NewRepository(filePath)
+			}
+
 			svc := activity.NewService(repo)
 
 			ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
@@ -42,7 +67,8 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file")
+	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file (or data directory for timewarrior)")
+	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default) or 'timewarrior'")
 
 	cmd.AddCommand(NewStartCmd())
 	cmd.AddCommand(NewStopCmd())

@@ -2,6 +2,9 @@ testfile.bartib
 coverage.out
 coverage.html
 demo_activities.txt
+
+.idea/
+test_data/
 .vscode/
 vendor/
 bin/

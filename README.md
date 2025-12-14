@@ -14,7 +14,7 @@ Built with **Go** using Clean Architecture principles.
 - 🎨 **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
 - 🏗️ **Clean Architecture** - Ports & Adapters pattern for maintainability
 - ⚡ **Fast & Lightweight** - Single binary, no dependencies
-- 🔄 **Compatible** - Reads/writes Bartib file format
+- 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
 
 <br clear="right"/>
 
@@ -63,19 +63,37 @@ tock list
 
 ### Configuration
 
-Set default activity log file:
+#### Storage Backends
+
+Tock supports multiple storage backends.
+
+**1. Flat File (Default)**
+
+Stores activities in a simple plaintext file.
 
 ```bash
 export TOCK_FILE="$HOME/.tock.txt"
 ```
 
-Or specify file explicitly:
+**2. TimeWarrior**
+
+Integrates with [TimeWarrior](https://timewarrior.net/) data files.
 
 ```bash
-tock -f /path/to/activities.txt start -d "Task" -p "Project"
+# Enable TimeWarrior backend
+export TOCK_BACKEND="timewarrior"
+
+# Optional: Specify custom data directory (default: ~/.timewarrior/data)
+export TIMEWARRIORDB="/path/to/timewarrior/data"
 ```
 
-### Shell Completion
+Or use flags:
+
+```bash
+tock --backend timewarrior list
+```
+
+#### Shell Completion
 
 To enable shell completion (e.g. for Oh My Zsh):
 

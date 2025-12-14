@@ -305,10 +305,9 @@ func (m *reportModel) updateViewportContent() {
 		return
 	}
 	// Flatten and sort activities
-	var activities []models.Activity
-	for _, pr := range report.ByProject {
-		activities = append(activities, pr.Activities...)
-	}
+	activities := make([]models.Activity, len(report.Activities))
+	copy(activities, report.Activities)
+
 	sort.Slice(activities, func(i, j int) bool {
 		return activities[i].StartTime.Before(activities[j].StartTime)
 	})
@@ -437,9 +436,9 @@ func (m *reportModel) fetchMonthData() tea.Msg {
 
 		// Handle activities spanning days? For now, assign to start day.
 		// Also check if activity is within the month (it should be due to filter)
-		if act.StartTime.Month() != month {
-			continue
-		}
+		// if act.StartTime.Month() != month {
+		// 	continue
+		// }
 
 		if _, ok := dailyReports[day]; !ok {
 			dailyReports[day] = &dto.Report{
