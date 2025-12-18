@@ -15,6 +15,11 @@ builds:
       - arm64
     binary: tock
     main: ./cmd/tock
+    ldflags:
+      - -s -w
+      - -X github.com/kriuchkov/tock/internal/adapters/cli.version={{.Version}}
+      - -X github.com/kriuchkov/tock/internal/adapters/cli.commit={{.Commit}}
+      - -X github.com/kriuchkov/tock/internal/adapters/cli.date={{.Date}}
 
 archives:
   - format: tar.gz
@@ -46,9 +51,9 @@ brews:
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     
     name: tock
-    description: "Tock is a simple timetracker for the command line"
+    description: "Tock {{ .Tag }} is a simple timetracker for the command line"
     homepage: "https://github.com/kriuchkov/tock"
     license: "GPL-3.0-only"
     directory: Formula
     test: |
-      system "#{bin}/tock --version"
+      system "#{bin}/tock version"

@@ -21,8 +21,9 @@ func NewRootCmd() *cobra.Command {
 	var backend string
 
 	cmd := &cobra.Command{
-		Use:   "tock",
-		Short: "A simple timetracker for the command line",
+		Use:     "tock",
+		Short:   "A simple timetracker for the command line",
+		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			if backend == "" {
 				backend = os.Getenv("TOCK_BACKEND")
@@ -56,6 +57,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(NewContinueCmd())
 	cmd.AddCommand(NewCurrentCmd())
 	cmd.AddCommand(NewCalendarCmd())
+	cmd.AddCommand(NewVersionCmd())
 	return cmd
 }
 
