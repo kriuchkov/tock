@@ -180,17 +180,25 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 	var intervals []twInterval
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		if !strings.HasPrefix(line, "{") {
+			fmt.Fprintf(os.Stderr, "Warning: skipping non-JSON line in %s: %s\n", path, line)
 			continue
 		}
 
 		var iv twInterval
-		if err = json.Unmarshal([]byte(line), &iv); err != nil {
+		if err := json.Unmarshal([]byte(line), &iv); err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing line in %s: %v\nLine: %s\n", path, err, line)
 			continue
 		}
 		intervals = append(intervals, iv)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 	return intervals, nil
 }
