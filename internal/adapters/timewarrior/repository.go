@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-faster/errors"
 
@@ -180,17 +181,40 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 	var intervals []twInterval
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
 
 		var iv twInterval
-		if err = json.Unmarshal([]byte(line), &iv); err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing line in %s: %v\nLine: %s\n", path, err, line)
+		var parseErr error
+
+		// TimeWarrior data files typically use JSON Lines format (starting with '{').
+		// However, they may also contain lines in TimeWarrior's internal serialization format
+		// (starting with 'inc'), especially if the file includes undo logs or was generated
+		// by specific commands.
+		//
+		//nolint:gocritic // ignore else-if complexity for clarity
+		if strings.HasPrefix(line, "{") {
+			// Standard JSON format
+			parseErr = json.Unmarshal([]byte(line), &iv)
+		} else if strings.HasPrefix(line, "inc") {
+			// Internal serialization format (e.g. "inc 20230101T000000Z ...")
+			iv, parseErr = parseIncLine(line)
+		} else {
+			// Unknown format, skip with warning
+			fmt.Fprintf(os.Stderr, "Warning: skipping unknown line format in %s: %s\n", path, line)
+			continue
+		}
+
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing line in %s: %v\nLine: %s\n", path, parseErr, line)
 			continue
 		}
 		intervals = append(intervals, iv)
+	}
+	if err = scanner.Err(); err != nil {
+		return nil, err
 	}
 	return intervals, nil
 }
@@ -259,4 +283,74 @@ func fromTWInterval(iv twInterval) (models.Activity, error) {
 		StartTime:   start.Local(),
 		EndTime:     end,
 	}, nil
+}
+
+// parseIncLine parses a line in TimeWarrior's internal serialization format.
+// Format: inc <start> [ - <end> ] [ # <tag1> <tag2> ... ] [ # <annotation> ]
+// Example: inc 20251201T014528Z - 20251201T041127Z # plan "plan_" |8ba7daab|.
+func parseIncLine(line string) (twInterval, error) {
+	tokens := tokenize(line)
+	if len(tokens) == 0 || tokens[0] != "inc" {
+		return twInterval{}, errors.New("invalid inc line")
+	}
+
+	var iv twInterval
+	idx := 1
+
+	// Start time
+	if idx < len(tokens) && len(tokens[idx]) == 16 && tokens[idx][8] == 'T' {
+		iv.Start = tokens[idx]
+		idx++
+	}
+
+	// End time
+	if idx+1 < len(tokens) && tokens[idx] == "-" && len(tokens[idx+1]) == 16 {
+		iv.End = tokens[idx+1]
+		idx += 2
+	}
+
+	// Tags
+	if idx < len(tokens) && tokens[idx] == "#" {
+		idx++
+		for idx < len(tokens) && tokens[idx] != "#" {
+			iv.Tags = append(iv.Tags, tokens[idx])
+			idx++
+		}
+	}
+
+	// Annotation
+	if idx < len(tokens) && tokens[idx] == "#" {
+		idx++
+		iv.Annotation = strings.Join(tokens[idx:], " ")
+	}
+
+	// tokenize splits a string into tokens, respecting quoted strings.
+	// This is necessary because tags or annotations might contain spaces within quotes.
+	return iv, nil
+}
+
+func tokenize(line string) []string {
+	var tokens []string
+	var current strings.Builder
+	inQuote := false
+
+	for _, r := range line {
+		if r == '"' {
+			inQuote = !inQuote
+			continue
+		}
+
+		if unicode.IsSpace(r) && !inQuote {
+			if current.Len() > 0 {
+				tokens = append(tokens, current.String())
+				current.Reset()
+			}
+		} else {
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		tokens = append(tokens, current.String())
+	}
+	return tokens
 }

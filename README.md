@@ -45,7 +45,6 @@ go build -o tock ./cmd/tock
 
 Download the latest release from the [Releases](https://github.com/kriuchkov/tock/releases) page.
 
-
 ### Basic Usage
 
 Start tracking time:
