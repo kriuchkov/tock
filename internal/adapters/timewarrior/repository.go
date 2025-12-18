@@ -191,13 +191,13 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 		}
 
 		var iv twInterval
-		if err := json.Unmarshal([]byte(line), &iv); err != nil {
+		if err = json.Unmarshal([]byte(line), &iv); err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing line in %s: %v\nLine: %s\n", path, err, line)
 			continue
 		}
 		intervals = append(intervals, iv)
 	}
-	if err := scanner.Err(); err != nil {
+	if err = scanner.Err(); err != nil {
 		return nil, err
 	}
 	return intervals, nil
