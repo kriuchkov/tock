@@ -224,7 +224,7 @@ func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
 	// FindLast should return task2 (started at 11:51), not task3 (which is last in file)
 	got, err := repo.FindLast(context.Background())
 	require.NoError(t, err)
-	
+
 	// We compare start times because other fields might be slightly different due to formatting/parsing
 	// But start time is the key identifier here
 	assert.True(t, task2.StartTime.Equal(got.StartTime), "Expected last activity to be the one started at 11:51, but got %v", got.StartTime)
@@ -261,10 +261,10 @@ func TestRepository_Save_UpdateMiddle(t *testing.T) {
 
 	// File content order: A, B
 	// Now we want to stop A. A is NOT the last line.
-	
+
 	endTime := now.Add(-1 * time.Hour) // Stopped before B started, for example
 	actA.EndTime = &endTime
-	
+
 	require.NoError(t, repo.Save(ctx, actA))
 
 	// Verify A is updated

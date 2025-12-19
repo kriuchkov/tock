@@ -282,7 +282,7 @@ func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
 	isRunning := true
 	results, err := repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
 	require.NoError(t, err)
-	
+
 	require.Len(t, results, 1)
 	assert.Equal(t, runningTask.StartTime, results[0].StartTime)
 	assert.Equal(t, runningTask.Project, results[0].Project)

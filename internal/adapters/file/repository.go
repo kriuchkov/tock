@@ -200,12 +200,3 @@ func (r *repository) writeLines(lines []string) error {
 	}
 	return nil
 }
-
-func findLastNonEmptyLine(lines []string) int {
-	for i := len(lines) - 1; i >= 0; i-- {
-		if strings.TrimSpace(lines[i]) != "" {
-			return i
-		}
-	}
-	return -1
-}
