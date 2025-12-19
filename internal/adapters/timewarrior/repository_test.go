@@ -203,6 +203,91 @@ func TestRepository_FindLast(t *testing.T) {
 	})
 }
 
+func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
+	// This test reproduces the bug where adding a historical activity with early time (00:00-00:10)
+	// makes it the last activity in the file, breaking the stop command
+	t.Run("find last by start time not file position", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		repo := NewRepository(tmpDir)
+		ctx := context.Background()
+
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+		// Simulate the scenario:
+		// 1. Start a task at 10:08
+		task1 := models.Activity{
+			Project:     "test",
+			Description: "test task",
+			StartTime:   today.Add(10*time.Hour + 8*time.Minute),
+			EndTime:     ptr(today.Add(11*time.Hour + 27*time.Minute)),
+		}
+		require.NoError(t, repo.Save(ctx, task1))
+
+		// 2. Start another task at 11:51 (currently running)
+		task2 := models.Activity{
+			Project:     "test",
+			Description: "test task",
+			StartTime:   today.Add(11*time.Hour + 51*time.Minute),
+			EndTime:     nil, // Running
+		}
+		require.NoError(t, repo.Save(ctx, task2))
+
+		// 3. Add historical activity at 00:00-00:10 (this gets sorted and becomes last in file)
+		task3 := models.Activity{
+			Project:     "test",
+			Description: "test task",
+			StartTime:   today.Add(0*time.Hour + 0*time.Minute),
+			EndTime:     ptr(today.Add(0*time.Hour + 10*time.Minute)),
+		}
+		require.NoError(t, repo.Save(ctx, task3))
+
+		// FindLast should return task2 (started at 11:51), not task3 (which is last in file)
+		got, err := repo.FindLast(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, task2.StartTime, got.StartTime)
+		assert.Nil(t, got.EndTime, "Last activity should be the running one")
+	})
+}
+
+func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
+	// Verify that Find with IsRunning=true works correctly even when historical data is added
+	// This supports the fix in service.Stop()
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+	// 1. Start a task (Running)
+	runningTask := models.Activity{
+		Project:     "running",
+		Description: "running task",
+		StartTime:   today.Add(12 * time.Hour),
+		EndTime:     nil,
+	}
+	require.NoError(t, repo.Save(ctx, runningTask))
+
+	// 2. Add historical task (Completed, earlier)
+	historicalTask := models.Activity{
+		Project:     "historical",
+		Description: "historical task",
+		StartTime:   today.Add(9 * time.Hour),
+		EndTime:     ptr(today.Add(10 * time.Hour)),
+	}
+	require.NoError(t, repo.Save(ctx, historicalTask))
+
+	// 3. Find running
+	isRunning := true
+	results, err := repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
+	require.NoError(t, err)
+	
+	require.Len(t, results, 1)
+	assert.Equal(t, runningTask.StartTime, results[0].StartTime)
+	assert.Equal(t, runningTask.Project, results[0].Project)
+}
+
 func ptr[T any](v T) *T {
 	return &v
 }

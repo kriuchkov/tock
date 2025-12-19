@@ -97,6 +97,8 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 	// Start from current month and go backwards
 	current := time.Now()
+	var lastActivity *models.Activity
+	
 	// Check up to 12 months back
 	for range 12 {
 		monthFile := r.getMonthFilePath(current)
@@ -105,13 +107,27 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 			return nil, errors.Wrap(err, "read file")
 		}
 
-		if len(acts) > 0 {
-			return &acts[len(acts)-1], nil
+		// Find the activity with the latest start time in this month
+		for i := range acts {
+			if lastActivity == nil || acts[i].StartTime.After(lastActivity.StartTime) {
+				lastActivity = &acts[i]
+			}
 		}
+		
+		// If we found any activities in current or later months, we can stop
+		// (activities can't be in the future beyond this point)
+		if len(acts) > 0 && current.Before(time.Now().AddDate(0, -1, 0)) {
+			break
+		}
+		
 		current = current.AddDate(0, -1, 0)
 	}
 
-	return nil, coreErrors.ErrActivityNotFound
+	if lastActivity == nil {
+		return nil, coreErrors.ErrActivityNotFound
+	}
+	
+	return lastActivity, nil
 }
 
 func (r *repository) Save(_ context.Context, activity models.Activity) error {

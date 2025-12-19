@@ -104,7 +104,10 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 			continue
 		}
 		if act != nil {
-			lastAct = act
+			// Keep the activity with the latest start time
+			if lastAct == nil || act.StartTime.After(lastAct.StartTime) {
+				lastAct = act
+			}
 		}
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
@@ -117,9 +120,6 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 }
 
 func (r *repository) Save(_ context.Context, activity models.Activity) error {
-	// This is a simplified implementation.
-	// Ideally we should read all lines, identify if we are updating the last line or appending.
-
 	lines, err := r.readLines()
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -129,32 +129,28 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 		lines = []string{}
 	}
 
-	// Check if we are updating the last activity (e.g. stopping it)
-	// Or appending a new one.
-
-	// If the activity passed has an ID or we can identify it by start time...
-	// But here we don't have IDs.
-	// Logic: If the last activity in file is "running" (no end time) and the new activity has the same start time, update it.
-	// Otherwise append.
-
-	if len(lines) > 0 { //nolint:nestif // simple logic
-		lastLineIdx := findLastNonEmptyLine(lines)
-
-		if lastLineIdx != -1 {
-			lastAct, _ := ParseActivity(lines[lastLineIdx])
-			if lastAct != nil && lastAct.EndTime == nil && lastAct.StartTime.Equal(activity.StartTime) {
-				// Update last line
-				lines[lastLineIdx] = FormatActivity(activity)
-				if writeErr := r.writeLines(lines); writeErr != nil {
-					return errors.Wrap(writeErr, "write lines")
-				}
-				return nil
-			}
+	// Check if we are updating an existing activity
+	updated := false
+	// Iterate backwards to find the most recent entry (though StartTime should be unique)
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) == "" {
+			continue
+		}
+		act, _ := ParseActivity(lines[i])
+		// We identify the activity by StartTime.
+		// Since file format might have lower precision (minutes), we compare formatted strings or truncated times.
+		// Using Unix() comparison for simplicity, assuming minute precision is enough for uniqueness in this context.
+		if act != nil && act.StartTime.Unix()/60 == activity.StartTime.Unix()/60 {
+			lines[i] = FormatActivity(activity)
+			updated = true
+			break
 		}
 	}
 
-	// Append
-	lines = append(lines, FormatActivity(activity))
+	if !updated {
+		lines = append(lines, FormatActivity(activity))
+	}
+
 	if writeErr := r.writeLines(lines); writeErr != nil {
 		return errors.Wrap(writeErr, "write lines")
 	}

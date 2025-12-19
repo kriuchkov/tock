@@ -21,21 +21,17 @@ func NewService(repo ports.ActivityRepository) ports.ActivityResolver {
 }
 
 func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error) {
-	last, err := s.repo.FindLast(ctx)
+	isRunning := true
+	running, err := s.repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
 	if err != nil {
-		if !errors.Is(err, coreErrors.ErrActivityNotFound) {
-			return nil, errors.Wrap(err, "find last activity")
-		}
-		last = nil
+		return nil, errors.Wrap(err, "find running activities")
 	}
 
-	if last != nil && last.EndTime == nil {
-		now := time.Now()
-		// Round to minute if needed, but let's keep precision for now or use helper
-		// For now, just use now.
-		last.EndTime = &now
-		if saveErr := s.repo.Save(ctx, *last); saveErr != nil {
-			return nil, errors.Wrap(saveErr, "save activity")
+	now := time.Now()
+	for _, act := range running {
+		act.EndTime = &now
+		if saveErr := s.repo.Save(ctx, act); saveErr != nil {
+			return nil, errors.Wrap(saveErr, "stop running activity")
 		}
 	}
 
@@ -56,16 +52,22 @@ func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*mod
 }
 
 func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*models.Activity, error) {
-	last, err := s.repo.FindLast(ctx)
+	isRunning := true
+	running, err := s.repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
 	if err != nil {
-		if errors.Is(err, coreErrors.ErrActivityNotFound) {
-			return nil, coreErrors.ErrNoActiveActivity
-		}
-		return nil, errors.Wrap(err, "find last activity")
+		return nil, errors.Wrap(err, "find running activities")
 	}
 
-	if last == nil || last.EndTime != nil {
+	if len(running) == 0 {
 		return nil, coreErrors.ErrNoActiveActivity
+	}
+
+	// Find the latest running activity
+	var last *models.Activity
+	for i := range running {
+		if last == nil || running[i].StartTime.After(last.StartTime) {
+			last = &running[i]
+		}
 	}
 
 	endTime := req.EndTime
