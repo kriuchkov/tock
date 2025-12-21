@@ -80,9 +80,15 @@ func (m *reportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		detailsWidth := msg.Width - 36
-		if msg.Width > 120 {
-			detailsWidth = msg.Width - 36 - 44
+		var detailsWidth int
+
+		//nolint:gocritic // nested ifs for clarity
+		if msg.Width >= 120 {
+			detailsWidth = msg.Width - 33 - 44 - 4 // Calendar(33) + Sidebar(44) + DetailsOverhead(4)
+		} else if msg.Width >= 70 {
+			detailsWidth = msg.Width - 33 - 4 // Calendar(33) + DetailsOverhead(4)
+		} else {
+			detailsWidth = msg.Width - 4 // DetailsOverhead(4)
 		}
 
 		if !m.ready {
@@ -116,15 +122,18 @@ func (m *reportModel) View() string {
 		return "Initializing..."
 	}
 
-	calendarView := m.renderCalendar()
 	detailsView := m.renderDetails()
 
-	if m.width > 120 {
+	if m.width >= 120 {
+		calendarView := m.renderCalendar()
 		sidebarView := m.renderSidebar()
 		return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView, sidebarView)
+	} else if m.width >= 70 {
+		calendarView := m.renderCalendar()
+		return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView)
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView)
+	return detailsView
 }
 
 // Styles.
@@ -273,9 +282,15 @@ func (m *reportModel) renderCalendar() string {
 }
 
 func (m *reportModel) renderDetails() string {
-	detailsWidth := m.width - 36
-	if m.width > 120 {
-		detailsWidth = m.width - 36 - 44
+	var detailsWidth int
+
+	//nolint:gocritic // nested ifs for clarity
+	if m.width >= 120 {
+		detailsWidth = m.width - 33 - 44 - 4
+	} else if m.width >= 70 {
+		detailsWidth = m.width - 33 - 4
+	} else {
+		detailsWidth = m.width - 4
 	}
 
 	return lipgloss.NewStyle().
@@ -503,6 +518,12 @@ func (m *reportModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 			return m.fetchMonthData, true
 		}
 		m.updateViewportContent()
+		return nil, true
+	case "j":
+		m.viewport.LineDown(1) //nolint:staticcheck //it's deprecated but still works
+		return nil, true
+	case "k":
+		m.viewport.LineUp(1) //nolint:staticcheck //it's deprecated but still works
 		return nil, true
 	case "n": // Next month
 		m.viewDate = m.viewDate.AddDate(0, 1, 0)

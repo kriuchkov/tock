@@ -15,10 +15,19 @@ func (m *reportModel) renderSidebar() string {
 	var b strings.Builder
 
 	b.WriteString(m.renderProductivityStats())
-	b.WriteString(m.renderWeeklyActivity())
-	b.WriteString(m.renderTopProjects())
 
-	return styleSidebar.Height(m.height - 2).Render(b.String())
+	remaining := m.height - 2 - 7 // 7 lines for productivity stats
+
+	if remaining >= 17 { // 17 lines for weekly activity
+		b.WriteString(m.renderWeeklyActivity())
+		remaining -= 17
+	}
+
+	if remaining >= 4 { // At least header + 1 project
+		b.WriteString(m.renderTopProjects(remaining))
+	}
+
+	return styleSidebar.Render(b.String())
 }
 
 func (m *reportModel) renderProductivityStats() string {
@@ -153,7 +162,7 @@ func (m *reportModel) renderWeeklyActivity() string {
 	return b.String()
 }
 
-func (m *reportModel) renderTopProjects() string {
+func (m *reportModel) renderTopProjects(maxHeight int) string {
 	var b strings.Builder
 
 	// Top Projects
@@ -183,8 +192,10 @@ func (m *reportModel) renderTopProjects() string {
 		maxProjDuration = ss[0].Value
 	}
 
+	maxProjects := min((maxHeight-1)/3, 5)
+
 	for i, kv := range ss {
-		if i >= 5 {
+		if i >= maxProjects {
 			break
 		}
 
