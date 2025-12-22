@@ -305,6 +305,7 @@ Generate an analysis of your work habits, including Deep Work Score, Chronotype 
 - **Session Distribution**: Breakdown of work sessions by duration.
 
 <br> 
+
 ```bash
 tock analyze
 tock analyze --days 7
