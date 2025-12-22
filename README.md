@@ -135,6 +135,8 @@ export TOCK_COLOR_HIGHLIGHT="214" # Orange/Gold
 
 **Example: Cyberpunk / Fuchsia Theme**
 
+<img src="assets/demo_2.png" width="820px" />
+
 ```bash
 export TOCK_THEME="custom"
 export TOCK_COLOR_PRIMARY="#FF00FF"   # Fuchsia
@@ -288,6 +290,29 @@ tock report --date 2025-12-01
 - `--yesterday`: Report for yesterday
 - `--date`: Report for specific date (YYYY-MM-DD)
 
+### Productivity Analysis
+
+<img src="assets/demo_3.png" width="280px" align="left" style="margin-right: 20px; margin-bottom: 10px;"/> 
+
+Generate a scientific analysis of your work habits, including Deep Work Score, Chronotype estimation, and Context Switching metrics.
+
+
+**Metrics:**
+
+- **Deep Work Score**: Percentage of time spent in focused sessions (>1h).
+- **Chronotype**: Estimates your peak productivity time (Morning Lark, Night Owl, etc.).
+- **Context Switching**: Measures fragmentation of your workday.
+- **Session Distribution**: Breakdown of work sessions by duration.
+
+```bash
+tock analyze
+tock analyze --days 7
+```
+
+**Flags:**
+
+- `-n, --days`: Number of days to analyze (default 30)
+
 ## File Format
 
 Activities are stored in plaintext format (compatible with Bartib):
@@ -330,6 +355,7 @@ internal/
 - `internal/core/` - Domain layer (models, interfaces, DTOs)
 - `internal/services/` - Business logic
 - `internal/adapters/file/` - File storage implementation
+- `internal/adapters/timewarrior/` - TimeWarrior storage implementation
 - `internal/adapters/cli/` - CLI commands and TUI
 
 ## Inspiration
