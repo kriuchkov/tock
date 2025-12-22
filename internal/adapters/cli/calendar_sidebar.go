@@ -23,6 +23,11 @@ func (m *reportModel) renderSidebar() string {
 		remaining -= 17
 	}
 
+	if remaining >= 10 { // 10 lines for peak hours
+		b.WriteString(m.renderPeakHours())
+		remaining -= 10
+	}
+
 	if remaining >= 4 { // At least header + 1 project
 		b.WriteString(m.renderTopProjects(remaining))
 	}
@@ -215,5 +220,92 @@ func (m *reportModel) renderTopProjects(maxHeight int) string {
 			m.styles.Duration.Render(kv.Value.Round(time.Minute).String())))
 		b.WriteString("\n")
 	}
+	return b.String()
+}
+
+func (m *reportModel) renderPeakHours() string {
+	var b strings.Builder
+
+	b.WriteString(m.styles.Header.Width(40).Render("Peak Hours") + "\n\n")
+
+	// Calculate hourly stats
+	hourlyStats := make(map[int]time.Duration)
+	for _, report := range m.monthReports {
+		for _, act := range report.Activities {
+			start := act.StartTime
+			end := time.Now()
+			if act.EndTime != nil {
+				end = *act.EndTime
+			}
+
+			// Iterate through hours covered by activity
+			current := start
+			for current.Before(end) {
+				// End of current hour
+				nextHour := current.Truncate(time.Hour).Add(time.Hour)
+
+				segmentEnd := end
+				if nextHour.Before(end) {
+					segmentEnd = nextHour
+				}
+
+				duration := segmentEnd.Sub(current)
+				hour := current.Hour()
+				hourlyStats[hour] += duration
+
+				current = segmentEnd
+			}
+		}
+	}
+
+	// Find max duration for scaling
+	var maxDuration time.Duration
+	type hourStat struct {
+		Hour     int
+		Duration time.Duration
+	}
+	var stats []hourStat
+
+	for h := range 24 {
+		dur := hourlyStats[h]
+		if dur > 0 {
+			stats = append(stats, hourStat{h, dur})
+			if dur > maxDuration {
+				maxDuration = dur
+			}
+		}
+	}
+
+	// Sort by duration descending
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Duration > stats[j].Duration
+	})
+
+	// Take top 5
+	count := 0
+	for _, s := range stats {
+		if count >= 5 {
+			break
+		}
+
+		bar := ""
+		if maxDuration > 0 {
+			width := int((float64(s.Duration) / float64(maxDuration)) * 20)
+			if width > 0 {
+				bar = strings.Repeat("█", width)
+			} else if s.Duration > 0 {
+				bar = barChar
+			}
+		}
+
+		timeStr := fmt.Sprintf("%02d:00", s.Hour)
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			lipgloss.NewStyle().Foreground(m.theme.SubText).Width(5).Render(timeStr),
+			lipgloss.NewStyle().Foreground(m.theme.Highlight).Render(bar),
+		))
+		count++
+	}
+	b.WriteString("\n")
+
 	return b.String()
 }

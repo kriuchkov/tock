@@ -57,6 +57,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(NewContinueCmd())
 	cmd.AddCommand(NewCurrentCmd())
 	cmd.AddCommand(NewCalendarCmd())
+	cmd.AddCommand(NewAnalyzeCmd())
 	cmd.AddCommand(NewVersionCmd())
 	return cmd
 }
