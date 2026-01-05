@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 
@@ -104,10 +105,10 @@ func NewReportCmd() *cobra.Command {
 
 				fmt.Printf("📁 %s: %dh %dm\n", projectReport.ProjectName, int(hours), minutes)
 				for _, activity := range projectReport.Activities {
-					startTime := activity.StartTime.Format("15:04")
+					startTime := activity.StartTime.Format(timeutil.GetDisplayFormat())
 					endTime := "--:--"
 					if activity.EndTime != nil {
-						endTime = activity.EndTime.Format("15:04")
+						endTime = activity.EndTime.Format(timeutil.GetDisplayFormat())
 					}
 					duration := activity.Duration()
 					actHours := int(duration.Hours())

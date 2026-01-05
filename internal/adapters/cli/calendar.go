@@ -11,6 +11,7 @@ import (
 	"github.com/go-faster/errors"
 
 	"github.com/kriuchkov/tock/internal/config"
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -269,7 +270,7 @@ func (m *reportModel) updateViewportContent() {
 
 	for i, act := range activities {
 		isLast := i == len(activities)-1
-		start := act.StartTime.Format("15:04")
+		start := act.StartTime.Format(timeutil.GetDisplayFormat())
 
 		// Timeline styles
 		dot := "●"
@@ -282,12 +283,12 @@ func (m *reportModel) updateViewportContent() {
 		// Content
 		durStr := act.Duration().Round(time.Minute).String()
 		if act.EndTime != nil {
-			durStr += fmt.Sprintf(" • %s", act.EndTime.Format("15:04"))
+			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(timeutil.GetDisplayFormat()))
 		}
 
 		// Row 1: Time | Dot | Project
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			m.styles.Time.Width(6).Align(lipgloss.Right).Render(start),
+			m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
 			"  ",
 			dotStyle.Render(dot),
 			"  ",
@@ -297,7 +298,7 @@ func (m *reportModel) updateViewportContent() {
 		// Row 2:      | Line | Description
 		if act.Description != "" {
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(6).Render(""),
+				lipgloss.NewStyle().Width(9).Render(""),
 				"  ",
 				lineStyle.Render(line),
 				"  ",
@@ -307,7 +308,7 @@ func (m *reportModel) updateViewportContent() {
 
 		// Row 3:      | Line | Duration
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.NewStyle().Width(6).Render(""),
+			lipgloss.NewStyle().Width(9).Render(""),
 			"  ",
 			lineStyle.Render(line),
 			"  ",
@@ -317,7 +318,7 @@ func (m *reportModel) updateViewportContent() {
 		// Spacer
 		if !isLast {
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(6).Render(""),
+				lipgloss.NewStyle().Width(9).Render(""),
 				"  ",
 				lineStyle.Render(line),
 			) + "\n")

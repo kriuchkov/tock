@@ -8,6 +8,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 )
 
@@ -31,14 +32,14 @@ func NewAddCmd() *cobra.Command {
 				return errors.New("end time or duration is required")
 			}
 
-			startTime, err := parseTime(startStr)
+			startTime, err := timeutil.ParseTimeWithDate(startStr)
 			if err != nil {
 				return errors.Wrap(err, "parse start time")
 			}
 
 			var endTime time.Time
 			if endStr != "" {
-				endTime, err = parseTime(endStr)
+				endTime, err = timeutil.ParseTimeWithDate(endStr)
 				if err != nil {
 					return errors.Wrap(err, "parse end time")
 				}
@@ -70,8 +71,8 @@ func NewAddCmd() *cobra.Command {
 			fmt.Printf("Added activity: %s | %s (%s - %s)\n",
 				activity.Project,
 				activity.Description,
-				activity.StartTime.Format("15:04"),
-				activity.EndTime.Format("15:04"),
+				activity.StartTime.Format(timeutil.GetDisplayFormat()),
+				activity.EndTime.Format(timeutil.GetDisplayFormat()),
 			)
 			return nil
 		},
@@ -91,21 +92,4 @@ func NewAddCmd() *cobra.Command {
 	}
 
 	return cmd
-}
-
-func parseTime(t string) (time.Time, error) {
-	// Try HH:MM format for today
-	parsed, err := time.ParseInLocation("15:04", t, time.Local)
-	if err == nil {
-		now := time.Now()
-		return time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local), nil
-	}
-
-	// Try YYYY-MM-DD HH:MM
-	parsed, err = time.ParseInLocation("2006-01-02 15:04", t, time.Local)
-	if err == nil {
-		return parsed, nil
-	}
-
-	return time.Time{}, errors.New("invalid time format (use HH:MM or YYYY-MM-DD HH:MM)")
 }
