@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/adapters/file"
 	"github.com/kriuchkov/tock/internal/adapters/timewarrior"
 	"github.com/kriuchkov/tock/internal/config"
@@ -36,6 +37,9 @@ func NewRootCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
 			}
+
+			// Initialize time format configuration
+			timeutil.Initialize()
 
 			if backend == "" {
 				backend = cfg.Backend
