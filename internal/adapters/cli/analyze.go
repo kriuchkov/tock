@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kriuchkov/tock/internal/config"
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
@@ -254,12 +255,16 @@ func renderAnalysis(stats AnalysisStats, cfg *config.Config) {
 	// 2. Chronotype
 	fmt.Println(sectionStyle.Render("Chronotype & Rhythm"))
 	fmt.Printf("%s %s\n", labelStyle.Render("Type:"), valueStyle.Render(stats.Chronotype))
-	fmt.Printf(
-		"%s %s:00 - %02d:00\n",
+
+	startTime := time.Date(2000, 1, 1, stats.PeakHour, 0, 0, 0, time.Local)
+	endTime := time.Date(2000, 1, 1, stats.PeakHour+1, 0, 0, 0, time.Local)
+	format := timeutil.GetDisplayFormat()
+	fmt.Printf("%s %s - %s\n",
 		labelStyle.Render("Peak Hour:"),
-		valueStyle.Render(fmt.Sprintf("%02d", stats.PeakHour)),
-		stats.PeakHour+1,
+		valueStyle.Render(startTime.Format(format)),
+		endTime.Format(format),
 	)
+
 	fmt.Printf("%s %s\n", labelStyle.Render("Best Day:"), valueStyle.Render(stats.MostProductiveDay))
 	fmt.Println()
 
