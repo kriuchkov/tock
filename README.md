@@ -1,7 +1,7 @@
 # Tock
 
 [Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) •
-[Configuration](#configuration) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
+[Configuration](#configuration) • [Theme](#theme) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
 
 ## Features
 
@@ -16,6 +16,8 @@ Built with **Go** using Clean Architecture principles.
 - 🏗️ **Clean Architecture** - Ports & Adapters pattern for maintainability
 - ⚡ **Fast & Lightweight** - Single binary, no dependencies
 - 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
+- 🎨 **Customizable Themes** - Multiple color themes and custom color support
+- 📅 **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
 
 <hr clear="right"/>
 
@@ -66,7 +68,7 @@ View activities in interactive calendar:
 tock list
 ```
 
-### Configuration
+## Configuration
 
 Tock supports a flexible configuration system using YAML files and environment variables.
 
@@ -74,10 +76,10 @@ Tock supports a flexible configuration system using YAML files and environment v
 
 1. Command-line flags
 2. Environment variables
-3. Configuration file (`~/.config/tock.yaml` or `./tock.yaml`)
+3. Configuration file (`~/.config/tock/tock.yaml` or `./tock.yaml`)
 4. Default values
 
-#### Configuration File
+### Configuration File
 
 Example `tock.yaml`:
 
@@ -105,7 +107,7 @@ tock --config /path/to/tock.yaml list
 
 Example a config file [tock.yaml.example](tock.yaml.example).
 
-#### Environment Variables
+### Environment Variables
 
 All settings can be overridden with environment variables (prefix `TOCK_`).
 
@@ -114,11 +116,11 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
 
-#### Storage Backends
+### Storage Backends
 
 Tock supports multiple storage backends.
 
-**1. Flat File (Default)**
+### 1. Flat File (Default)
 
 Stores activities in a simple plaintext file.
 
@@ -126,7 +128,7 @@ Stores activities in a simple plaintext file.
 export TOCK_FILE_PATH="$HOME/.tock.txt"
 ```
 
-**2. TimeWarrior**
+### 2. TimeWarrior
 
 Integrates with [TimeWarrior](https://timewarrior.net/) data files.
 
@@ -144,7 +146,7 @@ Or use flags:
 tock --backend timewarrior list
 ```
 
-#### Theming
+## Theming
 
 Tock supports customizable color themes for the calendar view.
 
@@ -158,7 +160,7 @@ theme:
 
 Or use environment variables:
 
-**Theme Name**
+### Theme Name
 
 Set `TOCK_THEME_NAME` (or `theme.name` in config) to one of:
 
@@ -168,7 +170,7 @@ Set `TOCK_THEME_NAME` (or `theme.name` in config) to one of:
 - `ansi_light`: 16-color light theme
 - `custom`: Use custom colors defined by environment variables
 
-**Auto-detection**
+### Auto-detection
 
 If `theme.name` is not set, Tock automatically selects the best theme:
 
@@ -176,7 +178,7 @@ If `theme.name` is not set, Tock automatically selects the best theme:
 2. Detects background color (Light vs Dark).
 3. Selects the appropriate theme (e.g. `light` for light background, `ansi_dark` for dark ANSI terminal).
 
-**Custom Colors**
+### Custom Colors
 
 When `theme.name` is `custom`, you can override specific colors using these variables (accepts ANSI color codes or hex values):
 
@@ -190,7 +192,7 @@ export TOCK_COLOR_FAINT="240"    # Dark Grey
 export TOCK_COLOR_HIGHLIGHT="214" # Orange/Gold
 ```
 
-**Example: Cyberpunk / Fuchsia Theme**
+### Example: Cyberpunk / Fuchsia Theme
 
 <img src="assets/demo_2.png" width="820px" />
 
@@ -233,6 +235,38 @@ exec zsh
 ```
 
 ## Commands
+
+```bash
+
+A simple timetracker for the command line
+
+Usage:
+  tock [command]
+
+Available Commands:
+  add         Add a completed activity
+  analyze     Analyze your productivity patterns
+  calendar    Show interactive calendar view
+  completion  Generate the autocompletion script for the specified shell
+  continue    Continues a previous activity
+  current     Lists all currently running activities
+  help        Help about any command
+  ical        Generate iCal (.ics) file for a specific task or all tasks in a day
+  last        List recent unique activities
+  list        List activities (Calendar View)
+  report      Generate time tracking report
+  start       Start a new activity
+  stop        Stop the current activity
+  version     Print the version info
+
+Flags:
+  -b, --backend string   Storage backend: 'file' (default) or 'timewarrior'
+      --config string    Config file directory (default is $HOME/.config/tock/tock.yaml)
+  -f, --file string      Path to the activity log file (or data directory for timewarrior)
+  -h, --help             help for tock
+  -v, --version          version for tock
+Use "tock [command] --help" for more information about a command.
+```
 
 ### Start tracking
 
@@ -347,6 +381,32 @@ tock report --date 2025-12-01
 - `--yesterday`: Report for yesterday
 - `--date`: Report for specific date (YYYY-MM-DD)
 
+### Calendar Integration (iCal)
+
+Generate iCalendar (.ics) files for your tracked activities, compatible with Google Calendar, Apple Calendar, Outlook, etc.
+
+**Single Activity Export:**
+
+Use the unique key shown in `tock list` or `tock report` (format `YYYY-MM-DD-NN`).
+
+```bash
+tock ical 2026-01-07-01                    # Print ICS to stdout
+tock ical 2026-01-07-01 > meeting.ics      # Save to file
+tock ical 2026-01-07-01 --open             # Open in default calendar app (macOS)
+```
+
+**Bulk Export (All activities for a day):**
+
+```bash
+tock ical 2026-01-07 --path ./export       # Save all tasks for the day as separate ICS files
+tock ical 2026-01-07 --open                # Combine all tasks and open in default calendar app (macOS)
+```
+
+**Flags:**
+
+- `--path`: Output directory for .ics files (required for bulk export unless --open is used)
+- `--open`: Automatically open generated file(s) in system calendar (macOS only)
+
 ### Productivity Analysis
 
 <img src="assets/demo_3.png" width="280px" align="left" style="margin-right: 20px; margin-bottom: 10px;"/>
@@ -396,9 +456,11 @@ internal/
     errors/             # Domain errors
   services/             # Application layer
     activity/           # Business logic implementation
+    ics/                # iCal generation logic
   adapters/             # Infrastructure layer
     file/               # File repository (plaintext)
     cli/                # CLI commands & TUI views
+    timewarrior/        # TimeWarrior repository
 ```
 
 ### Technology Stack

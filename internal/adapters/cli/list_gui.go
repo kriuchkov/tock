@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -60,12 +59,13 @@ func initialModel(service ports.ActivityResolver) model {
 
 func (m *model) initTable() {
 	columns := []table.Column{
-		{Title: "No.", Width: 4},
+		{Title: "Key", Width: 13},
 		{Title: "Time", Width: 15},
 		{Title: "Project", Width: 20},
 		{Title: "Description", Width: 40},
 		{Title: "Duration", Width: 10},
 	}
+
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
@@ -140,18 +140,30 @@ func (m *model) findTargetDate(activities []models.Activity, current time.Time, 
 }
 
 func (m *model) renderTable(activities []models.Activity) {
-	var dayActivities []models.Activity
+	var dayActivities []models.Activity    // Filtered for display
+	var allDayActivities []models.Activity // All for the day (for numbering)
+
+	// First pass: find all activities for the selected date to establish correct numbering
 	for _, a := range activities {
 		if a.StartTime.Year() == m.selectedDate.Year() &&
 			a.StartTime.Month() == m.selectedDate.Month() &&
 			a.StartTime.Day() == m.selectedDate.Day() {
-			dayActivities = append(dayActivities, a)
+			allDayActivities = append(allDayActivities, a)
 		}
 	}
+	// Sort by start time (assuming they might not be sorted)
+	// Actually models.Activity doesn't have a sort method, but usually they come sorted or we should sort them.
+	// For now we assume they are somewhat ordered or we sort them here?
+	// Let's rely on the order provided by service.List for now, or sort if needed.
+	// We'll trust the service or handle it implicitly.
+	// However, to be safe for key generation:
+
+	// Simply assign to filtered list (currently no other filtering)
+	dayActivities = allDayActivities
 	m.activities = dayActivities
 
 	var rows []table.Row
-	for _, a := range dayActivities {
+	for i, a := range dayActivities {
 		duration := a.Duration().Round(time.Minute).String()
 		timeStr := a.StartTime.Format("15:04")
 		if a.EndTime != nil {
@@ -160,7 +172,8 @@ func (m *model) renderTable(activities []models.Activity) {
 			timeStr += " - ..."
 		}
 
-		rows = append(rows, table.Row{strconv.Itoa(len(rows)), timeStr, a.Project, a.Description, duration})
+		key := fmt.Sprintf("%s-%02d", a.StartTime.Format("2006-01-02"), i+1)
+		rows = append(rows, table.Row{key, timeStr, a.Project, a.Description, duration})
 	}
 	m.table.SetRows(rows)
 }

@@ -9,10 +9,12 @@ import (
 	"github.com/go-faster/errors"
 
 	"github.com/kriuchkov/tock/internal/core/dto"
+	"github.com/kriuchkov/tock/internal/core/models"
 
 	"github.com/spf13/cobra"
 )
 
+//nolint:funlen // Report command is long but straightforward.
 func NewReportCmd() *cobra.Command {
 	var (
 		today     bool
@@ -71,6 +73,26 @@ func NewReportCmd() *cobra.Command {
 			}
 			sort.Strings(projectNames)
 
+			var sortedActivities = make([]models.Activity, len(report.Activities))
+
+			copy(sortedActivities, report.Activities)
+
+			sort.Slice(sortedActivities, func(i, j int) bool {
+				return sortedActivities[i].StartTime.Before(sortedActivities[j].StartTime)
+			})
+
+			activityIDs := make(map[int64]string)
+			dayCounts := make(map[string]int)
+
+			for _, act := range sortedActivities {
+				d := act.StartTime.Format("2006-01-02")
+				dayCounts[d]++
+
+				// ID format: YYYY-MM-DD-NN
+				id := fmt.Sprintf("%s-%02d", d, dayCounts[d])
+				activityIDs[act.StartTime.UnixNano()] = id
+			}
+
 			fmt.Println("\n📊 Time Tracking Report")
 			fmt.Println("=" + "=======================")
 			fmt.Println()
@@ -90,8 +112,10 @@ func NewReportCmd() *cobra.Command {
 					duration := activity.Duration()
 					actHours := int(duration.Hours())
 					actMinutes := int(duration.Minutes()) % 60
-					fmt.Printf("   %s - %s (%dh %dm) | %s\n",
-						startTime, endTime, actHours, actMinutes, activity.Description)
+
+					id := activityIDs[activity.StartTime.UnixNano()]
+					fmt.Printf("   [%s] %s - %s (%dh %dm) | %s\n",
+						id, startTime, endTime, actHours, actMinutes, activity.Description)
 				}
 				fmt.Println()
 			}
