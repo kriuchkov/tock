@@ -1,5 +1,5 @@
 # Tock Configuration File
-# Default location: ~/.config/tock.yaml
+# Default location: ~/.config/tock/tock.yaml
 #
 # You can override any setting using environment variables:
 # TOCK_BACKEND=timewarrior

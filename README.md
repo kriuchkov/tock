@@ -205,34 +205,6 @@ export TOCK_COLOR_FAINT="#404040"     # Dark Grey
 export TOCK_COLOR_HIGHLIGHT="#FFFF00" # Yellow
 ```
 
-#### Shell Completion
-
-To enable shell completion (e.g. for Oh My Zsh):
-
-1. Create a directory for the plugin:
-
-```bash
-mkdir -p ~/.oh-my-zsh/custom/plugins/tock
-```
-
-1. Generate the completion script:
-
-```bash
-tock completion zsh > ~/.oh-my-zsh/custom/plugins/tock/_tock
-```
-
-1. Add `tock` to your plugins list in `~/.zshrc`:
-
-```bash
-plugins=(... tock)
-```
-
-1. Restart your shell:
-
-```bash
-exec zsh
-```
-
 ## Commands
 
 ```bash
@@ -440,6 +412,36 @@ Activities are stored in plaintext format (compatible with Bartib):
 ```
 
 You can edit this file manually with any text editor.
+
+
+## Shell Completion
+
+To enable shell completion (e.g. for Oh My Zsh):
+
+1. Create a directory for the plugin:
+
+```bash
+mkdir -p ~/.oh-my-zsh/custom/plugins/tock
+```
+
+1. Generate the completion script:
+
+```bash
+tock completion zsh > ~/.oh-my-zsh/custom/plugins/tock/_tock
+```
+
+1. Add `tock` to your plugins list in `~/.zshrc`:
+
+```bash
+plugins=(... tock)
+```
+
+1. Restart your shell:
+
+```bash
+exec zsh
+```
+
 
 ## Architecture
 
