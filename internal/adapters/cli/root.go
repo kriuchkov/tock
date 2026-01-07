@@ -49,10 +49,7 @@ func NewRootCmd() *cobra.Command {
 				}
 			}
 
-			repo, err := initRepository(backend, filePath)
-			if err != nil {
-				return err
-			}
+			repo := initRepository(backend, filePath)
 
 			svc := activity.NewService(repo)
 
@@ -97,9 +94,9 @@ func getConfig(cmd *cobra.Command) *config.Config {
 	return cmd.Context().Value(configKey{}).(*config.Config) //nolint:errcheck // always set
 }
 
-func initRepository(backend, filePath string) (ports.ActivityRepository, error) {
+func initRepository(backend, filePath string) ports.ActivityRepository {
 	if backend == "timewarrior" {
-		return timewarrior.NewRepository(filePath), nil
+		return timewarrior.NewRepository(filePath)
 	}
-	return file.NewRepository(filePath), nil
+	return file.NewRepository(filePath)
 }

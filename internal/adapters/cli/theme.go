@@ -2,8 +2,9 @@ package cli
 
 import (
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kriuchkov/tock/internal/config"
 	"github.com/muesli/termenv"
+
+	"github.com/kriuchkov/tock/internal/config"
 )
 
 // Theme defines the color palette for the application.

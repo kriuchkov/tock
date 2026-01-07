@@ -59,7 +59,7 @@ func Load(opts ...Option) (*Config, error) {
 	if homeDir, err = os.UserHomeDir(); err == nil {
 		configDir := filepath.Join(homeDir, ".config", "tock")
 
-		if err := os.MkdirAll(configDir, 0755); err == nil {
+		if err = os.MkdirAll(configDir, 0750); err == nil {
 			v.SetConfigFile(filepath.Join(configDir, "tock.yaml"))
 		}
 	}
@@ -87,14 +87,14 @@ func Load(opts ...Option) (*Config, error) {
 		opt(v)
 	}
 
-	if err := v.ReadInConfig(); err != nil {
-		if err := v.WriteConfigAs(v.ConfigFileUsed()); err != nil {
+	if err = v.ReadInConfig(); err != nil {
+		if err = v.WriteConfigAs(v.ConfigFileUsed()); err != nil {
 			return nil, errors.Wrap(err, "write default config")
 		}
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err = v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
 
