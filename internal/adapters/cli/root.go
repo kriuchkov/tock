@@ -29,7 +29,7 @@ func NewRootCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var opts []config.Option
 			if configPath != "" {
-				opts = append(opts, config.WithConfigPath(configPath))
+				opts = append(opts, config.WithConfigFile(configPath))
 			}
 
 			cfg, err := config.Load(opts...)
@@ -62,7 +62,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file (or data directory for timewarrior)")
 	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default) or 'timewarrior'")
-	cmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file directory (default is $HOME/.config/tock/tock.yaml)")
+	cmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default is $HOME/.config/tock/tock.yaml)")
 
 	cmd.AddCommand(NewStartCmd())
 	cmd.AddCommand(NewStopCmd())
