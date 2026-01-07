@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/viper"
@@ -97,13 +96,10 @@ func Load(opts ...Option) (*Config, error) {
 		opt(v)
 	}
 
+	//nolint:nestif // config file handling
 	if err = v.ReadInConfig(); err != nil {
-		// If config file not found, we write the current configuration (defaults + envs)
-		// SetConfigFile with non-existent file returns os.PathError, not ConfigFileNotFoundError
-		var pathError *os.PathError
-		isNotExist := errors.As(err, &pathError) || strings.Contains(err.Error(), "no such file")
-
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok || isNotExist {
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &configFileNotFoundError) {
 			writePath := v.ConfigFileUsed()
 			if writePath == "" {
 				writePath = configPath

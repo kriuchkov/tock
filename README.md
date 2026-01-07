@@ -83,12 +83,18 @@ Example `tock.yaml`:
 
 ```yaml
 backend: file
-
 file:
-  path: ~/.tock.txt
-
+    path: /Users/user/tock.txt
 theme:
-  name: dark
+    faint: '#404040'
+    highlight: '#FFFF00'
+    name: custom
+    primary: '#FF00FF'
+    secondary: '#00FFFF'
+    sub_text: '#B0B0B0'
+    text: '#FFFFFF'
+timewarrior:
+    data_path: /Users/user/.timewarrior/data
 ```
 
 You can specify a custom config file path with the `--config` flag:
