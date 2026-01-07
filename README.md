@@ -111,7 +111,6 @@ Example a config file [tock.yaml.example](tock.yaml.example).
 
 All settings can be overridden with environment variables (prefix `TOCK_`).
 
-- `TOCK_LOG_LEVEL`: `debug`, `info`, `warn`, `error`
 - `TOCK_BACKEND`: `file` or `timewarrior`
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
