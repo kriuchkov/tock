@@ -1,6 +1,7 @@
 # Tock
 
-[Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
+[Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) •
+[Configuration](#configuration) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
 
 ## Features
 
@@ -67,6 +68,46 @@ tock list
 
 ### Configuration
 
+Tock supports a flexible configuration system using YAML files and environment variables.
+
+**Priority Order:**
+
+1. Command-line flags
+2. Environment variables
+3. Configuration file (`~/.config/tock.yaml` or `./tock.yaml`)
+4. Default values
+
+#### Configuration File
+
+Example `tock.yaml`:
+
+```yaml
+backend: file
+
+file:
+  path: ~/.tock.txt
+
+theme:
+  name: dark
+```
+
+You can specify a custom config file path with the `--config` flag:
+
+```bash
+tock --config /path/to/tock.yaml list
+```
+
+Example a config file [tock.yaml.example](tock.yaml.example).
+
+#### Environment Variables
+
+All settings can be overridden with environment variables (prefix `TOCK_`).
+
+- `TOCK_LOG_LEVEL`: `debug`, `info`, `warn`, `error`
+- `TOCK_BACKEND`: `file` or `timewarrior`
+- `TOCK_FILE_PATH`: Path to activity log
+- `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
+
 #### Storage Backends
 
 Tock supports multiple storage backends.
@@ -76,7 +117,7 @@ Tock supports multiple storage backends.
 Stores activities in a simple plaintext file.
 
 ```bash
-export TOCK_FILE="$HOME/.tock.txt"
+export TOCK_FILE_PATH="$HOME/.tock.txt"
 ```
 
 **2. TimeWarrior**
@@ -88,7 +129,7 @@ Integrates with [TimeWarrior](https://timewarrior.net/) data files.
 export TOCK_BACKEND="timewarrior"
 
 # Optional: Specify custom data directory (default: ~/.timewarrior/data)
-export TIMEWARRIORDB="/path/to/timewarrior/data"
+export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
 ```
 
 Or use flags:
@@ -101,9 +142,19 @@ tock --backend timewarrior list
 
 Tock supports customizable color themes for the calendar view.
 
-**Environment Variables**
+You can configure the theme in `tock.yaml`:
 
-Set `TOCK_THEME` to one of:
+```yaml
+theme:
+  name: custom
+  primary: "#ff0000"
+```
+
+Or use environment variables:
+
+**Theme Name**
+
+Set `TOCK_THEME_NAME` (or `theme.name` in config) to one of:
 
 - `dark`: Standard 256-color dark theme
 - `light`: Standard 256-color light theme
@@ -113,7 +164,7 @@ Set `TOCK_THEME` to one of:
 
 **Auto-detection**
 
-If `TOCK_THEME` is not set, Tock automatically selects the best theme:
+If `theme.name` is not set, Tock automatically selects the best theme:
 
 1. Detects terminal capabilities (TrueColor/256 vs ANSI).
 2. Detects background color (Light vs Dark).
@@ -121,10 +172,10 @@ If `TOCK_THEME` is not set, Tock automatically selects the best theme:
 
 **Custom Colors**
 
-When `TOCK_THEME=custom`, you can override specific colors using these variables (accepts ANSI color codes or hex values):
+When `theme.name` is `custom`, you can override specific colors using these variables (accepts ANSI color codes or hex values):
 
 ```bash
-export TOCK_THEME="custom"
+export TOCK_THEME_NAME="custom"
 export TOCK_COLOR_PRIMARY="63"   # Blue
 export TOCK_COLOR_SECONDARY="196" # Red
 export TOCK_COLOR_TEXT="255"     # White
@@ -138,7 +189,7 @@ export TOCK_COLOR_HIGHLIGHT="214" # Orange/Gold
 <img src="assets/demo_2.png" width="820px" />
 
 ```bash
-export TOCK_THEME="custom"
+export TOCK_THEME_NAME="custom"
 export TOCK_COLOR_PRIMARY="#FF00FF"   # Fuchsia
 export TOCK_COLOR_SECONDARY="#00FFFF" # Cyan
 export TOCK_COLOR_TEXT="#FFFFFF"      # White
@@ -292,10 +343,9 @@ tock report --date 2025-12-01
 
 ### Productivity Analysis
 
-<img src="assets/demo_3.png" width="280px" align="left" style="margin-right: 20px; margin-bottom: 10px;"/> 
+<img src="assets/demo_3.png" width="280px" align="left" style="margin-right: 20px; margin-bottom: 10px;"/>
 
 Generate an analysis of your work habits, including Deep Work Score, Chronotype estimation, and Context Switching metrics.
-
 
 **Metrics:**
 
@@ -304,7 +354,7 @@ Generate an analysis of your work habits, including Deep Work Score, Chronotype 
 - **Context Switching**: Measures fragmentation of your workday.
 - **Session Distribution**: Breakdown of work sessions by duration.
 
-<br> 
+<br>
 
 ```bash
 tock analyze

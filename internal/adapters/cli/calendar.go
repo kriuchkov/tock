@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -26,7 +27,8 @@ func NewCalendarCmd() *cobra.Command {
 		Short: "Show interactive calendar view",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
-			m := initialReportModel(service)
+			cfg := getConfig(cmd)
+			m := initialReportModel(service, cfg)
 			p := tea.NewProgram(&m)
 			if _, err := p.Run(); err != nil {
 				return errors.Wrap(err, "run program")
@@ -51,9 +53,9 @@ type reportModel struct {
 	theme        Theme
 }
 
-func initialReportModel(service ports.ActivityResolver) reportModel {
+func initialReportModel(service ports.ActivityResolver, cfg *config.Config) reportModel {
 	now := time.Now()
-	theme := GetTheme()
+	theme := GetTheme(cfg.Theme)
 	return reportModel{
 		service:      service,
 		currentDate:  now,
