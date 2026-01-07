@@ -1,10 +1,10 @@
 package cli
 
 import (
-	"os"
-
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+
+	"github.com/kriuchkov/tock/internal/config"
 )
 
 // Theme defines the color palette for the application.
@@ -83,37 +83,39 @@ func ANSILightTheme() Theme {
 	}
 }
 
-// CustomTheme returns a theme based on environment variables
-// Falls back to DarkTheme values if env vars are not set.
-func CustomTheme() Theme {
+// CustomTheme returns a theme based on configuration
+// Falls back to DarkTheme values if not set.
+func CustomTheme(cfg config.ThemeConfig) Theme {
 	t := DarkTheme()
 
-	if c := os.Getenv("TOCK_COLOR_PRIMARY"); c != "" {
-		t.Primary = lipgloss.Color(c)
+	if cfg.Primary != "" {
+		t.Primary = lipgloss.Color(cfg.Primary)
 	}
-	if c := os.Getenv("TOCK_COLOR_SECONDARY"); c != "" {
-		t.Secondary = lipgloss.Color(c)
+	if cfg.Secondary != "" {
+		t.Secondary = lipgloss.Color(cfg.Secondary)
 	}
-	if c := os.Getenv("TOCK_COLOR_TEXT"); c != "" {
-		t.Text = lipgloss.Color(c)
+	if cfg.Text != "" {
+		t.Text = lipgloss.Color(cfg.Text)
 	}
-	if c := os.Getenv("TOCK_COLOR_SUBTEXT"); c != "" {
-		t.SubText = lipgloss.Color(c)
+	if cfg.SubText != "" {
+		t.SubText = lipgloss.Color(cfg.SubText)
 	}
-	if c := os.Getenv("TOCK_COLOR_FAINT"); c != "" {
-		t.Faint = lipgloss.Color(c)
+	if cfg.Faint != "" {
+		t.Faint = lipgloss.Color(cfg.Faint)
 	}
-	if c := os.Getenv("TOCK_COLOR_HIGHLIGHT"); c != "" {
-		t.Highlight = lipgloss.Color(c)
+	if cfg.Highlight != "" {
+		t.Highlight = lipgloss.Color(cfg.Highlight)
 	}
 
 	return t
 }
 
 // GetTheme returns the appropriate theme based on terminal capabilities or user preference.
-func GetTheme() Theme {
-	// 1. Check environment variable
-	switch os.Getenv("TOCK_THEME") {
+func GetTheme(cfg config.ThemeConfig) Theme {
+	// 1. Check configuration
+	name := cfg.Name
+
+	switch name {
 	case "ansi":
 		return ANSIDarkTheme()
 	case "ansi_dark":
@@ -125,7 +127,7 @@ func GetTheme() Theme {
 	case "light":
 		return LightTheme()
 	case "custom":
-		return CustomTheme()
+		return CustomTheme(cfg)
 	case "default":
 		return DarkTheme()
 	}

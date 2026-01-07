@@ -11,6 +11,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
@@ -52,7 +53,8 @@ func NewAnalyzeCmd() *cobra.Command {
 			}
 
 			analysis := analyzeData(report.Activities)
-			renderAnalysis(analysis)
+			cfg := getConfig(cmd)
+			renderAnalysis(analysis, cfg)
 
 			return nil
 		},
@@ -198,8 +200,8 @@ func analyzeData(activities []models.Activity) AnalysisStats {
 	return stats
 }
 
-func renderAnalysis(stats AnalysisStats) {
-	theme := GetTheme()
+func renderAnalysis(stats AnalysisStats, cfg *config.Config) {
+	theme := GetTheme(cfg.Theme)
 
 	// Custom styles for analysis
 	titleStyle := lipgloss.NewStyle().

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/kriuchkov/tock/internal/adapters/file"
 	"github.com/kriuchkov/tock/internal/adapters/timewarrior"
+	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
 
@@ -15,31 +15,46 @@ import (
 )
 
 type serviceKey struct{}
+type configKey struct{}
 
 func NewRootCmd() *cobra.Command {
 	var filePath string
 	var backend string
+	var configPath string
 
 	cmd := &cobra.Command{
 		Use:     "tock",
 		Short:   "A simple timetracker for the command line",
 		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			var opts []config.Option
+			if configPath != "" {
+				opts = append(opts, config.WithConfigPath(configPath))
+			}
+
+			cfg, err := config.Load(opts...)
+			if err != nil {
+				return fmt.Errorf("load config: %w", err)
+			}
+
 			if backend == "" {
-				backend = os.Getenv("TOCK_BACKEND")
-				if backend == "" {
-					backend = "file"
+				backend = cfg.Backend
+			}
+
+			if filePath == "" {
+				if backend == "timewarrior" {
+					filePath = cfg.Timewarrior.DataPath
+				} else {
+					filePath = cfg.File.Path
 				}
 			}
 
-			repo, err := initRepository(backend, filePath)
-			if err != nil {
-				return err
-			}
+			repo := initRepository(backend, filePath)
 
 			svc := activity.NewService(repo)
 
 			ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
+			ctx = context.WithValue(ctx, configKey{}, cfg)
 			cmd.SetContext(ctx)
 			return nil
 		},
@@ -47,6 +62,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file (or data directory for timewarrior)")
 	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default) or 'timewarrior'")
+	cmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file directory (default is $HOME/.config/tock/tock.yaml)")
 
 	cmd.AddCommand(NewStartCmd())
 	cmd.AddCommand(NewStopCmd())
@@ -74,31 +90,13 @@ func getService(cmd *cobra.Command) ports.ActivityResolver {
 	return cmd.Context().Value(serviceKey{}).(ports.ActivityResolver) //nolint:errcheck // always set
 }
 
-func initRepository(backend, filePath string) (ports.ActivityRepository, error) {
-	//nolint:nestif // simple enough
-	if backend == "timewarrior" {
-		if filePath == "" {
-			filePath = os.Getenv("TIMEWARRIORDB")
-			if filePath == "" {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					return nil, err
-				}
-				filePath = filepath.Join(home, ".timewarrior", "data")
-			}
-		}
-		return timewarrior.NewRepository(filePath), nil
-	}
+func getConfig(cmd *cobra.Command) *config.Config {
+	return cmd.Context().Value(configKey{}).(*config.Config) //nolint:errcheck // always set
+}
 
-	if filePath == "" {
-		filePath = os.Getenv("TOCK_FILE")
-		if filePath == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return nil, err
-			}
-			filePath = filepath.Join(home, ".tock.txt")
-		}
+func initRepository(backend, filePath string) ports.ActivityRepository {
+	if backend == "timewarrior" {
+		return timewarrior.NewRepository(filePath)
 	}
-	return file.NewRepository(filePath), nil
+	return file.NewRepository(filePath)
 }

@@ -1,0 +1,37 @@
+# Tock Configuration File
+# Default location: ~/.config/tock.yaml
+#
+# You can override any setting using environment variables:
+# TOCK_BACKEND=timewarrior
+# TOCK_FILE_PATH=/custom/path/tock.txt
+# TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
+
+# Storage backend: file or timewarrior
+backend: file
+
+# File backend configuration
+file:
+  # Path to the activity log file
+  # Default: ~/.tock.txt
+  path: ~/.tock.txt
+
+# Timewarrior backend configuration
+timewarrior:
+  # Path to timewarrior data directory
+  # Default: ~/.timewarrior/data
+  data_path: ~/.timewarrior/data
+
+# Theme configuration
+theme:
+  # Theme name: dark, light, or custom
+  # Default: dark
+  name: dark
+  
+  # Custom colors (only used if name is "custom")
+  # Can be hex codes (#ff0000) or ANSI color numbers (1-255)
+  # primary: "63"
+  # secondary: "196"
+  # text: "255"
+  # sub_text: "248"
+  # faint: "240"
+  # highlight: "214"
