@@ -99,7 +99,7 @@ func Load(opts ...Option) (*Config, error) {
 	//nolint:nestif // config file handling
 	if err = v.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if errors.As(err, &configFileNotFoundError) {
+		if errors.As(err, &configFileNotFoundError) || os.IsNotExist(err) {
 			writePath := v.ConfigFileUsed()
 			if writePath == "" {
 				writePath = configPath
