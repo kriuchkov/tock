@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -60,7 +61,7 @@ func initialModel(service ports.ActivityResolver) model {
 func (m *model) initTable() {
 	columns := []table.Column{
 		{Title: "Key", Width: 13},
-		{Title: "Time", Width: 15},
+		{Title: "Time", Width: 20},
 		{Title: "Project", Width: 20},
 		{Title: "Description", Width: 40},
 		{Title: "Duration", Width: 10},
@@ -165,9 +166,9 @@ func (m *model) renderTable(activities []models.Activity) {
 	var rows []table.Row
 	for i, a := range dayActivities {
 		duration := a.Duration().Round(time.Minute).String()
-		timeStr := a.StartTime.Format("15:04")
+		timeStr := a.StartTime.Format(timeutil.GetDisplayFormat())
 		if a.EndTime != nil {
-			timeStr += " - " + a.EndTime.Format("15:04")
+			timeStr += " - " + a.EndTime.Format(timeutil.GetDisplayFormat())
 		} else {
 			timeStr += " - ..."
 		}

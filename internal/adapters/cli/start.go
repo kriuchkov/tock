@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 
 	"github.com/spf13/cobra"
@@ -24,14 +25,11 @@ func NewStartCmd() *cobra.Command {
 			service := getService(cmd)
 			startTime := time.Now()
 			if at != "" {
-				// Parse 'at' time. For simplicity, let's assume HH:MM format for today
-				parsed, err := time.ParseInLocation("15:04", at, time.Local)
+				var err error
+				startTime, err = timeutil.ParseTime(at)
 				if err != nil {
 					return errors.Wrap(err, "parse time")
 				}
-				// Combine with today's date
-				now := time.Now()
-				startTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)
 			}
 
 			req := dto.StartActivityRequest{
@@ -45,7 +43,7 @@ func NewStartCmd() *cobra.Command {
 				return errors.Wrap(err, "start activity")
 			}
 
-			fmt.Printf("Started activity: %s | %s at %s\n", activity.Project, activity.Description, activity.StartTime.Format("15:04"))
+			fmt.Printf("Started activity: %s | %s at %s\n", activity.Project, activity.Description, activity.StartTime.Format(timeutil.GetDisplayFormat()))
 			return nil
 		},
 	}
