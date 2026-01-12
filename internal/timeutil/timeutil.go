@@ -1,7 +1,6 @@
 package timeutil
 
 import (
-	"os"
 	"strings"
 	"time"
 
@@ -24,12 +23,11 @@ type Config struct {
 // Global config instance
 var config *Config
 
-// Initialize reads TOCK_TIME_FORMAT env var and sets up configuration
-func Initialize() {
+// Initialize sets up configuration from the provided format string
+func Initialize(formatStr string) {
 	format := Format24Hour // default
 
-	envValue := os.Getenv("TOCK_TIME_FORMAT")
-	if envValue == "12" {
+	if formatStr == "12" {
 		format = Format12Hour
 	}
 
@@ -39,7 +37,7 @@ func Initialize() {
 // GetDisplayFormat returns the Go time format string for display
 func GetDisplayFormat() string {
 	if config == nil {
-		Initialize()
+		Initialize("24")
 	}
 
 	if config.format == Format12Hour {
@@ -51,7 +49,7 @@ func GetDisplayFormat() string {
 // GetDisplayFormatWithDate returns format string with date
 func GetDisplayFormatWithDate() string {
 	if config == nil {
-		Initialize()
+		Initialize("24")
 	}
 
 	if config.format == Format12Hour {
@@ -64,7 +62,7 @@ func GetDisplayFormatWithDate() string {
 // Returns time.Time for today at the specified time
 func ParseTime(input string) (time.Time, error) {
 	if config == nil {
-		Initialize()
+		Initialize("24")
 	}
 
 	input = strings.TrimSpace(input)
@@ -115,7 +113,7 @@ func ParseTime(input string) (time.Time, error) {
 // Supports: "HH:MM", "YYYY-MM-DD HH:MM" (and 12hr equivalents)
 func ParseTimeWithDate(input string) (time.Time, error) {
 	if config == nil {
-		Initialize()
+		Initialize("24")
 	}
 
 	input = strings.TrimSpace(input)

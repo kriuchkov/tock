@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
+	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 
 	"github.com/spf13/cobra"

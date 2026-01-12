@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kriuchkov/tock/internal/adapters/cli/timeutil"
 	"github.com/kriuchkov/tock/internal/adapters/file"
 	"github.com/kriuchkov/tock/internal/adapters/timewarrior"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			// Initialize time format configuration
-			timeutil.Initialize()
+			timeutil.Initialize(cfg.TimeFormat)
 
 			if backend == "" {
 				backend = cfg.Backend

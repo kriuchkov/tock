@@ -5,6 +5,7 @@
 # TOCK_BACKEND=timewarrior
 # TOCK_FILE_PATH=/custom/path/tock.txt
 # TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
+# TOCK_TIME_FORMAT=12
 
 # Storage backend: file or timewarrior
 backend: file
@@ -20,6 +21,10 @@ timewarrior:
   # Path to timewarrior data directory
   # Default: ~/.timewarrior/data
   data_path: ~/.timewarrior/data
+
+# Time format configuration
+# time_format: "24"  # 24-hour format (default): 15:04
+# time_format: "12"  # 12-hour format: 03:04 PM
 
 # Theme configuration
 theme:

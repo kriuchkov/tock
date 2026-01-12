@@ -87,6 +87,7 @@ Example `tock.yaml`:
 backend: file
 file:
     path: /Users/user/tock.txt
+time_format: "24"
 theme:
     faint: '#404040'
     highlight: '#FFFF00'
@@ -113,6 +114,7 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 
 - `TOCK_BACKEND`: `file` or `timewarrior`
 - `TOCK_FILE_PATH`: Path to activity log
+- `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
 
 ### Storage Backends
@@ -141,14 +143,18 @@ export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
 
 **3. Time Format**
 
-Configure how times are displayed and input:
+Configure how times are displayed and input via config file or environment variable:
+
+```yaml
+# In tock.yaml
+time_format: "12"  # Use 12-hour format with AM/PM
+time_format: "24"  # Use 24-hour format (default)
+```
 
 ```bash
-# Use 12-hour format with AM/PM
-export TOCK_TIME_FORMAT="12"
-
-# Use 24-hour format (default)
-export TOCK_TIME_FORMAT="24"
+# Or via environment variable
+export TOCK_TIME_FORMAT="12"  # Use 12-hour format with AM/PM
+export TOCK_TIME_FORMAT="24"  # Use 24-hour format (default)
 ```
 
 **12-Hour Format Examples:**

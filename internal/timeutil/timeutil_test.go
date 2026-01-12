@@ -1,18 +1,17 @@
 package timeutil
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
 func TestInitialize(t *testing.T) {
 	tests := []struct {
-		name     string
-		envValue string
-		expected TimeFormat
+		name      string
+		formatStr string
+		expected  TimeFormat
 	}{
-		{"default when not set", "", Format24Hour},
+		{"default when empty string", "", Format24Hour},
 		{"12 hour when set to 12", "12", Format12Hour},
 		{"24 hour when set to 24", "24", Format24Hour},
 		{"default for invalid value", "invalid", Format24Hour},
@@ -23,18 +22,10 @@ func TestInitialize(t *testing.T) {
 			// Reset config
 			config = nil
 
-			// Set env var
-			if tt.envValue != "" {
-				os.Setenv("TOCK_TIME_FORMAT", tt.envValue)
-			} else {
-				os.Unsetenv("TOCK_TIME_FORMAT")
-			}
-			defer os.Unsetenv("TOCK_TIME_FORMAT")
-
-			Initialize()
+			Initialize(tt.formatStr)
 
 			if config.format != tt.expected {
-				t.Errorf("Initialize() format = %v, want %v", config.format, tt.expected)
+				t.Errorf("Initialize(%q) format = %v, want %v", tt.formatStr, config.format, tt.expected)
 			}
 		})
 	}
