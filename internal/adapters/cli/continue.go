@@ -9,7 +9,6 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 )
 
@@ -24,6 +23,7 @@ func NewContinueCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service := getService(cmd)
+			tf := getTimeFormatter(cmd)
 			ctx := context.Background()
 
 			number := 0
@@ -62,7 +62,7 @@ func NewContinueCmd() *cobra.Command {
 			startTime := time.Now()
 			if at != "" {
 				var parseErr error
-				startTime, parseErr = timeutil.ParseTime(at)
+				startTime, parseErr = tf.ParseTime(at)
 				if parseErr != nil {
 					return errors.Wrap(parseErr, "parse time")
 				}
@@ -83,7 +83,7 @@ func NewContinueCmd() *cobra.Command {
 				"Started activity: %s | %s at %s\n",
 				startedActivity.Project,
 				startedActivity.Description,
-				startedActivity.StartTime.Format(timeutil.GetDisplayFormat()),
+				startedActivity.StartTime.Format(tf.GetDisplayFormat()),
 			)
 			return nil
 		},

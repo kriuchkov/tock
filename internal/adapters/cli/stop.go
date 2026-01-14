@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 
 	"github.com/spf13/cobra"
@@ -17,10 +16,11 @@ func NewStopCmd() *cobra.Command {
 
 	fn := func(cmd *cobra.Command, _ []string) error {
 		service := getService(cmd)
+		tf := getTimeFormatter(cmd)
 		endTime := time.Now()
 		if at != "" {
 			var err error
-			endTime, err = timeutil.ParseTime(at)
+			endTime, err = tf.ParseTime(at)
 			if err != nil {
 				return errors.Wrap(err, "parse time")
 			}
@@ -33,7 +33,12 @@ func NewStopCmd() *cobra.Command {
 			return errors.Wrap(err, "stop activity")
 		}
 
-		fmt.Printf("Stopped activity: %s | %s at %s\n", activity.Project, activity.Description, activity.EndTime.Format(timeutil.GetDisplayFormat()))
+		fmt.Printf(
+			"Stopped activity: %s | %s at %s\n",
+			activity.Project,
+			activity.Description,
+			activity.EndTime.Format(tf.GetDisplayFormat()),
+		)
 		return nil
 	}
 

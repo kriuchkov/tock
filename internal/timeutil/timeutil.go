@@ -7,7 +7,7 @@ import (
 	"github.com/go-faster/errors"
 )
 
-// TimeFormat represents the configured time display format
+// TimeFormat represents the configured time display format.
 type TimeFormat int
 
 const (
@@ -15,56 +15,45 @@ const (
 	Format12Hour
 )
 
-// Config holds time formatting configuration
-type Config struct {
+// Formatter handles time formatting and parsing.
+type Formatter struct {
 	format TimeFormat
 }
 
-// Global config instance
-var config *Config
-
-// Initialize sets up configuration from the provided format string
-func Initialize(formatStr string) {
+// NewFormatter creates a new Formatter with the given format string.
+// Valid values are "12" for 12-hour format and anything else for 24-hour format.
+func NewFormatter(formatStr string) *Formatter {
 	format := Format24Hour // default
-
 	if formatStr == "12" {
 		format = Format12Hour
 	}
-
-	config = &Config{format: format}
+	return &Formatter{format: format}
 }
 
-// GetDisplayFormat returns the Go time format string for display
-func GetDisplayFormat() string {
-	if config == nil {
-		Initialize("24")
-	}
+// Format returns the TimeFormat configured for this Formatter.
+func (f *Formatter) Format() TimeFormat {
+	return f.format
+}
 
-	if config.format == Format12Hour {
+// GetDisplayFormat returns the Go time format string for display.
+func (f *Formatter) GetDisplayFormat() string {
+	if f.format == Format12Hour {
 		return "03:04 PM"
 	}
 	return "15:04"
 }
 
-// GetDisplayFormatWithDate returns format string with date
-func GetDisplayFormatWithDate() string {
-	if config == nil {
-		Initialize("24")
-	}
-
-	if config.format == Format12Hour {
+// GetDisplayFormatWithDate returns format string with date.
+func (f *Formatter) GetDisplayFormatWithDate() string {
+	if f.format == Format12Hour {
 		return "2006-01-02 03:04 PM"
 	}
 	return "2006-01-02 15:04"
 }
 
 // ParseTime parses user input supporting both 12hr and 24hr formats
-// Returns time.Time for today at the specified time
-func ParseTime(input string) (time.Time, error) {
-	if config == nil {
-		Initialize("24")
-	}
-
+// Returns time.Time for today at the specified time.
+func (f *Formatter) ParseTime(input string) (time.Time, error) {
 	input = strings.TrimSpace(input)
 
 	// Try 24-hour format first (always supported as fallback)
@@ -76,18 +65,18 @@ func ParseTime(input string) (time.Time, error) {
 	}
 
 	// If in 12-hour mode, try 12-hour formats
-	if config.format == Format12Hour {
+	if f.format == Format12Hour {
 		// Try various 12-hour formats (both zero-padded and non-padded)
 		formats := []string{
-			"3:04 PM", "3:04PM",     // with minutes, no padding
-			"03:04 PM", "03:04PM",   // with minutes, zero-padded
-			"3 PM", "3PM",           // without minutes, no padding
-			"03 PM", "03PM",         // without minutes, zero-padded
+			"3:04 PM", "3:04PM", // with minutes, no padding
+			"03:04 PM", "03:04PM", // with minutes, zero-padded
+			"3 PM", "3PM", // without minutes, no padding
+			"03 PM", "03PM", // without minutes, zero-padded
 		}
 
 		for _, layout := range formats {
 			// Try original case
-			parsed, err := time.ParseInLocation(layout, input, time.Local)
+			parsed, err = time.ParseInLocation(layout, input, time.Local)
 			if err == nil {
 				now := time.Now()
 				return time.Date(now.Year(), now.Month(), now.Day(),
@@ -110,16 +99,12 @@ func ParseTime(input string) (time.Time, error) {
 }
 
 // ParseTimeWithDate parses time that may include a date
-// Supports: "HH:MM", "YYYY-MM-DD HH:MM" (and 12hr equivalents)
-func ParseTimeWithDate(input string) (time.Time, error) {
-	if config == nil {
-		Initialize("24")
-	}
-
+// Supports: "HH:MM", "YYYY-MM-DD HH:MM" (and 12hr equivalents).
+func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 	input = strings.TrimSpace(input)
 
 	// Try time-only format first (HH:MM for today)
-	result, err := ParseTime(input)
+	result, err := f.ParseTime(input)
 	if err == nil {
 		return result, nil
 	}
@@ -131,7 +116,7 @@ func ParseTimeWithDate(input string) (time.Time, error) {
 	}
 
 	// Try 12-hour with date if in 12hr mode
-	if config.format == Format12Hour {
+	if f.format == Format12Hour {
 		formats := []string{
 			"2006-01-02 3:04 PM",
 			"2006-01-02 3:04PM",
@@ -141,7 +126,7 @@ func ParseTimeWithDate(input string) (time.Time, error) {
 
 		for _, layout := range formats {
 			// Try original case
-			parsed, err := time.ParseInLocation(layout, input, time.Local)
+			parsed, err = time.ParseInLocation(layout, input, time.Local)
 			if err == nil {
 				return parsed, nil
 			}

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestInitialize(t *testing.T) {
+func TestNewFormatter(t *testing.T) {
 	tests := []struct {
 		name      string
 		formatStr string
@@ -19,13 +19,9 @@ func TestInitialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset config
-			config = nil
-
-			Initialize(tt.formatStr)
-
-			if config.format != tt.expected {
-				t.Errorf("Initialize(%q) format = %v, want %v", tt.formatStr, config.format, tt.expected)
+			f := NewFormatter(tt.formatStr)
+			if f.Format() != tt.expected {
+				t.Errorf("NewFormatter(%q).Format() = %v, want %v", tt.formatStr, f.Format(), tt.expected)
 			}
 		})
 	}
@@ -43,8 +39,8 @@ func TestGetDisplayFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config = &Config{format: tt.format}
-			result := GetDisplayFormat()
+			f := &Formatter{format: tt.format}
+			result := f.GetDisplayFormat()
 			if result != tt.expected {
 				t.Errorf("GetDisplayFormat() = %v, want %v", result, tt.expected)
 			}
@@ -64,8 +60,8 @@ func TestGetDisplayFormatWithDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config = &Config{format: tt.format}
-			result := GetDisplayFormatWithDate()
+			f := &Formatter{format: tt.format}
+			result := f.GetDisplayFormatWithDate()
 			if result != tt.expected {
 				t.Errorf("GetDisplayFormatWithDate() = %v, want %v", result, tt.expected)
 			}
@@ -74,7 +70,7 @@ func TestGetDisplayFormatWithDate(t *testing.T) {
 }
 
 func TestParseTime_24HourMode(t *testing.T) {
-	config = &Config{format: Format24Hour}
+	f := &Formatter{format: Format24Hour}
 
 	tests := []struct {
 		name      string
@@ -92,7 +88,7 @@ func TestParseTime_24HourMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseTime(tt.input)
+			result, err := f.ParseTime(tt.input)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("ParseTime(%q) expected error, got nil", tt.input)
@@ -122,7 +118,7 @@ func TestParseTime_24HourMode(t *testing.T) {
 }
 
 func TestParseTime_12HourMode(t *testing.T) {
-	config = &Config{format: Format12Hour}
+	f := &Formatter{format: Format12Hour}
 
 	tests := []struct {
 		name      string
@@ -169,7 +165,7 @@ func TestParseTime_12HourMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseTime(tt.input)
+			result, err := f.ParseTime(tt.input)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("ParseTime(%q) expected error, got nil", tt.input)
@@ -198,8 +194,30 @@ func TestParseTime_12HourMode(t *testing.T) {
 	}
 }
 
+// checkDate validates date components of a parsed time result.
+func checkDate(t *testing.T, input string, result time.Time, wantYear int, wantMonth time.Month, wantDay int) {
+	t.Helper()
+	if wantYear == 0 {
+		// For time-only input, check it's today
+		now := time.Now()
+		if result.Year() != now.Year() || result.Month() != now.Month() || result.Day() != now.Day() {
+			t.Errorf("ParseTimeWithDate(%q) not set to today's date", input)
+		}
+		return
+	}
+	if result.Year() != wantYear {
+		t.Errorf("ParseTimeWithDate(%q) year = %d, want %d", input, result.Year(), wantYear)
+	}
+	if result.Month() != wantMonth {
+		t.Errorf("ParseTimeWithDate(%q) month = %v, want %v", input, result.Month(), wantMonth)
+	}
+	if result.Day() != wantDay {
+		t.Errorf("ParseTimeWithDate(%q) day = %d, want %d", input, result.Day(), wantDay)
+	}
+}
+
 func TestParseTimeWithDate_24HourMode(t *testing.T) {
-	config = &Config{format: Format24Hour}
+	f := &Formatter{format: Format24Hour}
 
 	tests := []struct {
 		name      string
@@ -219,7 +237,7 @@ func TestParseTimeWithDate_24HourMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseTimeWithDate(tt.input)
+			result, err := f.ParseTimeWithDate(tt.input)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("ParseTimeWithDate(%q) expected error, got nil", tt.input)
@@ -232,23 +250,7 @@ func TestParseTimeWithDate_24HourMode(t *testing.T) {
 				return
 			}
 
-			// For time-only, check it's today
-			if tt.wantYear == 0 {
-				now := time.Now()
-				if result.Year() != now.Year() || result.Month() != now.Month() || result.Day() != now.Day() {
-					t.Errorf("ParseTimeWithDate(%q) not set to today's date", tt.input)
-				}
-			} else {
-				if result.Year() != tt.wantYear {
-					t.Errorf("ParseTimeWithDate(%q) year = %d, want %d", tt.input, result.Year(), tt.wantYear)
-				}
-				if result.Month() != tt.wantMonth {
-					t.Errorf("ParseTimeWithDate(%q) month = %v, want %v", tt.input, result.Month(), tt.wantMonth)
-				}
-				if result.Day() != tt.wantDay {
-					t.Errorf("ParseTimeWithDate(%q) day = %d, want %d", tt.input, result.Day(), tt.wantDay)
-				}
-			}
+			checkDate(t, tt.input, result, tt.wantYear, tt.wantMonth, tt.wantDay)
 
 			if result.Hour() != tt.wantHour {
 				t.Errorf("ParseTimeWithDate(%q) hour = %d, want %d", tt.input, result.Hour(), tt.wantHour)
@@ -261,7 +263,7 @@ func TestParseTimeWithDate_24HourMode(t *testing.T) {
 }
 
 func TestParseTimeWithDate_12HourMode(t *testing.T) {
-	config = &Config{format: Format12Hour}
+	f := &Formatter{format: Format12Hour}
 
 	tests := []struct {
 		name      string
@@ -298,7 +300,7 @@ func TestParseTimeWithDate_12HourMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseTimeWithDate(tt.input)
+			result, err := f.ParseTimeWithDate(tt.input)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("ParseTimeWithDate(%q) expected error, got nil", tt.input)
@@ -311,23 +313,7 @@ func TestParseTimeWithDate_12HourMode(t *testing.T) {
 				return
 			}
 
-			// For time-only, check it's today
-			if tt.wantYear == 0 {
-				now := time.Now()
-				if result.Year() != now.Year() || result.Month() != now.Month() || result.Day() != now.Day() {
-					t.Errorf("ParseTimeWithDate(%q) not set to today's date", tt.input)
-				}
-			} else {
-				if result.Year() != tt.wantYear {
-					t.Errorf("ParseTimeWithDate(%q) year = %d, want %d", tt.input, result.Year(), tt.wantYear)
-				}
-				if result.Month() != tt.wantMonth {
-					t.Errorf("ParseTimeWithDate(%q) month = %v, want %v", tt.input, result.Month(), tt.wantMonth)
-				}
-				if result.Day() != tt.wantDay {
-					t.Errorf("ParseTimeWithDate(%q) day = %d, want %d", tt.input, result.Day(), tt.wantDay)
-				}
-			}
+			checkDate(t, tt.input, result, tt.wantYear, tt.wantMonth, tt.wantDay)
 
 			if result.Hour() != tt.wantHour {
 				t.Errorf("ParseTimeWithDate(%q) hour = %d, want %d", tt.input, result.Hour(), tt.wantHour)

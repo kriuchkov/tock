@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 
 	"github.com/spf13/cobra"
@@ -23,10 +22,11 @@ func NewStartCmd() *cobra.Command {
 		Short: "Start a new activity",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
+			tf := getTimeFormatter(cmd)
 			startTime := time.Now()
 			if at != "" {
 				var err error
-				startTime, err = timeutil.ParseTime(at)
+				startTime, err = tf.ParseTime(at)
 				if err != nil {
 					return errors.Wrap(err, "parse time")
 				}
@@ -43,7 +43,12 @@ func NewStartCmd() *cobra.Command {
 				return errors.Wrap(err, "start activity")
 			}
 
-			fmt.Printf("Started activity: %s | %s at %s\n", activity.Project, activity.Description, activity.StartTime.Format(timeutil.GetDisplayFormat()))
+			fmt.Printf(
+				"Started activity: %s | %s at %s\n",
+				activity.Project,
+				activity.Description,
+				activity.StartTime.Format(tf.GetDisplayFormat()),
+			)
 			return nil
 		},
 	}

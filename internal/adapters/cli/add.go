@@ -8,7 +8,6 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 )
 
@@ -32,14 +31,15 @@ func NewAddCmd() *cobra.Command {
 				return errors.New("end time or duration is required")
 			}
 
-			startTime, err := timeutil.ParseTimeWithDate(startStr)
+			tf := getTimeFormatter(cmd)
+			startTime, err := tf.ParseTimeWithDate(startStr)
 			if err != nil {
 				return errors.Wrap(err, "parse start time")
 			}
 
 			var endTime time.Time
 			if endStr != "" {
-				endTime, err = timeutil.ParseTimeWithDate(endStr)
+				endTime, err = tf.ParseTimeWithDate(endStr)
 				if err != nil {
 					return errors.Wrap(err, "parse end time")
 				}
@@ -71,8 +71,8 @@ func NewAddCmd() *cobra.Command {
 			fmt.Printf("Added activity: %s | %s (%s - %s)\n",
 				activity.Project,
 				activity.Description,
-				activity.StartTime.Format(timeutil.GetDisplayFormat()),
-				activity.EndTime.Format(timeutil.GetDisplayFormat()),
+				activity.StartTime.Format(tf.GetDisplayFormat()),
+				activity.EndTime.Format(tf.GetDisplayFormat()),
 			)
 			return nil
 		},

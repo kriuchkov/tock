@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kriuchkov/tock/internal/config"
-	"github.com/kriuchkov/tock/internal/timeutil"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 func NewAnalyzeCmd() *cobra.Command {
@@ -55,7 +55,8 @@ func NewAnalyzeCmd() *cobra.Command {
 
 			analysis := analyzeData(report.Activities)
 			cfg := getConfig(cmd)
-			renderAnalysis(analysis, cfg)
+			tf := getTimeFormatter(cmd)
+			renderAnalysis(analysis, cfg, tf)
 
 			return nil
 		},
@@ -201,7 +202,8 @@ func analyzeData(activities []models.Activity) AnalysisStats {
 	return stats
 }
 
-func renderAnalysis(stats AnalysisStats, cfg *config.Config) {
+//nolint:funlen // render function is inherently long for output formatting
+func renderAnalysis(stats AnalysisStats, cfg *config.Config, tf *timeutil.Formatter) {
 	theme := GetTheme(cfg.Theme)
 
 	// Custom styles for analysis
@@ -258,7 +260,7 @@ func renderAnalysis(stats AnalysisStats, cfg *config.Config) {
 
 	startTime := time.Date(2000, 1, 1, stats.PeakHour, 0, 0, 0, time.Local)
 	endTime := time.Date(2000, 1, 1, stats.PeakHour+1, 0, 0, 0, time.Local)
-	format := timeutil.GetDisplayFormat()
+	format := tf.GetDisplayFormat()
 	fmt.Printf("%s %s - %s\n",
 		labelStyle.Render("Peak Hour:"),
 		valueStyle.Render(startTime.Format(format)),
