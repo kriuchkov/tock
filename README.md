@@ -9,11 +9,10 @@
 
 **Tock** is a powerful time tracking tool for the command line. It saves activity logs as plaintext files and provides an interactive terminal UI for viewing your time.
 
-Built with **Go** using Clean Architecture principles.
+Features include:
 
 - 📝 **Simple plaintext format** - Activities stored in human-readable files
 - 🎨 **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
-- 🏗️ **Clean Architecture** - Ports & Adapters pattern for maintainability
 - ⚡ **Fast & Lightweight** - Single binary, no dependencies
 - 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
 - 🎨 **Customizable Themes** - Multiple color themes and custom color support
@@ -239,6 +238,8 @@ Flags:
 Use "tock [command] --help" for more information about a command.
 ```
 
+[**→ Commands Reference**](docs/commands.md)
+
 ### Start tracking
 
 Start a new activity. Description and project are required.
@@ -413,7 +414,6 @@ Activities are stored in plaintext format (compatible with Bartib):
 
 You can edit this file manually with any text editor.
 
-
 ## Shell Completion
 
 To enable shell completion (e.g. for Oh My Zsh):
@@ -441,7 +441,6 @@ plugins=(... tock)
 ```bash
 exec zsh
 ```
-
 
 ## Architecture
 
