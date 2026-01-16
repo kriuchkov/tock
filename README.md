@@ -268,7 +268,7 @@ Available Commands:
   continue    Continues a previous activity
   current     Lists all currently running activities
   help        Help about any command
-  ical        Generate iCal (.ics) file for a specific task or all tasks in a day
+  ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks
   last        List recent unique activities
   list        List activities (Calendar View)
   report      Generate time tracking report
@@ -414,11 +414,12 @@ tock ical 2026-01-07-01 > meeting.ics      # Save to file
 tock ical 2026-01-07-01 --open             # Open in default calendar app (macOS)
 ```
 
-**Bulk Export (All activities for a day):**
+**Bulk Export (All activities):**
 
 ```bash
-tock ical 2026-01-07 --path ./export       # Save all tasks for the day as separate ICS files
-tock ical 2026-01-07 --open                # Combine all tasks and open in default calendar app (macOS)
+tock ical --path ./export                # Export all activities to a single ICS file
+tock ical --open                         # Export all and open in calendar app (macOS)
+tock ical 2026-01-07 --path ./export     # Save all tasks for a specific day
 ```
 
 **Flags:**
