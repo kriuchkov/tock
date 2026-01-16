@@ -28,6 +28,7 @@ func NewReportCmd() *cobra.Command {
 		Long:  "Generate a report of tracked activities aggregated by project",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
+			tf := getTimeFormatter(cmd)
 			ctx := context.Background()
 
 			filter := dto.ActivityFilter{}
@@ -104,10 +105,10 @@ func NewReportCmd() *cobra.Command {
 
 				fmt.Printf("📁 %s: %dh %dm\n", projectReport.ProjectName, int(hours), minutes)
 				for _, activity := range projectReport.Activities {
-					startTime := activity.StartTime.Format("15:04")
+					startTime := activity.StartTime.Format(tf.GetDisplayFormat())
 					endTime := "--:--"
 					if activity.EndTime != nil {
-						endTime = activity.EndTime.Format("15:04")
+						endTime = activity.EndTime.Format(tf.GetDisplayFormat())
 					}
 					duration := activity.Duration()
 					actHours := int(duration.Hours())

@@ -16,15 +16,14 @@ func NewStopCmd() *cobra.Command {
 
 	fn := func(cmd *cobra.Command, _ []string) error {
 		service := getService(cmd)
+		tf := getTimeFormatter(cmd)
 		endTime := time.Now()
 		if at != "" {
-			parsed, err := time.ParseInLocation("15:04", at, time.Local)
+			var err error
+			endTime, err = tf.ParseTime(at)
 			if err != nil {
 				return errors.Wrap(err, "parse time")
 			}
-
-			now := time.Now()
-			endTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)
 		}
 
 		req := dto.StopActivityRequest{EndTime: endTime}
@@ -34,7 +33,12 @@ func NewStopCmd() *cobra.Command {
 			return errors.Wrap(err, "stop activity")
 		}
 
-		fmt.Printf("Stopped activity: %s | %s at %s\n", activity.Project, activity.Description, activity.EndTime.Format("15:04"))
+		fmt.Printf(
+			"Stopped activity: %s | %s at %s\n",
+			activity.Project,
+			activity.Description,
+			activity.EndTime.Format(tf.GetDisplayFormat()),
+		)
 		return nil
 	}
 

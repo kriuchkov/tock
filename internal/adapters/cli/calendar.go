@@ -14,6 +14,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,7 +29,8 @@ func NewCalendarCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
 			cfg := getConfig(cmd)
-			m := initialReportModel(service, cfg)
+			tf := getTimeFormatter(cmd)
+			m := initialReportModel(service, cfg, tf)
 			p := tea.NewProgram(&m)
 			if _, err := p.Run(); err != nil {
 				return errors.Wrap(err, "run program")
@@ -41,6 +43,7 @@ func NewCalendarCmd() *cobra.Command {
 
 type reportModel struct {
 	service      ports.ActivityResolver
+	timeFormat   *timeutil.Formatter // time display format (12/24 hour)
 	currentDate  time.Time           // The date currently selected
 	viewDate     time.Time           // The month currently being viewed
 	monthReports map[int]*dto.Report // Cache for daily reports in the month (day -> report)
@@ -53,11 +56,12 @@ type reportModel struct {
 	theme        Theme
 }
 
-func initialReportModel(service ports.ActivityResolver, cfg *config.Config) reportModel {
+func initialReportModel(service ports.ActivityResolver, cfg *config.Config, tf *timeutil.Formatter) reportModel {
 	now := time.Now()
 	theme := GetTheme(cfg.Theme)
 	return reportModel{
 		service:      service,
+		timeFormat:   tf,
 		currentDate:  now,
 		viewDate:     now,
 		monthReports: make(map[int]*dto.Report),
@@ -269,7 +273,7 @@ func (m *reportModel) updateViewportContent() {
 
 	for i, act := range activities {
 		isLast := i == len(activities)-1
-		start := act.StartTime.Format("15:04")
+		start := act.StartTime.Format(m.timeFormat.GetDisplayFormat())
 
 		// Timeline styles
 		dot := "●"
@@ -282,12 +286,12 @@ func (m *reportModel) updateViewportContent() {
 		// Content
 		durStr := act.Duration().Round(time.Minute).String()
 		if act.EndTime != nil {
-			durStr += fmt.Sprintf(" • %s", act.EndTime.Format("15:04"))
+			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
 		}
 
 		// Row 1: Time | Dot | Project
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			m.styles.Time.Width(6).Align(lipgloss.Right).Render(start),
+			m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
 			"  ",
 			dotStyle.Render(dot),
 			"  ",
@@ -297,7 +301,7 @@ func (m *reportModel) updateViewportContent() {
 		// Row 2:      | Line | Description
 		if act.Description != "" {
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(6).Render(""),
+				lipgloss.NewStyle().Width(9).Render(""),
 				"  ",
 				lineStyle.Render(line),
 				"  ",
@@ -307,7 +311,7 @@ func (m *reportModel) updateViewportContent() {
 
 		// Row 3:      | Line | Duration
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.NewStyle().Width(6).Render(""),
+			lipgloss.NewStyle().Width(9).Render(""),
 			"  ",
 			lineStyle.Render(line),
 			"  ",
@@ -317,7 +321,7 @@ func (m *reportModel) updateViewportContent() {
 		// Spacer
 		if !isLast {
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(6).Render(""),
+				lipgloss.NewStyle().Width(9).Render(""),
 				"  ",
 				lineStyle.Render(line),
 			) + "\n")

@@ -88,6 +88,7 @@ Example `tock.yaml`:
 backend: file
 file:
     path: /Users/user/tock.txt
+time_format: "24"
 theme:
     faint: '#404040'
     highlight: '#FFFF00'
@@ -114,6 +115,7 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 
 - `TOCK_BACKEND`: `file` or `timewarrior`
 - `TOCK_FILE_PATH`: Path to activity log
+- `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
 
 ### Storage Backends
@@ -139,6 +141,46 @@ export TOCK_BACKEND="timewarrior"
 # Optional: Specify custom data directory (default: ~/.timewarrior/data)
 export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
 ```
+
+**3. Time Format**
+
+Configure how times are displayed and input via config file or environment variable:
+
+```yaml
+# In tock.yaml
+time_format: "12"  # Use 12-hour format with AM/PM
+time_format: "24"  # Use 24-hour format (default)
+```
+
+```bash
+# Or via environment variable
+export TOCK_TIME_FORMAT="12"  # Use 12-hour format with AM/PM
+export TOCK_TIME_FORMAT="24"  # Use 24-hour format (default)
+```
+
+**12-Hour Format Examples:**
+```bash
+tock start -p Project -d Task -t "3:04 PM"   # or "03:04 PM"
+tock start -p Project -d Task -t "3PM"       # Minutes optional
+tock add -s "9:00 AM" -e "5:00 PM"
+tock stop -t "4:45pm"                        # Case insensitive
+
+# Times display as: "03:04 PM" instead of "15:04"
+# Input accepts both "3:04 PM" and "03:04 PM" formats
+```
+
+**24-Hour Format (Default):**
+```bash
+tock start -p Project -d Task -t 15:04
+tock stop -t 17:30
+
+# Times display as: "15:04"
+```
+
+Notes:
+- Times display with zero-padded hours (e.g., "08:12 AM") for better alignment
+- Input accepts both zero-padded ("03:04 PM") and non-padded ("3:04 PM") formats
+- 24-hour input (e.g., "15:04") is still accepted in 12-hour mode as a fallback
 
 Or use flags:
 
@@ -255,7 +297,7 @@ tock start -p "Project" -d "Task" -t 14:30  # Start at specific time
 
 - `-d, --description`: Activity description (required)
 - `-p, --project`: Project name (required)
-- `-t, --time`: Start time in HH:MM format (optional, defaults to now)
+- `-t, --time`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM", optional, defaults to now)
 
 ### Stop tracking
 
@@ -268,7 +310,7 @@ tock stop -t 17:00  # Stop at specific time
 
 **Flags:**
 
-- `-t, --time`: End time in HH:MM format (optional, defaults to now)
+- `-t, --time`: End time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM", optional, defaults to now)
 
 ### Add past activity
 
@@ -283,8 +325,8 @@ tock add -p "Project" -d "Task" -s 14:00 --duration 1h30m
 
 - `-d, --description`: Activity description (required)
 - `-p, --project`: Project name (required)
-- `-s, --start`: Start time (HH:MM or YYYY-MM-DD HH:MM)
-- `-e, --end`: End time (HH:MM or YYYY-MM-DD HH:MM)
+- `-s, --start`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
+- `-e, --end`: End time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.
 
 ### Continue activity
@@ -301,7 +343,7 @@ tock continue -d "New" # Continue last activity but with new description
 
 - `-d, --description`: Override description
 - `-p, --project`: Override project
-- `-t, --time`: Start time (HH:MM)
+- `-t, --time`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM")
 
 ### Current activity
 

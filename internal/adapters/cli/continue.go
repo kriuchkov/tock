@@ -23,6 +23,7 @@ func NewContinueCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service := getService(cmd)
+			tf := getTimeFormatter(cmd)
 			ctx := context.Background()
 
 			number := 0
@@ -60,14 +61,11 @@ func NewContinueCmd() *cobra.Command {
 
 			startTime := time.Now()
 			if at != "" {
-				// Parse 'at' time. Assuming HH:MM format for today, similar to start command
-				parsed, parseErr := time.ParseInLocation("15:04", at, time.Local)
+				var parseErr error
+				startTime, parseErr = tf.ParseTime(at)
 				if parseErr != nil {
 					return errors.Wrap(parseErr, "parse time")
 				}
-				// Combine with today's date
-				now := time.Now()
-				startTime = time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local)
 			}
 
 			req := dto.StartActivityRequest{
@@ -85,7 +83,7 @@ func NewContinueCmd() *cobra.Command {
 				"Started activity: %s | %s at %s\n",
 				startedActivity.Project,
 				startedActivity.Description,
-				startedActivity.StartTime.Format("15:04"),
+				startedActivity.StartTime.Format(tf.GetDisplayFormat()),
 			)
 			return nil
 		},

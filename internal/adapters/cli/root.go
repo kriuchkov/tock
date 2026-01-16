@@ -10,12 +10,14 @@ import (
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
 )
 
 type serviceKey struct{}
 type configKey struct{}
+type timeFormatterKey struct{}
 
 func NewRootCmd() *cobra.Command {
 	var filePath string
@@ -37,6 +39,9 @@ func NewRootCmd() *cobra.Command {
 				return fmt.Errorf("load config: %w", err)
 			}
 
+			// 2. Initialize time formatter
+			tf := timeutil.NewFormatter(cfg.TimeFormat)
+
 			if backend == "" {
 				backend = cfg.Backend
 			}
@@ -55,6 +60,7 @@ func NewRootCmd() *cobra.Command {
 
 			ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
 			ctx = context.WithValue(ctx, configKey{}, cfg)
+			ctx = context.WithValue(ctx, timeFormatterKey{}, tf)
 			cmd.SetContext(ctx)
 			return nil
 		},
@@ -93,6 +99,10 @@ func getService(cmd *cobra.Command) ports.ActivityResolver {
 
 func getConfig(cmd *cobra.Command) *config.Config {
 	return cmd.Context().Value(configKey{}).(*config.Config) //nolint:errcheck // always set
+}
+
+func getTimeFormatter(cmd *cobra.Command) *timeutil.Formatter {
+	return cmd.Context().Value(timeFormatterKey{}).(*timeutil.Formatter) //nolint:errcheck // always set
 }
 
 func initRepository(backend, filePath string) ports.ActivityRepository {

@@ -10,6 +10,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,7 +24,8 @@ func NewListCmd() *cobra.Command {
 		Short: "List activities (Calendar View)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
-			m := initialModel(service)
+			tf := getTimeFormatter(cmd)
+			m := initialModel(service, tf)
 			p := tea.NewProgram(&m)
 			if _, err := p.Run(); err != nil {
 				return errors.Wrap(err, "run program")
@@ -36,6 +38,7 @@ func NewListCmd() *cobra.Command {
 
 type model struct {
 	service      ports.ActivityResolver
+	timeFormat   *timeutil.Formatter // time display format (12/24 hour)
 	currentDate  time.Time
 	selectedDate time.Time
 	activities   []models.Activity
@@ -45,10 +48,11 @@ type model struct {
 	height       int
 }
 
-func initialModel(service ports.ActivityResolver) model {
+func initialModel(service ports.ActivityResolver, tf *timeutil.Formatter) model {
 	now := time.Now()
 	m := model{
 		service:      service,
+		timeFormat:   tf,
 		currentDate:  now,
 		selectedDate: now,
 	}
@@ -60,7 +64,7 @@ func initialModel(service ports.ActivityResolver) model {
 func (m *model) initTable() {
 	columns := []table.Column{
 		{Title: "Key", Width: 13},
-		{Title: "Time", Width: 15},
+		{Title: "Time", Width: 20},
 		{Title: "Project", Width: 20},
 		{Title: "Description", Width: 40},
 		{Title: "Duration", Width: 10},
@@ -165,9 +169,9 @@ func (m *model) renderTable(activities []models.Activity) {
 	var rows []table.Row
 	for i, a := range dayActivities {
 		duration := a.Duration().Round(time.Minute).String()
-		timeStr := a.StartTime.Format("15:04")
+		timeStr := a.StartTime.Format(m.timeFormat.GetDisplayFormat())
 		if a.EndTime != nil {
-			timeStr += " - " + a.EndTime.Format("15:04")
+			timeStr += " - " + a.EndTime.Format(m.timeFormat.GetDisplayFormat())
 		} else {
 			timeStr += " - ..."
 		}
