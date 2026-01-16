@@ -142,46 +142,6 @@ export TOCK_BACKEND="timewarrior"
 export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
 ```
 
-**3. Time Format**
-
-Configure how times are displayed and input via config file or environment variable:
-
-```yaml
-# In tock.yaml
-time_format: "12"  # Use 12-hour format with AM/PM
-time_format: "24"  # Use 24-hour format (default)
-```
-
-```bash
-# Or via environment variable
-export TOCK_TIME_FORMAT="12"  # Use 12-hour format with AM/PM
-export TOCK_TIME_FORMAT="24"  # Use 24-hour format (default)
-```
-
-**12-Hour Format Examples:**
-```bash
-tock start -p Project -d Task -t "3:04 PM"   # or "03:04 PM"
-tock start -p Project -d Task -t "3PM"       # Minutes optional
-tock add -s "9:00 AM" -e "5:00 PM"
-tock stop -t "4:45pm"                        # Case insensitive
-
-# Times display as: "03:04 PM" instead of "15:04"
-# Input accepts both "3:04 PM" and "03:04 PM" formats
-```
-
-**24-Hour Format (Default):**
-```bash
-tock start -p Project -d Task -t 15:04
-tock stop -t 17:30
-
-# Times display as: "15:04"
-```
-
-Notes:
-- Times display with zero-padded hours (e.g., "08:12 AM") for better alignment
-- Input accepts both zero-padded ("03:04 PM") and non-padded ("3:04 PM") formats
-- 24-hour input (e.g., "15:04") is still accepted in 12-hour mode as a fallback
-
 Or use flags:
 
 ```bash
@@ -247,6 +207,49 @@ export TOCK_COLOR_SUBTEXT="#B0B0B0"   # Light Grey
 export TOCK_COLOR_FAINT="#404040"     # Dark Grey
 export TOCK_COLOR_HIGHLIGHT="#FFFF00" # Yellow
 ```
+
+### Time Format
+
+Configure how times are displayed and input via config file or environment variable:
+
+```yaml
+# In tock.yaml
+time_format: "12"  # Use 12-hour format with AM/PM
+time_format: "24"  # Use 24-hour format (default)
+```
+
+```bash
+# Or via environment variable
+export TOCK_TIME_FORMAT="12"  # Use 12-hour format with AM/PM
+export TOCK_TIME_FORMAT="24"  # Use 24-hour format (default)
+```
+
+#### 12-Hour Format Examples:**
+
+```bash
+tock start -p Project -d Task -t "3:04 PM"   # or "03:04 PM"
+tock start -p Project -d Task -t "3PM"       # Minutes optional
+tock add -s "9:00 AM" -e "5:00 PM"
+tock stop -t "4:45pm"                        # Case insensitive
+
+# Times display as: "03:04 PM" instead of "15:04"
+# Input accepts both "3:04 PM" and "03:04 PM" formats
+```
+
+#### 24-Hour Format (Default):**
+
+```bash
+tock start -p Project -d Task -t 15:04
+tock stop -t 17:30
+
+# Times display as: "15:04"
+```
+
+Notes:
+
+- Times display with zero-padded hours (e.g., "08:12 AM") for better alignment
+- Input accepts both zero-padded ("03:04 PM") and non-padded ("3:04 PM") formats
+- 24-hour input (e.g., "15:04") is still accepted in 12-hour mode as a fallback
 
 ## Commands
 
@@ -484,27 +487,6 @@ plugins=(... tock)
 
 ```bash
 exec zsh
-```
-
-## Architecture
-
-Tock follows Clean Architecture principles with clear separation of concerns:
-
-```
-cmd/tock/              # Application entry point
-internal/
-  core/                 # Domain layer
-    models/             # Business entities
-    ports/              # Interface definitions
-    dto/                # Data transfer objects
-    errors/             # Domain errors
-  services/             # Application layer
-    activity/           # Business logic implementation
-    ics/                # iCal generation logic
-  adapters/             # Infrastructure layer
-    file/               # File repository (plaintext)
-    cli/                # CLI commands & TUI views
-    timewarrior/        # TimeWarrior repository
 ```
 
 ### Technology Stack
