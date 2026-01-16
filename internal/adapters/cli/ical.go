@@ -26,10 +26,22 @@ func NewICalCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "ical [key or date]",
-		Short: "Generate iCal (.ics) file for a specific task or all tasks in a day",
-		Long:  "Generate iCal (.ics) file(s). Provide a key (YYYY-MM-DD-NN) for a single task, or a date (YYYY-MM-DD) with --path to export all tasks for that day. Use --open to automatically import into the system calendar (macOS only).",
-		Args:  cobra.ExactArgs(1),
+		Short: "Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.",
+		Long:  "Generate iCal (.ics) file(s). Provide a key (YYYY-MM-DD-NN) for a single task, a date (YYYY-MM-DD) with --path to export all tasks for that day, or no arguments to export all tasks.\nUse --open to automatically import into the system calendar (macOS only).",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				if outputDir == "" && !openApp {
+					return errors.New("output directory (--path) is required for bulk export unless --open is used")
+				}
+
+				if openApp && runtime.GOOS != "darwin" {
+					return errors.New("--open is only supported on macOS")
+				}
+
+				return handleFullExport(cmd, outputDir, openApp)
+			}
+
 			keyOrDate := args[0]
 			date, seq, isSingle, err := parseKeyOrDate(keyOrDate)
 			if err != nil {
@@ -61,6 +73,73 @@ func NewICalCmd() *cobra.Command {
 	cmd.Flags().StringVar(&outputDir, "path", "", "Output directory for .ics files")
 	cmd.Flags().BoolVar(&openApp, "open", false, "Add to macOS Calendar")
 	return cmd
+}
+
+func handleFullExport(cmd *cobra.Command, outputDir string, openApp bool) error {
+	service := getService(cmd)
+	ctx := context.Background()
+
+	activities, err := service.List(ctx, dto.ActivityFilter{})
+	if err != nil {
+		return errors.Wrap(err, "list all activities")
+	}
+
+	if len(activities) == 0 {
+		fmt.Println("No activities found.")
+		return nil
+	}
+
+	sort.Slice(activities, func(i, j int) bool {
+		return activities[i].StartTime.Before(activities[j].StartTime)
+	})
+
+	var sb strings.Builder
+	dayCounts := make(map[string]int)
+
+	for _, act := range activities {
+		d := act.StartTime.Format("2006-01-02")
+		dayCounts[d]++
+		id := fmt.Sprintf("%s-%02d", d, dayCounts[d])
+		sb.WriteString(ics.GenerateEvent(act, id))
+	}
+
+	combinedContent := ics.WrapCalendar(sb.String())
+
+	//nolint:nestif // straightforward logic
+	if outputDir != "" {
+		if err = os.MkdirAll(outputDir, 0750); err != nil {
+			return errors.Wrap(err, "create output directory")
+		}
+
+		filename := filepath.Join(outputDir, "tock_export.ics")
+		if err = os.WriteFile(filename, []byte(combinedContent), 0600); err != nil {
+			return errors.Wrap(err, "write file")
+		}
+
+		fmt.Printf("Exported all activities to %s\n", filename)
+		if openApp {
+			return openFileInCalendar(filename)
+		}
+	} else if openApp {
+		var f *os.File
+		f, err = os.CreateTemp("", "tock-export-*.ics")
+		if err != nil {
+			return errors.Wrap(err, "create temp file")
+		}
+
+		if _, err = f.WriteString(combinedContent); err != nil {
+			return errors.Wrap(err, "write temp file")
+		}
+
+		f.Close() //nolint:gosec // file is used later
+
+		if err = openFileInCalendar(f.Name()); err != nil {
+			return err
+		}
+
+		fmt.Println("Opened combined calendar events in macOS Calendar")
+	}
+	return nil
 }
 
 func parseKeyOrDate(keyOrDate string) (time.Time, int, bool, error) {
