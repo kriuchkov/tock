@@ -14,6 +14,15 @@ type Config struct {
 	Timewarrior TimewarriorConfig `mapstructure:"timewarrior"`
 	Theme       ThemeConfig       `mapstructure:"theme"`
 	TimeFormat  string            `mapstructure:"time_format"`
+	Export      ExportConfig      `mapstructure:"export"`
+}
+
+type ExportConfig struct {
+	ICal ICalConfig `mapstructure:"ical"`
+}
+
+type ICalConfig struct {
+	FileName string `mapstructure:"file_name"`
 }
 
 type FileConfig struct {
@@ -77,6 +86,7 @@ func Load(opts ...Option) (*Config, error) {
 	// Defaults
 	v.SetDefault("backend", "file")
 	v.SetDefault("time_format", "24")
+	v.SetDefault("export.ical.file_name", "tock_export.ics")
 
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
@@ -87,6 +97,7 @@ func Load(opts ...Option) (*Config, error) {
 	_ = v.BindEnv("timewarrior.data_path", "TOCK_TIMEWARRIOR_DATA_PATH")
 	_ = v.BindEnv("file.path", "TOCK_FILE", "TOCK_FILE_PATH")
 	_ = v.BindEnv("time_format", "TOCK_TIME_FORMAT")
+	_ = v.BindEnv("export.ical.file_name", "TOCK_EXPORT_ICAL_FILE_NAME")
 	_ = v.BindEnv("theme.name", "TOCK_THEME", "TOCK_THEME_NAME")
 	_ = v.BindEnv("theme.primary", "TOCK_COLOR_PRIMARY")
 	_ = v.BindEnv("theme.secondary", "TOCK_COLOR_SECONDARY")

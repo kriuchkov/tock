@@ -105,13 +105,22 @@ func handleFullExport(cmd *cobra.Command, outputDir string, openApp bool) error 
 
 	combinedContent := ics.WrapCalendar(sb.String())
 
+	// Use configured filename or default
+	fileName := "tock_export.ics"
+	if cfg := getConfig(cmd); cfg != nil && cfg.Export.ICal.FileName != "" {
+		fileName = cfg.Export.ICal.FileName
+	}
+	if !strings.HasSuffix(fileName, ".ics") {
+		fileName += ".ics"
+	}
+
 	//nolint:nestif // straightforward logic
 	if outputDir != "" {
 		if err = os.MkdirAll(outputDir, 0750); err != nil {
 			return errors.Wrap(err, "create output directory")
 		}
 
-		filename := filepath.Join(outputDir, "tock_export.ics")
+		filename := filepath.Join(outputDir, fileName)
 		if err = os.WriteFile(filename, []byte(combinedContent), 0600); err != nil {
 			return errors.Wrap(err, "write file")
 		}
@@ -122,7 +131,8 @@ func handleFullExport(cmd *cobra.Command, outputDir string, openApp bool) error 
 		}
 	} else if openApp {
 		var f *os.File
-		f, err = os.CreateTemp("", "tock-export-*.ics")
+		tempPattern := strings.TrimSuffix(fileName, ".ics") + "-*.ics"
+		f, err = os.CreateTemp("", tempPattern)
 		if err != nil {
 			return errors.Wrap(err, "create temp file")
 		}
@@ -243,17 +253,18 @@ func handleBulkExport(activities []models.Activity, dateKey string, outputDir st
 		return nil
 	}
 
-	if openApp {
-		var sb strings.Builder
-		dayCounts := make(map[string]int)
-		for _, act := range activities {
-			d := act.StartTime.Format("2006-01-02")
-			dayCounts[d]++
-			id := fmt.Sprintf("%s-%02d", d, dayCounts[d])
-			sb.WriteString(ics.GenerateEvent(act, id))
-		}
-		combinedContent := ics.WrapCalendar(sb.String())
+	// Generate combined content for the day
+	var sb strings.Builder
+	dayCounts := make(map[string]int)
+	for _, act := range activities {
+		d := act.StartTime.Format("2006-01-02")
+		dayCounts[d]++
+		id := fmt.Sprintf("%s-%02d", d, dayCounts[d])
+		sb.WriteString(ics.GenerateEvent(act, id))
+	}
+	combinedContent := ics.WrapCalendar(sb.String())
 
+	if openApp {
 		f, err := os.CreateTemp("", fmt.Sprintf("tock-%s-*.ics", dateKey))
 		if err != nil {
 			return errors.Wrap(err, "create temp file")
@@ -277,20 +288,13 @@ func handleBulkExport(activities []models.Activity, dateKey string, outputDir st
 			return errors.Wrap(err, "create output directory")
 		}
 
-		dayCounts := make(map[string]int)
-		for _, act := range activities {
-			d := act.StartTime.Format("2006-01-02")
-			dayCounts[d]++
-			id := fmt.Sprintf("%s-%02d", d, dayCounts[d])
-
-			content := ics.Generate(act, id)
-			filename := filepath.Join(outputDir, fmt.Sprintf("%s.ics", id))
-			if err := os.WriteFile(filename, []byte(content), 0600); err != nil {
-				return errors.Wrapf(err, "write %s", id)
-			}
-
-			fmt.Printf("Exported %s\n", filename)
+		// Save as a single file for the day: YYYY-MM-DD.ics
+		filename := filepath.Join(outputDir, fmt.Sprintf("%s.ics", dateKey))
+		if err := os.WriteFile(filename, []byte(combinedContent), 0600); err != nil {
+			return errors.Wrapf(err, "write %s", filename)
 		}
+
+		fmt.Printf("Exported activities for %s to %s\n", dateKey, filename)
 	}
 	return nil
 }

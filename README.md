@@ -99,6 +99,9 @@ theme:
     text: '#FFFFFF'
 timewarrior:
     data_path: /Users/user/.timewarrior/data
+export:
+    ical:
+        file_name: "tock_export.ics"
 ```
 
 You can specify a custom config file path with the `--config` flag:
@@ -114,6 +117,7 @@ Example a config file [tock.yaml.example](tock.yaml.example).
 All settings can be overridden with environment variables (prefix `TOCK_`).
 
 - `TOCK_BACKEND`: `file` or `timewarrior`
+- `TOCK_EXPORT_ICAL_FILE_NAME`: Custom filename for bulk iCal export (default: `tock_export.ics`)
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
@@ -419,7 +423,7 @@ tock ical 2026-01-07-01 --open             # Open in default calendar app (macOS
 ```bash
 tock ical --path ./export                # Export all activities to a single ICS file
 tock ical --open                         # Export all and open in calendar app (macOS)
-tock ical 2026-01-07 --path ./export     # Save all tasks for a specific day
+tock ical 2026-01-07 --path ./export     # Save all tasks for a specific day to a single ICS file
 ```
 
 **Flags:**

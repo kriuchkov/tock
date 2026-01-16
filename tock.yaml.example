@@ -22,6 +22,13 @@ timewarrior:
   # Default: ~/.timewarrior/data
   data_path: ~/.timewarrior/data
 
+# Export settings
+export:
+  ical:
+    # Filename for bulk iCal export
+    # Default: tock_export.ics
+    file_name: "tock_export.ics"
+
 # Time format configuration
 # time_format: "24"  # 24-hour format (default): 15:04
 # time_format: "12"  # 12-hour format: 03:04 PM
