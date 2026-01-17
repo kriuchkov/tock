@@ -396,6 +396,8 @@ Generate a simple text report for a specific day.
 tock report --today
 tock report --yesterday
 tock report --date 2025-12-01
+tock report -p "My Project"  # Filter by project and aggregate by task
+tock report --summary        # Show project totals only
 ```
 
 **Flags:**
@@ -403,6 +405,8 @@ tock report --date 2025-12-01
 - `--today`: Report for today
 - `--yesterday`: Report for yesterday
 - `--date`: Report for specific date (YYYY-MM-DD)
+- `-p, --project`: Filter by project and aggregate by description
+- `-s, --summary`: Show only project summaries
 
 ### Calendar Integration (iCal)
 

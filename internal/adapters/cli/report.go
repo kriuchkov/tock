@@ -14,12 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//nolint:funlen // Report command is long but straightforward.
+//nolint:funlen,gocognit // Report command is long but straightforward.
 func NewReportCmd() *cobra.Command {
 	var (
 		today     bool
 		yesterday bool
 		date      string
+		summary   bool
+		project   string
 	)
 
 	cmd := &cobra.Command{
@@ -54,6 +56,10 @@ func NewReportCmd() *cobra.Command {
 				end := start.Add(24 * time.Hour)
 				filter.FromDate = &start
 				filter.ToDate = &end
+			}
+
+			if project != "" {
+				filter.Project = &project
 			}
 
 			report, err := service.GetReport(ctx, filter)
@@ -104,21 +110,44 @@ func NewReportCmd() *cobra.Command {
 				minutes := int(projectReport.Duration.Minutes()) % 60
 
 				fmt.Printf("📁 %s: %dh %dm\n", projectReport.ProjectName, int(hours), minutes)
-				for _, activity := range projectReport.Activities {
-					startTime := activity.StartTime.Format(tf.GetDisplayFormat())
-					endTime := "--:--"
-					if activity.EndTime != nil {
-						endTime = activity.EndTime.Format(tf.GetDisplayFormat())
-					}
-					duration := activity.Duration()
-					actHours := int(duration.Hours())
-					actMinutes := int(duration.Minutes()) % 60
 
-					id := activityIDs[activity.StartTime.UnixNano()]
-					fmt.Printf("   [%s] %s - %s (%dh %dm) | %s\n",
-						id, startTime, endTime, actHours, actMinutes, activity.Description)
+				if project != "" {
+					// Aggregation by description
+					descs := make(map[string]time.Duration)
+					for _, act := range projectReport.Activities {
+						descs[act.Description] += act.Duration()
+					}
+
+					var descKeys []string
+					for k := range descs {
+						descKeys = append(descKeys, k)
+					}
+					sort.Strings(descKeys)
+
+					for _, desc := range descKeys {
+						dur := descs[desc]
+						h := int(dur.Hours())
+						m := int(dur.Minutes()) % 60
+						fmt.Printf("   - %s: %dh %dm\n", desc, h, m)
+					}
+					fmt.Println()
+				} else if !summary {
+					for _, activity := range projectReport.Activities {
+						startTime := activity.StartTime.Format(tf.GetDisplayFormat())
+						endTime := "--:--"
+						if activity.EndTime != nil {
+							endTime = activity.EndTime.Format(tf.GetDisplayFormat())
+						}
+						duration := activity.Duration()
+						actHours := int(duration.Hours())
+						actMinutes := int(duration.Minutes()) % 60
+
+						id := activityIDs[activity.StartTime.UnixNano()]
+						fmt.Printf("   [%s] %s - %s (%dh %dm) | %s\n",
+							id, startTime, endTime, actHours, actMinutes, activity.Description)
+					}
+					fmt.Println()
 				}
-				fmt.Println()
 			}
 
 			totalHours := report.TotalDuration.Hours()
@@ -133,5 +162,7 @@ func NewReportCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&today, "today", false, "Report for today")
 	cmd.Flags().BoolVar(&yesterday, "yesterday", false, "Report for yesterday")
 	cmd.Flags().StringVar(&date, "date", "", "Report for specific date (YYYY-MM-DD)")
+	cmd.Flags().BoolVarP(&summary, "summary", "s", false, "Show only project summaries")
+	cmd.Flags().StringVarP(&project, "project", "p", "", "Filter by project and aggregate by description")
 	return cmd
 }

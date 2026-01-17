@@ -10,7 +10,7 @@
 | `last` | List recent unique activities | `-n` number of activities (default 10) | `tock last -n 20` |
 | `list` | Interactive calendar view (TUI) | - | `tock list` |
 | `calendar` | Show interactive calendar view | - | `tock calendar` |
-| `report` | Generate text report | `--today`<br>`--yesterday`<br>`--date` YYYY-MM-DD | `tock report --today` |
+| `report` | Generate text report | `--today`<br>`--yesterday`<br>`--date` YYYY-MM-DD<br>`--project` Filter and aggregate<br>`--summary` Project summaries only | `tock report --today`<br>`tock report -p "My Project"` |
 | `ical` | Generate iCal (.ics) files | `--path` output directory<br>`--open` open in calendar app<br>(no args) export all | `tock ical --path ./out`<br>`tock ical 2026-01-07-01` |
 | `analyze` | Analyze productivity patterns | `-n` days to analyze (default 30) | `tock analyze --days 7` |
 
