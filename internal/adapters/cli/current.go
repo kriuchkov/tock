@@ -5,15 +5,27 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/kriuchkov/tock/internal/core/dto"
+	"github.com/kriuchkov/tock/internal/core/models"
 )
 
+type currentCmdActivity struct {
+	models.Activity
+}
+
+func (a currentCmdActivity) Duration() time.Duration {
+	return a.Activity.Duration().Round(time.Second)
+}
+
 func NewCurrentCmd() *cobra.Command {
+	var format string
+
 	cmd := &cobra.Command{
 		Use:   "current",
 		Short: "Lists all currently running activities",
@@ -33,7 +45,24 @@ func NewCurrentCmd() *cobra.Command {
 			}
 
 			if len(activities) == 0 {
-				fmt.Println("No currently running activities.")
+				if format == "" {
+					fmt.Println("No currently running activities.")
+				}
+				return nil
+			}
+
+			if format != "" {
+				var tmpl *template.Template
+				tmpl, err = template.New("current").Parse(format + "\n")
+				if err != nil {
+					return errors.Wrap(err, "parse format template")
+				}
+
+				for _, a := range activities {
+					if err = tmpl.Execute(os.Stdout, currentCmdActivity{Activity: a}); err != nil {
+						return errors.Wrap(err, "execute format template")
+					}
+				}
 				return nil
 			}
 
@@ -56,6 +85,8 @@ func NewCurrentCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}')")
 
 	return cmd
 }
