@@ -11,18 +11,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
-)
-
-const (
-	defaultPrimaryColor   = "#7D56F4"
-	defaultSecondaryColor = "#FF5555"
-	defaultTextColor      = "252"
-	defaultSubTextColor   = "240"
-	defaultFaintColor     = "#555555"
 )
 
 func NewWatchCmd() *cobra.Command {
@@ -51,7 +42,8 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			activity := activities[0]
-			p := tea.NewProgram(initialWatchModel(activity, service, cfg.Theme))
+			theme := GetTheme(cfg.Theme)
+			p := tea.NewProgram(initialWatchModel(activity, service, theme))
 			if _, err = p.Run(); err != nil {
 				return fmt.Errorf("run program: %w", err)
 			}
@@ -72,7 +64,7 @@ type watchModel struct {
 	keys     keyMap
 	width    int
 	height   int
-	theme    config.ThemeConfig
+	theme    Theme
 	paused   bool
 }
 
@@ -81,7 +73,7 @@ type keyMap struct {
 	Pause key.Binding
 }
 
-func initialWatchModel(activity models.Activity, service ports.ActivityResolver, theme config.ThemeConfig) watchModel {
+func initialWatchModel(activity models.Activity, service ports.ActivityResolver, theme Theme) watchModel {
 	return watchModel{
 		activity: activity,
 		service:  service,
@@ -180,40 +172,23 @@ func (m watchModel) View() string {
 	duration = duration.Round(time.Second)
 
 	primary := m.theme.Primary
-	if primary == "" {
-		primary = defaultPrimaryColor
-	}
-
 	if m.paused {
-		if m.theme.Faint != "" {
-			primary = m.theme.Faint
-		} else {
-			primary = defaultFaintColor
-		}
-	}
-
-	text := m.theme.Text
-	if text == "" {
-		text = defaultTextColor
-	}
-	subText := m.theme.SubText
-	if subText == "" {
-		subText = defaultSubTextColor
+		primary = m.theme.Faint
 	}
 
 	var (
 		projectStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(subText)).
+				Foreground(m.theme.SubText).
 				Align(lipgloss.Center)
 
 		descStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(text)).
+				Foreground(m.theme.Text).
 				Bold(true).
 				Align(lipgloss.Center).
 				MarginTop(1)
 
 		helpStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(subText)).
+				Foreground(m.theme.SubText).
 				Align(lipgloss.Center).
 				MarginTop(2)
 	)
@@ -223,20 +198,15 @@ func (m watchModel) View() string {
 	s := int(duration.Seconds()) % 60
 	timeStr := fmt.Sprintf("%02d:%02d:%02d", h, minutes, s)
 
-	bigTime := renderBigText(timeStr, primary)
+	bigTime := renderBigText(timeStr, string(primary))
 
 	status := ""
 	if m.paused {
 		status = "PAUSED"
 	}
 
-	secondary := m.theme.Secondary
-	if secondary == "" {
-		secondary = defaultSecondaryColor
-	}
-
 	statusStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(secondary)).
+		Foreground(m.theme.Secondary).
 		Bold(true).
 		Align(lipgloss.Center).
 		MarginTop(1)
