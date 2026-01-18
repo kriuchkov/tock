@@ -228,7 +228,7 @@ export TOCK_TIME_FORMAT="12"  # Use 12-hour format with AM/PM
 export TOCK_TIME_FORMAT="24"  # Use 24-hour format (default)
 ```
 
-#### 12-Hour Format Examples:**
+#### 12-Hour Format Examples
 
 ```bash
 tock start -p Project -d Task -t "3:04 PM"   # or "03:04 PM"
@@ -240,7 +240,7 @@ tock stop -t "4:45pm"                        # Case insensitive
 # Input accepts both "3:04 PM" and "03:04 PM" formats
 ```
 
-#### 24-Hour Format (Default):**
+#### 24-Hour Format (Default)
 
 ```bash
 tock start -p Project -d Task -t 15:04
@@ -279,6 +279,7 @@ Available Commands:
   start       Start a new activity
   stop        Stop the current activity
   version     Print the version info
+  watch       Display a full-screen stopwatch for the current activity
 
 Flags:
   -b, --backend string   Storage backend: 'file' (default) or 'timewarrior'
@@ -358,7 +359,21 @@ Show the currently running activity and its duration.
 
 ```bash
 tock current
+tock current --format "{{.Project}}: {{.Duration}}" # Custom format
 ```
+
+### Stopwatch (Watch Mode)
+
+Display a full-screen stopwatch for the current activity.
+
+```bash
+tock watch
+```
+
+**Controls:**
+
+- `Space`: Pause/Resume
+- `q` / `Ctrl+C`: Quit
 
 ### Recent activities
 
@@ -496,6 +511,42 @@ plugins=(... tock)
 
 ```bash
 exec zsh
+```
+
+## Shell Integration
+
+You can display the current tracked activity directly in your shell prompt.
+
+### Zsh / Oh My Zsh
+
+Add the following function to your `~/.zshrc`:
+
+```zsh
+function tock_info() {
+    # Returns empty string if no activity is running
+    tock current --format "{{.Project}}: {{.Duration}}" 2>/dev/null
+}
+```
+
+Then add `$(tock_info)` to your prompt (PROMPT/PS1) or `RPROMPT`.
+
+**Example:**
+
+```zsh
+PROMPT='$(tock_info) %~ > '
+```
+
+### Starship
+
+If you use [Starship](https://starship.rs), add this to your `starship.toml`:
+
+```toml
+[custom.tock]
+command = "tock current --format '{{.Project}}: {{.Duration}}'"
+when = "tock current > /dev/null 2>&1"
+format = "[$output]($style) "
+style = "bold yellow"
+shell = ["bash", "--noprofile", "--norc"]
 ```
 
 ### Technology Stack
