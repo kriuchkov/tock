@@ -45,6 +45,12 @@ go install github.com/kriuchkov/tock/cmd/tock@latest
 go build -o tock ./cmd/tock
 ```
 
+**Install Script (Linux & macOS)**
+
+```bash
+curl -sS https://raw.githubusercontent.com/kriuchkov/tock/master/install.sh | sh
+```
+
 **Download Binary**
 
 Download the latest release from the [Releases](https://github.com/kriuchkov/tock/releases) page.
