@@ -23,6 +23,14 @@ func (a currentCmdActivity) Duration() time.Duration {
 	return a.Activity.Duration().Round(time.Second)
 }
 
+func (a currentCmdActivity) DurationHMS() string {
+	d := a.Activity.Duration().Round(time.Second)
+	h := d / time.Hour
+	m := (d % time.Hour) / time.Minute
+	s := (d % time.Minute) / time.Second
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+
 func NewCurrentCmd() *cobra.Command {
 	var format string
 

@@ -6,7 +6,8 @@
 | `stop` | Stop the current activity | `-t` end time (HH:MM) | `tock stop -t 17:00` |
 | `add` | Add a completed activity | `-p` project (required)<br>`-d` description (required)<br>`-s` start time<br>`-e` end time<br>`--duration` duration | `tock add -p "Project" -d "Task" -s 10:00 -e 11:00` |
 | `continue` | Continue a previous activity | `-d` override description<br>`-p` override project<br>`-t` start time | `tock continue 1` |
-| `current` | Show currently running activity | - | `tock current` |
+| `current` | Show currently running activity | `--format` output template | `tock current`<br>`tock current --format "{{.DurationHMS}}"` |
+| `watch` | Display full-screen stopwatch | - | `tock watch` |
 | `last` | List recent unique activities | `-n` number of activities (default 10) | `tock last -n 20` |
 | `list` | Interactive calendar view (TUI) | - | `tock list` |
 | `calendar` | Show interactive calendar view | - | `tock calendar` |
