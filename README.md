@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/kriuchkov/tock?style=flat-square)](https://github.com/kriuchkov/tock/releases) [![License](https://img.shields.io/github/license/kriuchkov/tock?style=flat-square)](LICENSE) [![Stars](https://img.shields.io/github/stars/kriuchkov/tock?style=flat-square)](https://github.com/kriuchkov/tock/stargazers) [![Go Version](https://img.shields.io/github/go-mod/go-version/kriuchkov/tock?style=flat-square&logo=go&label=Go)](go.mod) [![CI](https://img.shields.io/github/actions/workflow/status/kriuchkov/tock/ci.yml?style=flat-square&label=tests)](https://github.com/kriuchkov/tock/actions)
 
 [Features](#features) • [Quick Start](#quick-start) • [Commands](#commands) •
-[Configuration](#configuration) • [Theme](#theme) • [File Format](#file-format) • [Architecture](#architecture) • [Inspiration](#inspiration) • [License](#license)
+[Configuration](#configuration) • [Theme](#theme) • [File Format](#file-format) • [Shell Completion](#shell-completion) • [Inspiration](#inspiration) • [License](#license)
 
 ## Features
 
@@ -359,7 +359,8 @@ Show the currently running activity and its duration.
 
 ```bash
 tock current
-tock current --format "{{.Project}}: {{.Duration}}" # Custom format
+tock current --format "{{.Project}}: {{.Duration}}" # Custom format (1h30m)
+tock current --format "{{.Project}}: {{.DurationHMS}}" # Custom format (01:30:00)
 ```
 
 ### Stopwatch (Watch Mode)
