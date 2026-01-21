@@ -560,7 +560,7 @@ shell = ["bash", "--noprofile", "--norc"]
 
 - **CLI Framework**: [Cobra](https://github.com/spf13/cobra)
 - **TUI Components**: [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Bubbles](https://github.com/charmbracelet/bubbles), [Lipgloss](https://github.com/charmbracelet/lipgloss)
-- **Go Version**: 1.24+
+- **Go Version**: 1.25+
 
 ### Project Structure
 

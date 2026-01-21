@@ -1,6 +1,6 @@
 module github.com/kriuchkov/tock
 
-go 1.24.11
+go 1.25.6
 
 require (
 	github.com/charmbracelet/bubbles v0.21.0
