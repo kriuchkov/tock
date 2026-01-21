@@ -17,9 +17,9 @@ jobs:
           - arch: arm64
             output_name: janus-darwin-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
       - name: Build
@@ -28,7 +28,7 @@ jobs:
           GOARCH: ${{ matrix.arch }}
         run: go build -o ${{ matrix.output_name }} ./cmd/tock
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.output_name }}
           path: ${{ matrix.output_name }}
@@ -39,10 +39,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
       - name: Run GoReleaser
