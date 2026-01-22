@@ -29,8 +29,12 @@ Features include:
 **Homebrew (macOS)**
 
 ```bash
-brew tap kriuchkov/tap
+# https://formulae.brew.sh/formula/tock
+# Install from official repository (build from source)
 brew install tock
+
+# Install pre-built binary via latest release (Goreleaser)
+brew install kriuchkov/tap/tock
 ```
 
 **Go Install**
