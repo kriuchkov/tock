@@ -43,6 +43,7 @@ func NewCalendarCmd() *cobra.Command {
 
 type reportModel struct {
 	service      ports.ActivityResolver
+	config       *config.Config
 	timeFormat   *timeutil.Formatter // time display format (12/24 hour)
 	currentDate  time.Time           // The date currently selected
 	viewDate     time.Time           // The month currently being viewed
@@ -61,6 +62,7 @@ func initialReportModel(service ports.ActivityResolver, cfg *config.Config, tf *
 	theme := GetTheme(cfg.Theme)
 	return reportModel{
 		service:      service,
+		config:       cfg,
 		timeFormat:   tf,
 		currentDate:  now,
 		viewDate:     now,
@@ -425,6 +427,39 @@ func (m *reportModel) fetchMonthData() tea.Msg {
 	}
 
 	return monthDataMsg{reports: dailyReports}
+}
+
+// getWeeklyDuration calculates the total duration for the current week (Monday to Sunday)
+// based on the selected date. Fetches directly from service to handle cross-month weeks.
+func (m *reportModel) getWeeklyDuration() (time.Duration, error) {
+	// Find Monday of the current week (based on selected date)
+	weekday := m.currentDate.Weekday()
+	if weekday == time.Sunday {
+		weekday = 7
+	}
+	daysFromMonday := int(weekday) - 1
+	monday := time.Date(m.currentDate.Year(), m.currentDate.Month(), m.currentDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -daysFromMonday)
+
+	// End of week is Sunday, or today if the week isn't complete
+	sunday := monday.AddDate(0, 0, 6)
+	today := time.Now()
+	endDate := sunday
+	if today.Before(sunday) {
+		endDate = today
+	}
+	// Set end date to end of day
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, time.Local)
+
+	// Fetch report for the full week from the service
+	report, err := m.service.GetReport(context.Background(), dto.ActivityFilter{
+		FromDate: &monday,
+		ToDate:   &endDate,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return report.TotalDuration, nil
 }
 
 func (m *reportModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {

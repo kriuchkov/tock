@@ -3,18 +3,20 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Backend     string            `mapstructure:"backend"`
-	File        FileConfig        `mapstructure:"file"`
-	Timewarrior TimewarriorConfig `mapstructure:"timewarrior"`
-	Theme       ThemeConfig       `mapstructure:"theme"`
-	TimeFormat  string            `mapstructure:"time_format"`
-	Export      ExportConfig      `mapstructure:"export"`
+	Backend      string            `mapstructure:"backend"`
+	File         FileConfig        `mapstructure:"file"`
+	Timewarrior  TimewarriorConfig `mapstructure:"timewarrior"`
+	Theme        ThemeConfig       `mapstructure:"theme"`
+	TimeFormat   string            `mapstructure:"time_format"`
+	Export       ExportConfig      `mapstructure:"export"`
+	WeeklyTarget string            `mapstructure:"weekly_target"`
 }
 
 type ExportConfig struct {
@@ -143,4 +145,17 @@ func Load(opts ...Option) (*Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// GetWeeklyTargetDuration parses the WeeklyTarget string and returns the duration.
+// Returns (0, false) if WeeklyTarget is empty or invalid.
+func (c *Config) GetWeeklyTargetDuration() (time.Duration, bool) {
+	if c.WeeklyTarget == "" {
+		return 0, false
+	}
+	d, err := time.ParseDuration(c.WeeklyTarget)
+	if err != nil {
+		return 0, false
+	}
+	return d, true
 }

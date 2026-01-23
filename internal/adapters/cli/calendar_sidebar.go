@@ -11,12 +11,30 @@ import (
 
 const barChar = "▏"
 
+// formatDurationCompact formats a duration as "Xh Ym" for compact display
+func formatDurationCompact(d time.Duration) string {
+	d = d.Round(time.Minute)
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	if h > 0 && m > 0 {
+		return fmt.Sprintf("%dh %dm", h, m)
+	} else if h > 0 {
+		return fmt.Sprintf("%dh", h)
+	}
+	return fmt.Sprintf("%dm", m)
+}
+
 func (m *reportModel) renderSidebar() string {
 	var b strings.Builder
 
 	b.WriteString(m.renderProductivityStats())
 
-	remaining := m.height - 2 - 7 // 7 lines for productivity stats
+	// Base: 7 lines for productivity stats, +3 if weekly target is configured
+	productivityLines := 7
+	if _, ok := m.config.GetWeeklyTargetDuration(); ok {
+		productivityLines += 3
+	}
+	remaining := m.height - 2 - productivityLines
 
 	if remaining >= 17 { // 17 lines for weekly activity
 		b.WriteString(m.renderWeeklyActivity())
@@ -75,7 +93,38 @@ func (m *reportModel) renderProductivityStats() string {
 	b.WriteString(fmt.Sprintf("Total:   %s\n", m.styles.Duration.Render(totalDuration.Round(time.Minute).String())))
 	b.WriteString(fmt.Sprintf("Avg/Day: %s\n", m.styles.Duration.Render(avgDuration.Round(time.Minute).String())))
 	b.WriteString(fmt.Sprintf("Max/Day: %s\n", m.styles.Duration.Render(maxDailyDuration.Round(time.Minute).String())))
-	b.WriteString(fmt.Sprintf("Streak:  %d days\n\n", longestStreak))
+	b.WriteString(fmt.Sprintf("Streak:  %d days\n", longestStreak))
+
+	// Weekly target progress (only if configured)
+	if target, ok := m.config.GetWeeklyTargetDuration(); ok {
+		weeklyDuration, err := m.getWeeklyDuration()
+		if err == nil {
+			b.WriteString("\n")
+
+			// Format durations for display
+			weekStr := formatDurationCompact(weeklyDuration)
+			targetStr := formatDurationCompact(target)
+			b.WriteString(fmt.Sprintf("Week:    %s / %s\n", m.styles.Duration.Render(weekStr), targetStr))
+
+			// Calculate percentage (cap at 100 for bar, but show real %)
+			percent := float64(weeklyDuration) / float64(target) * 100
+			barPercent := min(percent, 100)
+
+			// Render progress bar: [████████░░] 80%
+			barWidth := 20 // Fixed width for sidebar
+			filledWidth := int(barPercent / 100 * float64(barWidth))
+			emptyWidth := barWidth - filledWidth
+
+			bar := fmt.Sprintf("[%s%s] %.0f%%",
+				lipgloss.NewStyle().Foreground(m.theme.Primary).Render(strings.Repeat("█", filledWidth)),
+				strings.Repeat("░", emptyWidth),
+				percent,
+			)
+			b.WriteString(bar + "\n")
+		}
+	}
+
+	b.WriteString("\n")
 	return b.String()
 }
 
