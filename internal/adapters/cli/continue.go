@@ -18,9 +18,10 @@ func NewContinueCmd() *cobra.Command {
 	var at string
 
 	cmd := &cobra.Command{
-		Use:   "continue [NUMBER]",
-		Short: "Continues a previous activity",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "continue [NUMBER]",
+		Aliases: []string{"c"},
+		Short:   "Continues a previous activity",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)

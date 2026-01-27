@@ -14,8 +14,9 @@ func NewLastCmd() *cobra.Command {
 	var limit int
 
 	cmd := &cobra.Command{
-		Use:   "last",
-		Short: "List recent unique activities",
+		Use:     "last",
+		Aliases: []string{"lt"},
+		Short:   "List recent unique activities",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
 			ctx := context.Background()

@@ -20,8 +20,9 @@ import (
 
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List activities (Calendar View)",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List activities (Calendar View)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)

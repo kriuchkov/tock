@@ -43,9 +43,10 @@ func NewStopCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "Stop the current activity",
-		RunE:  fn,
+		Use:     "stop",
+		Aliases: []string{"s"},
+		Short:   "Stop the current activity",
+		RunE:    fn,
 	}
 	cmd.Flags().StringVarP(&at, "time", "t", "", "End time (HH:MM)")
 	return cmd
