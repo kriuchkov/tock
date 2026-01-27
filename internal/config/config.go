@@ -16,7 +16,7 @@ type Config struct {
 	Theme        ThemeConfig       `mapstructure:"theme"`
 	TimeFormat   string            `mapstructure:"time_format"`
 	Export       ExportConfig      `mapstructure:"export"`
-	WeeklyTarget string            `mapstructure:"weekly_target"`
+	WeeklyTarget time.Duration     `mapstructure:"weekly_target"`
 }
 
 type ExportConfig struct {
@@ -107,6 +107,7 @@ func Load(opts ...Option) (*Config, error) {
 	_ = v.BindEnv("theme.sub_text", "TOCK_COLOR_SUBTEXT")
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
+	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 
 	for _, opt := range opts {
 		opt(v)
@@ -147,15 +148,3 @@ func Load(opts ...Option) (*Config, error) {
 	return &cfg, nil
 }
 
-// GetWeeklyTargetDuration parses the WeeklyTarget string and returns the duration.
-// Returns (0, false) if WeeklyTarget is empty or invalid.
-func (c *Config) GetWeeklyTargetDuration() (time.Duration, bool) {
-	if c.WeeklyTarget == "" {
-		return 0, false
-	}
-	d, err := time.ParseDuration(c.WeeklyTarget)
-	if err != nil {
-		return 0, false
-	}
-	return d, true
-}

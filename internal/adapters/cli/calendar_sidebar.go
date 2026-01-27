@@ -31,7 +31,7 @@ func (m *reportModel) renderSidebar() string {
 
 	// Base: 7 lines for productivity stats, +3 if weekly target is configured
 	productivityLines := 7
-	if _, ok := m.config.GetWeeklyTargetDuration(); ok {
+	if m.config.WeeklyTarget > 0 {
 		productivityLines += 3
 	}
 	remaining := m.height - 2 - productivityLines
@@ -96,22 +96,19 @@ func (m *reportModel) renderProductivityStats() string {
 	b.WriteString(fmt.Sprintf("Streak:  %d days\n", longestStreak))
 
 	// Weekly target progress (only if configured)
-	if target, ok := m.config.GetWeeklyTargetDuration(); ok {
+	if m.config.WeeklyTarget > 0 {
 		weeklyDuration, err := m.getWeeklyDuration()
 		if err == nil {
 			b.WriteString("\n")
 
-			// Format durations for display
 			weekStr := formatDurationCompact(weeklyDuration)
-			targetStr := formatDurationCompact(target)
+			targetStr := formatDurationCompact(m.config.WeeklyTarget)
 			b.WriteString(fmt.Sprintf("Week:    %s / %s\n", m.styles.Duration.Render(weekStr), targetStr))
 
-			// Calculate percentage (cap at 100 for bar, but show real %)
-			percent := float64(weeklyDuration) / float64(target) * 100
+			percent := float64(weeklyDuration) / float64(m.config.WeeklyTarget) * 100
 			barPercent := min(percent, 100)
 
-			// Render progress bar: [████████░░] 80%
-			barWidth := 20 // Fixed width for sidebar
+			barWidth := m.styles.Sidebar.GetWidth() - 9
 			filledWidth := int(barPercent / 100 * float64(barWidth))
 			emptyWidth := barWidth - filledWidth
 

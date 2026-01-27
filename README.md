@@ -112,6 +112,7 @@ timewarrior:
 export:
     ical:
         file_name: "tock_export.ics"
+weekly_target: "40h"
 ```
 
 You can specify a custom config file path with the `--config` flag:
@@ -131,6 +132,7 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
+- `TOCK_WEEKLY_TARGET`: Weekly workload target as a duration (e.g., `40h`, `37h30m`)
 
 ### Storage Backends
 
