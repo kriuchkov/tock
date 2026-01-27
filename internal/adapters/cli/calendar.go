@@ -447,10 +447,8 @@ func (m *reportModel) getWeeklyDuration() (time.Duration, error) {
 	if today.Before(sunday) {
 		endDate = today
 	}
-	// Set end date to end of day
 	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, time.Local)
 
-	// Fetch report for the full week from the service
 	report, err := m.service.GetReport(context.Background(), dto.ActivityFilter{
 		FromDate: &monday,
 		ToDate:   &endDate,
