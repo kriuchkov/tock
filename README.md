@@ -26,7 +26,7 @@ Features include:
 
 ### Installation
 
-**Homebrew (macOS)**
+#### Homebrew (macOS)
 
 ```bash
 # https://formulae.brew.sh/formula/tock
@@ -37,25 +37,25 @@ brew install tock
 brew install kriuchkov/tap/tock
 ```
 
-**Go Install**
+#### Go Install
 
 ```bash
 go install github.com/kriuchkov/tock/cmd/tock@latest
 ```
 
-**Build from source**
+#### Build from source
 
 ```bash
 go build -o tock ./cmd/tock
 ```
 
-**Install Script (Linux & macOS)**
+#### Install Script (Linux & macOS)
 
 ```bash
 curl -sS https://raw.githubusercontent.com/kriuchkov/tock/master/install.sh | sh
 ```
 
-**Download Binary**
+#### Download Binary
 
 Download the latest release from the [Releases](https://github.com/kriuchkov/tock/releases) page.
 
