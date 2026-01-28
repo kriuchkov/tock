@@ -3,18 +3,20 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Backend     string            `mapstructure:"backend"`
-	File        FileConfig        `mapstructure:"file"`
-	Timewarrior TimewarriorConfig `mapstructure:"timewarrior"`
-	Theme       ThemeConfig       `mapstructure:"theme"`
-	TimeFormat  string            `mapstructure:"time_format"`
-	Export      ExportConfig      `mapstructure:"export"`
+	Backend      string            `mapstructure:"backend"`
+	File         FileConfig        `mapstructure:"file"`
+	Timewarrior  TimewarriorConfig `mapstructure:"timewarrior"`
+	Theme        ThemeConfig       `mapstructure:"theme"`
+	TimeFormat   string            `mapstructure:"time_format"`
+	Export       ExportConfig      `mapstructure:"export"`
+	WeeklyTarget time.Duration     `mapstructure:"weekly_target"`
 }
 
 type ExportConfig struct {
@@ -105,6 +107,7 @@ func Load(opts ...Option) (*Config, error) {
 	_ = v.BindEnv("theme.sub_text", "TOCK_COLOR_SUBTEXT")
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
+	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 
 	for _, opt := range opts {
 		opt(v)
