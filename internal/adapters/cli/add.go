@@ -91,5 +91,7 @@ func NewAddCmd() *cobra.Command {
 		panic(err)
 	}
 
+	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
+	_ = cmd.RegisterFlagCompletionFunc("project", projectdescriptionRegisterFlagCompletion)
 	return cmd
 }

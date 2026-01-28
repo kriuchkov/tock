@@ -164,5 +164,7 @@ func NewReportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&date, "date", "", "Report for specific date (YYYY-MM-DD)")
 	cmd.Flags().BoolVarP(&summary, "summary", "s", false, "Show only project summaries")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Filter by project and aggregate by description")
+
+	_ = cmd.RegisterFlagCompletionFunc("project", projectdescriptionRegisterFlagCompletion)
 	return cmd
 }

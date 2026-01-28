@@ -12,6 +12,11 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 )
 
+const (
+	defaultRecentActivitiesForContinuation = 10
+)
+
+//nolint:funlen // Include all logic in one function
 func NewContinueCmd() *cobra.Command {
 	var description string
 	var project string
@@ -22,6 +27,29 @@ func NewContinueCmd() *cobra.Command {
 		Aliases: []string{"c"},
 		Short:   "Continues a previous activity",
 		Args:    cobra.MaximumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+			if len(args) > 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			svc, err := getServiceForCompletion(cmd)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			activities, err := svc.GetRecent(cmd.Context(), defaultRecentActivitiesForContinuation)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			var suggestions []string
+			for i, a := range activities {
+				suggestions = append(suggestions, fmt.Sprintf("%d\t%s | %s", i, a.Project, a.Description))
+			}
+
+			return suggestions, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveKeepOrder
+		},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
@@ -36,8 +64,6 @@ func NewContinueCmd() *cobra.Command {
 				}
 			}
 
-			// Fetch recent activities to find the one to continue
-			// We need at least number+1 activities
 			activities, err := service.GetRecent(ctx, number+1)
 			if err != nil {
 				return errors.Wrap(err, "get recent activities")
@@ -49,7 +75,6 @@ func NewContinueCmd() *cobra.Command {
 
 			activityToContinue := activities[number]
 
-			// Determine new activity details
 			newDescription := activityToContinue.Description
 			if description != "" {
 				newDescription = description

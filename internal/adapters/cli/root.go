@@ -15,6 +15,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultRecentActivitiesForCompletion = 1000
+	backendTimewarrior                   = "timewarrior"
+)
+
 type serviceKey struct{}
 type configKey struct{}
 type timeFormatterKey struct{}
@@ -47,7 +52,7 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			if filePath == "" {
-				if backend == "timewarrior" {
+				if backend == backendTimewarrior {
 					filePath = cfg.Timewarrior.DataPath
 				} else {
 					filePath = cfg.File.Path
@@ -107,8 +112,89 @@ func getTimeFormatter(cmd *cobra.Command) *timeutil.Formatter {
 }
 
 func initRepository(backend, filePath string) ports.ActivityRepository {
-	if backend == "timewarrior" {
+	if backend == backendTimewarrior {
 		return timewarrior.NewRepository(filePath)
 	}
 	return file.NewRepository(filePath)
+}
+
+func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error) {
+	configPath, _ := cmd.Root().PersistentFlags().GetString("config")
+	var opts []config.Option
+	if configPath != "" {
+		opts = append(opts, config.WithConfigFile(configPath))
+	}
+
+	cfg, err := config.Load(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	backend, _ := cmd.Root().PersistentFlags().GetString("backend")
+	filePath, _ := cmd.Root().PersistentFlags().GetString("file")
+
+	if backend == "" {
+		backend = cfg.Backend
+	}
+
+	if filePath == "" {
+		if backend == backendTimewarrior {
+			filePath = cfg.Timewarrior.DataPath
+		} else {
+			filePath = cfg.File.Path
+		}
+	}
+
+	repo := initRepository(backend, filePath)
+	return activity.NewService(repo), nil
+}
+
+func projectdescriptionRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	svc, err := getServiceForCompletion(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	acts, err := svc.GetRecent(cmd.Context(), defaultRecentActivitiesForCompletion)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	seen := make(map[string]bool)
+	var projects []string
+	for _, a := range acts {
+		if a.Project != "" && !seen[a.Project] {
+			seen[a.Project] = true
+			projects = append(projects, a.Project)
+		}
+	}
+
+	return projects, cobra.ShellCompDirectiveNoFileComp
+}
+
+func descriptionRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	svc, err := getServiceForCompletion(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	projectFilter, _ := cmd.Flags().GetString("project")
+
+	acts, err := svc.GetRecent(cmd.Context(), defaultRecentActivitiesForCompletion)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	seen := make(map[string]bool)
+	var descriptions []string
+	for _, a := range acts {
+		if projectFilter != "" && a.Project != projectFilter {
+			continue
+		}
+
+		if a.Description != "" && !seen[a.Description] {
+			seen[a.Description] = true
+			descriptions = append(descriptions, a.Description)
+		}
+	}
+	return descriptions, cobra.ShellCompDirectiveNoFileComp
 }
