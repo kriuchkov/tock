@@ -11,7 +11,7 @@ import (
 
 const barChar = "▏"
 
-// formatDurationCompact formats a duration as "Xh Ym" for compact display
+// formatDurationCompact formats a duration as "Xh Ym" for compact display.
 func formatDurationCompact(d time.Duration) string {
 	d = d.Round(time.Minute)
 	h := int(d.Hours())

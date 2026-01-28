@@ -438,7 +438,10 @@ func (m *reportModel) getWeeklyDuration() (time.Duration, error) {
 		weekday = 7
 	}
 	daysFromMonday := int(weekday) - 1
-	monday := time.Date(m.currentDate.Year(), m.currentDate.Month(), m.currentDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -daysFromMonday)
+	monday := time.Date(
+		m.currentDate.Year(), m.currentDate.Month(), m.currentDate.Day(),
+		0, 0, 0, 0, time.Local,
+	).AddDate(0, 0, -daysFromMonday)
 
 	// End of week is Sunday, or today if the week isn't complete
 	sunday := monday.AddDate(0, 0, 6)

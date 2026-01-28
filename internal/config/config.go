@@ -147,4 +147,3 @@ func Load(opts ...Option) (*Config, error) {
 	}
 	return &cfg, nil
 }
-
