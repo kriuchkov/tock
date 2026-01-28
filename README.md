@@ -498,6 +498,15 @@ You can edit this file manually with any text editor.
 
 ## Shell Completion
 
+Tock supports shell completion for Bash, Zsh, Fish, and PowerShell. This includes basic command completion and **intelligent suggestions** for:
+
+- **Projects**: Suggests existing project names when using `-p` / `--project`.
+- **Descriptions**: Suggests recent activity descriptions when using `-d` / `--description`.
+  - Suggestions are context-aware: if a project is selected, it only suggests descriptions previously used for that project.
+- **Continue IDs**: Suggests valid activity IDs (with details) for the `tock continue` command.
+
+### Installation
+
 To enable shell completion (e.g. for Oh My Zsh):
 
 1. Create a directory for the plugin:
@@ -559,6 +568,8 @@ format = "[$output]($style) "
 style = "bold yellow"
 shell = ["bash", "--noprofile", "--norc"]
 ```
+
+
 
 ### Technology Stack
 

@@ -56,6 +56,7 @@ func NewStartCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Activity description")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project name")
 	cmd.Flags().StringVarP(&at, "time", "t", "", "Start time (HH:MM)")
+
 	if err := cmd.MarkFlagRequired("description"); err != nil {
 		panic(err)
 	}
@@ -63,5 +64,7 @@ func NewStartCmd() *cobra.Command {
 		panic(err)
 	}
 
+	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
+	_ = cmd.RegisterFlagCompletionFunc("project", projectdescriptionRegisterFlagCompletion)
 	return cmd
 }

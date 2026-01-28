@@ -95,6 +95,5 @@ func NewCurrentCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}')")
-
 	return cmd
 }
