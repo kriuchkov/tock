@@ -61,7 +61,22 @@ Download the latest release from the [Releases](https://github.com/kriuchkov/toc
 
 ### Basic Usage
 
-Start tracking time:
+<img src="assets/demo.gif" width="820px" />
+<hr clear="right"/>
+
+Start tracking time (Interactive wizard):
+
+```bash
+tock start
+```
+
+Start tracking time (Quick):
+
+```bash
+tock start "My Project" "Implementing features"
+```
+
+Start tracking time (Flags):
 
 ```bash
 tock start -d "Implementing features" -p "My Project"
@@ -306,17 +321,18 @@ Use "tock [command] --help" for more information about a command.
 
 ### Start tracking
 
-Start a new activity. Description and project are required.
+Start a new activity. You can provide project and task as arguments, use flags, or use the interactive mode.
 
 ```bash
-tock start -p "Project Name" -d "Task description"
-tock start -p "Project" -d "Task" -t 14:30  # Start at specific time
+tock start                                   # Interactive mode
+tock start "Project Name" "Task description" # Positional arguments
+tock start -p "Project" -d "Task" -t 14:30   # Start at specific time
 ```
 
 **Flags:**
 
-- `-d, --description`: Activity description (required)
-- `-p, --project`: Project name (required)
+- `-d, --description`: Activity description
+- `-p, --project`: Project name
 - `-t, --time`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM", optional, defaults to now)
 
 ### Stop tracking
@@ -334,17 +350,18 @@ tock stop -t 17:00  # Stop at specific time
 
 ### Add past activity
 
-Add a completed activity manually. Useful for logging time retroactively.
+Add a completed activity manually. You can use flags or the interactive wizard.
 
 ```bash
+tock add                                         # Interactive wizard
 tock add -p "Project" -d "Task" -s 10:00 -e 11:00
 tock add -p "Project" -d "Task" -s 14:00 --duration 1h30m
 ```
 
 **Flags:**
 
-- `-d, --description`: Activity description (required)
-- `-p, --project`: Project name (required)
+- `-d, --description`: Activity description
+- `-p, --project`: Project name
 - `-s, --start`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `-e, --end`: End time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.
@@ -381,7 +398,12 @@ Display a full-screen stopwatch for the current activity.
 
 ```bash
 tock watch
+tock watch --stop  # Stop the activity when quitting watch mode
 ```
+
+**Flags:**
+
+- `-s, --stop`: Stop the activity when exiting watch mode (default false)
 
 **Controls:**
 
@@ -424,8 +446,9 @@ Generate a simple text report for a specific day.
 tock report --today
 tock report --yesterday
 tock report --date 2025-12-01
-tock report -p "My Project"  # Filter by project and aggregate by task
+tock report -p "My Project" -d "Fixing bugs" # Filter by project and description
 tock report --summary        # Show project totals only
+tock report --json           # Output in JSON format
 ```
 
 **Flags:**
@@ -434,7 +457,9 @@ tock report --summary        # Show project totals only
 - `--yesterday`: Report for yesterday
 - `--date`: Report for specific date (YYYY-MM-DD)
 - `-p, --project`: Filter by project and aggregate by description
+- `-d, --description`: Filter by description (case-insensitive substring)
 - `-s, --summary`: Show only project summaries
+- `--json`: Output report as JSON
 
 ### Calendar Integration (iCal)
 
@@ -587,6 +612,8 @@ shell = ["bash", "--noprofile", "--norc"]
 - `internal/adapters/file/` - File storage implementation
 - `internal/adapters/timewarrior/` - TimeWarrior storage implementation
 - `internal/adapters/cli/` - CLI commands and TUI
+- `internal/config/` - Configuration loading and management
+- `internal/extras/` - Extra utilities (e.g., iCal export)
 
 ## Inspiration
 

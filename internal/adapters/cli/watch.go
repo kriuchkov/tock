@@ -17,21 +17,21 @@ import (
 )
 
 func NewWatchCmd() *cobra.Command {
-	return &cobra.Command{
+	var stopOnExit bool
+
+	cmd := &cobra.Command{
 		Use:   "watch",
 		Short: "Display a full-screen stopwatch for the current activity",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
 			cfg := getConfig(cmd)
 
-			ctx := context.Background()
-
 			isRunning := true
 			filter := dto.ActivityFilter{
 				IsRunning: &isRunning,
 			}
 
-			activities, err := service.List(ctx, filter)
+			activities, err := service.List(cmd.Context(), filter)
 			if err != nil {
 				return fmt.Errorf("list activities: %w", err)
 			}
@@ -48,9 +48,24 @@ func NewWatchCmd() *cobra.Command {
 				return fmt.Errorf("run program: %w", err)
 			}
 
+			if stopOnExit {
+				now := time.Now()
+				req := dto.StopActivityRequest{EndTime: now}
+
+				var stopped *models.Activity
+				stopped, err = service.Stop(cmd.Context(), req)
+				if err != nil {
+					return fmt.Errorf("stop activity: %w", err)
+				}
+
+				fmt.Printf("Stopped activity: %s | %s\n", stopped.Project, stopped.Description)
+			}
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&stopOnExit, "stop", "s", false, "Stop the activity when exiting watch mode")
+	return cmd
 }
 
 type tickMsg time.Time

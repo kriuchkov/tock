@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func NewStartCmd() *cobra.Command {
@@ -18,17 +18,56 @@ func NewStartCmd() *cobra.Command {
 	var at string
 
 	cmd := &cobra.Command{
-		Use:   "start",
+		Use:   "start [project] [description]",
 		Short: "Start a new activity",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		ValidArgsFunction: func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			var completions []string
+			cmd.Flags().VisitAll(func(f *pflag.Flag) {
+				completions = append(completions, fmt.Sprintf("--%s\t%s", f.Name, f.Usage))
+				if f.Shorthand != "" {
+					completions = append(completions, fmt.Sprintf("-%s\t%s", f.Shorthand, f.Usage))
+				}
+			})
+			return completions, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
 			startTime := time.Now()
+
 			if at != "" {
 				var err error
 				startTime, err = tf.ParseTime(at)
 				if err != nil {
 					return errors.Wrap(err, "parse time")
+				}
+			}
+
+			// Support positional arguments: tock start Project Description
+			if project == "" && len(args) > 0 {
+				project = args[0]
+			}
+			if description == "" && len(args) > 1 {
+				description = args[1]
+			}
+
+			// Interactive mode if project or description is missing
+			if project == "" || description == "" {
+				activities, _ := service.List(cmd.Context(), dto.ActivityFilter{})
+				theme := GetTheme(getConfig(cmd).Theme)
+
+				var err error
+				project, description, err = SelectActivityMetadata(activities, project, description, theme)
+				if err != nil {
+					return errors.Wrap(err, "select activity metadata")
+				}
+
+				if project == "" {
+					return errors.New("project name is required")
+				}
+
+				if description == "" {
+					return errors.New("description is required")
 				}
 			}
 
@@ -38,7 +77,7 @@ func NewStartCmd() *cobra.Command {
 				StartTime:   startTime,
 			}
 
-			activity, err := service.Start(context.Background(), req)
+			activity, err := service.Start(cmd.Context(), req)
 			if err != nil {
 				return errors.Wrap(err, "start activity")
 			}
@@ -57,14 +96,7 @@ func NewStartCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project name")
 	cmd.Flags().StringVarP(&at, "time", "t", "", "Start time (HH:MM)")
 
-	if err := cmd.MarkFlagRequired("description"); err != nil {
-		panic(err)
-	}
-	if err := cmd.MarkFlagRequired("project"); err != nil {
-		panic(err)
-	}
-
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
-	_ = cmd.RegisterFlagCompletionFunc("project", projectdescriptionRegisterFlagCompletion)
+	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)
 	return cmd
 }

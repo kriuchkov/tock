@@ -24,10 +24,11 @@ type AddActivityRequest struct {
 }
 
 type ActivityFilter struct {
-	FromDate  *time.Time
-	ToDate    *time.Time
-	Project   *string
-	IsRunning *bool
+	FromDate    *time.Time
+	ToDate      *time.Time
+	Project     *string
+	Description *string
+	IsRunning   *bool
 }
 
 type Report struct {
