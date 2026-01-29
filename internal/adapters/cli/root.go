@@ -149,7 +149,7 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 	return activity.NewService(repo), nil
 }
 
-func projectdescriptionRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+func projectRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	svc, err := getServiceForCompletion(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError

@@ -6,10 +6,10 @@ import (
 
 // Activity represents a time tracking entry.
 type Activity struct {
-	Description string
-	Project     string
-	StartTime   time.Time
-	EndTime     *time.Time // nil if active
+	Description string     `json:"description"`
+	Project     string     `json:"project"`
+	StartTime   time.Time  `json:"start_time"`
+	EndTime     *time.Time `json:"end_time,omitempty"` // nil if active
 }
 
 // Duration returns the duration of the activity.

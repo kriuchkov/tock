@@ -2,6 +2,8 @@ testfile.bartib
 coverage.out
 coverage.html
 demo_activities.txt
+demo/demo.cast
+demo/demo_data.txt
 
 .idea/
 test_data/

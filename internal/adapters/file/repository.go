@@ -38,12 +38,13 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+
 		act, parseErr := ParseActivity(line)
 		if parseErr != nil {
-			// Log warning? Skip?
 			continue
 		}
 
@@ -54,9 +55,14 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 		if filter.Project != nil && act.Project != *filter.Project {
 			continue
 		}
+		if filter.Description != nil && act.Description != *filter.Description {
+			continue
+		}
+
 		if filter.FromDate != nil && act.StartTime.Before(*filter.FromDate) {
 			continue
 		}
+
 		if filter.ToDate != nil {
 			activityEnd := act.StartTime
 			if act.EndTime != nil {
@@ -66,6 +72,7 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 				continue
 			}
 		}
+
 		if filter.IsRunning != nil {
 			if *filter.IsRunning && act.EndTime != nil {
 				continue
@@ -74,6 +81,7 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 				continue
 			}
 		}
+
 		activities = append(activities, *act)
 	}
 	if scanErr := scanner.Err(); scanErr != nil {

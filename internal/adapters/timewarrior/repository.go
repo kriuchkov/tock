@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"github.com/go-faster/errors"
+	"github.com/samber/lo"
 
 	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
@@ -40,16 +41,7 @@ func NewRepository(dataDir string) ports.ActivityRepository {
 }
 
 func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
-	// Determine date range to scan
-	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
-	if filter.FromDate != nil {
-		start = *filter.FromDate
-	}
-	end := time.Now().AddDate(1, 0, 0) // Future
-	if filter.ToDate != nil {
-		end = *filter.ToDate
-	}
-
+	start, end := determineDateRange(filter)
 	var activities []models.Activity
 
 	// Iterate over months from start to end
@@ -61,37 +53,60 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 			return nil, errors.Wrapf(err, "read file %s", monthFile)
 		}
 
-		for _, act := range monthActs {
-			if filter.Project != nil && act.Project != *filter.Project {
-				continue
-			}
-			if filter.FromDate != nil && act.StartTime.Before(*filter.FromDate) {
-				continue
-			}
-			if filter.ToDate != nil {
-				actEnd := act.StartTime
-				if act.EndTime != nil {
-					actEnd = *act.EndTime
-				}
-				if actEnd.After(*filter.ToDate) {
-					continue
-				}
-			}
-			if filter.IsRunning != nil {
-				if *filter.IsRunning && act.EndTime != nil {
-					continue
-				}
-				if !*filter.IsRunning && act.EndTime == nil {
-					continue
-				}
-			}
-			activities = append(activities, act)
-		}
+		filtered := lo.Filter(monthActs, func(act models.Activity, _ int) bool {
+			return matchesFilter(act, filter)
+		})
+		activities = append(activities, filtered...)
 
 		current = current.AddDate(0, 1, 0)
 	}
 
 	return activities, nil
+}
+
+func determineDateRange(filter dto.ActivityFilter) (time.Time, time.Time) {
+	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	if filter.FromDate != nil {
+		start = *filter.FromDate
+	}
+	end := time.Now().AddDate(1, 0, 0) // Future
+	if filter.ToDate != nil {
+		end = *filter.ToDate
+	}
+	return start, end
+}
+
+func matchesFilter(act models.Activity, filter dto.ActivityFilter) bool {
+	if filter.Project != nil && act.Project != *filter.Project {
+		return false
+	}
+	if filter.FromDate != nil && act.StartTime.Before(*filter.FromDate) {
+		return false
+	}
+	if filter.Description != nil && act.Description != *filter.Description {
+		return false
+	}
+
+	if filter.ToDate != nil {
+		actEnd := act.StartTime
+		if act.EndTime != nil {
+			actEnd = *act.EndTime
+		}
+		if actEnd.After(*filter.ToDate) {
+			return false
+		}
+	}
+
+	if filter.IsRunning != nil {
+		if *filter.IsRunning && act.EndTime != nil {
+			return false
+		}
+		if !*filter.IsRunning && act.EndTime == nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {

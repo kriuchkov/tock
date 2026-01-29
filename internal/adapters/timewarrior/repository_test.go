@@ -148,6 +148,13 @@ func TestRepository_Find(t *testing.T) {
 			},
 			wantCount: 2,
 		},
+		{
+			name: "filter by description",
+			filter: dto.ActivityFilter{
+				Description: ptr("Meeting"),
+			},
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -290,4 +297,74 @@ func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func TestRepository_ReadIncFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+
+	// Create a data file with legacy "inc" lines
+	// Format: inc <start> [ - <end> ] [ # <tag1> <tag2> ... ] [ # <annotation> ]
+	content := `inc 20230101T100000Z - 20230101T110000Z # ProjectA # Task 1
+inc 20230101T120000Z # ProjectB # Task 2
+`
+	// 2023-01.data
+	dataPath := filepath.Join(tmpDir, "2023-01.data")
+	err := os.WriteFile(dataPath, []byte(content), 0600)
+	require.NoError(t, err)
+
+	// Use Find to retrieve
+	ctx := context.Background()
+	start := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2023, 1, 1, 23, 59, 59, 0, time.UTC)
+
+	acts, err := repo.Find(ctx, dto.ActivityFilter{
+		FromDate: &start,
+		ToDate:   &end,
+	})
+	require.NoError(t, err)
+	require.Len(t, acts, 2)
+
+	// Verify Task 1 (Completed)
+	assert.Equal(t, "Task 1", acts[0].Description)
+	assert.Equal(t, "ProjectA", acts[0].Project)
+	assert.NotNil(t, acts[0].EndTime)
+
+	// Verify Task 2 (Running)
+	assert.Equal(t, "Task 2", acts[1].Description)
+	assert.Equal(t, "ProjectB", acts[1].Project)
+	assert.Nil(t, acts[1].EndTime)
+}
+
+func TestRepository_Find_CrossMonth(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	// Activity in October
+	actOct := models.Activity{
+		Project:   "OctProject",
+		StartTime: time.Date(2023, 10, 31, 23, 0, 0, 0, time.UTC),
+		EndTime:   ptr(time.Date(2023, 10, 31, 23, 30, 0, 0, time.UTC)),
+	}
+	require.NoError(t, repo.Save(ctx, actOct))
+
+	// Activity in November
+	actNov := models.Activity{
+		Project:   "NovProject",
+		StartTime: time.Date(2023, 11, 1, 0, 30, 0, 0, time.UTC),
+		EndTime:   ptr(time.Date(2023, 11, 1, 1, 0, 0, 0, time.UTC)),
+	}
+	require.NoError(t, repo.Save(ctx, actNov))
+
+	// Find covering both months
+	start := time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2023, 11, 30, 23, 59, 59, 0, time.UTC)
+
+	acts, err := repo.Find(ctx, dto.ActivityFilter{
+		FromDate: &start,
+		ToDate:   &end,
+	})
+	require.NoError(t, err)
+	require.Len(t, acts, 2)
 }

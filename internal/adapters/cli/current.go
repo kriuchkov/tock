@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -33,6 +34,7 @@ func (a currentCmdActivity) DurationHMS() string {
 
 func NewCurrentCmd() *cobra.Command {
 	var format string
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:   "current",
@@ -50,6 +52,12 @@ func NewCurrentCmd() *cobra.Command {
 			activities, err := service.List(ctx, filter)
 			if err != nil {
 				return errors.Wrap(err, "list activities")
+			}
+
+			if jsonOutput {
+				encoder := json.NewEncoder(os.Stdout)
+				encoder.SetIndent("", "  ")
+				return encoder.Encode(activities)
 			}
 
 			if len(activities) == 0 {
@@ -94,6 +102,7 @@ func NewCurrentCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}')")
 	return cmd
 }
