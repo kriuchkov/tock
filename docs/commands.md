@@ -118,6 +118,11 @@ tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"
 
 Resume a previously tracked activity creating a new one.
 
+**Description:**
+Continue the most recent activity, or select a specific one from recent history. This is useful for quickly starting a new activity based on past work, without retyping the project and description. Continued activities receive a new timestamp and create a new entry in the log.
+
+**Don’t confuse this with resuming a paused activity — this command always creates a new activity.**
+
 **Usage:**
 
 ```bash
@@ -132,6 +137,9 @@ tock continue
 
 # Continue the 2nd most recent activity (see 'tock last' or use `tock continue <tab>`)
 tock continue 2
+
+# Continue the most recent activity but with a different description
+tock continue 1 -d "Code review"
 
 # Continue with a different description
 tock continue -d "Fixing regression"
