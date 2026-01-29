@@ -596,8 +596,6 @@ style = "bold yellow"
 shell = ["bash", "--noprofile", "--norc"]
 ```
 
-
-
 ### Technology Stack
 
 - **CLI Framework**: [Cobra](https://github.com/spf13/cobra)
