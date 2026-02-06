@@ -286,7 +286,7 @@ func (m *reportModel) updateViewportContent() {
 		lineStyle := m.styles.Line
 
 		// Content
-		durStr := act.Duration().Round(time.Minute).String()
+		durStr := timeutil.FormatDuration(act.Duration(), m.config.Calendar.TimeSpentFormat)
 		if act.EndTime != nil {
 			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
 		}
@@ -332,8 +332,8 @@ func (m *reportModel) updateViewportContent() {
 		}
 	}
 
-	totalDur := report.TotalDuration.Round(time.Minute)
-	b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(fmt.Sprintf("Total: %s", totalDur)))
+	totalDurStr := timeutil.FormatDuration(report.TotalDuration.Round(time.Minute), m.config.Calendar.TimeSpentFormat)
+	b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(fmt.Sprintf("Total: %s", totalDurStr)))
 	b.WriteString("\n")
 
 	// Project breakdown
@@ -352,7 +352,7 @@ func (m *reportModel) updateViewportContent() {
 	for _, s := range stats {
 		b.WriteString(fmt.Sprintf("- %s: %s\n",
 			m.styles.Project.Render(s.Name),
-			m.styles.Duration.Render(s.Duration.Round(time.Minute).String()),
+			m.styles.Duration.Render(timeutil.FormatDuration(s.Duration, m.config.Calendar.TimeSpentFormat)),
 		))
 	}
 

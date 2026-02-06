@@ -29,6 +29,23 @@ export:
     # Default: tock_export.ics
     file_name: "tock_export.ics"
 
+# Calendar view configuration
+calendar:
+  # Format for duration display (time spent)
+  # Uses Go's standard time formatting syntax.
+  # https://github.com/golang/go/blob/go1.25.0/src/time/format.go#L132
+  # Reference time key: Mon Jan 2 15:04:05 -0700 MST 2006
+  # Common placeholders:
+  # 15 - Hour (24-hour)
+  # 03 - Hour (12-hour)
+  # 04 - Minute
+  # 05 - Second
+  # Example: time_spent_format: "15:04" results in "01:16"
+  # Example: time_spent_format: "15:04:05" results in "01:16:00"
+  # Note: Since this uses standard time formatting, durations >= 24 hours 
+  # will wrap around (e.g. 25h becomes 01:00).
+  # time_spent_format: "15:04"
+
 # Time format configuration
 # time_format: "24"  # 24-hour format (default): 15:04
 # time_format: "12"  # 12-hour format: 03:04 PM

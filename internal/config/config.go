@@ -14,9 +14,14 @@ type Config struct {
 	File         FileConfig        `mapstructure:"file"`
 	Timewarrior  TimewarriorConfig `mapstructure:"timewarrior"`
 	Theme        ThemeConfig       `mapstructure:"theme"`
+	Calendar     CalendarConfig    `mapstructure:"calendar"`
 	TimeFormat   string            `mapstructure:"time_format"`
 	Export       ExportConfig      `mapstructure:"export"`
 	WeeklyTarget time.Duration     `mapstructure:"weekly_target"`
+}
+
+type CalendarConfig struct {
+	TimeSpentFormat string `mapstructure:"time_spent_format"`
 }
 
 type ExportConfig struct {

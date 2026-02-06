@@ -150,3 +150,18 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 
 	return time.Time{}, errors.New("invalid time format (use HH:MM or YYYY-MM-DD HH:MM)")
 }
+
+// FormatDuration formats a duration using Go's time layout constants.
+// This works by adding the duration to a zero time value and formatting it.
+// Note: Durations >= 24 hours will wrap around in the hour field, as this approximates
+// a clock time.
+func FormatDuration(d time.Duration, format string) string {
+	if format == "" {
+		return d.Round(time.Minute).String()
+	}
+
+	// Use a base time of year 0, month 1, day 1.
+	// This ensures we're formatting a time object relative to "zero".
+	t := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC).Add(d)
+	return t.Format(format)
+}
