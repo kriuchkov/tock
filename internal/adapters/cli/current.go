@@ -39,6 +39,16 @@ func NewCurrentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "current",
 		Short: "Lists all currently running activities",
+		Long: `Lists all currently running activities.
+
+You can format the output using Go templates with the --format flag.
+Available variables:
+  .Project      - Project name
+  .Description  - Activity description
+  .StartTime    - Start time (time.Time object)
+  .EndTime      - End time (time.Time object, usually nil for running activities)
+  .Duration     - Activity duration (time.Duration object)
+  .DurationHMS  - Duration formatted as HH:MM:SS`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
@@ -103,6 +113,6 @@ func NewCurrentCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}')")
+	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}'). See --help for variables.")
 	return cmd
 }

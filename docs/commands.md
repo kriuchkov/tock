@@ -246,6 +246,17 @@ tock current --json
 tock current --format "{{.Project}}: {{.Duration}}"
 ```
 
+**Format Variables:**
+
+- `.Project`: Project name
+- `.Description`: Activity description
+- `.StartTime`: Start time (time.Time object)
+- `.EndTime`: End time (time.Time object, usually nil)
+- `.Duration`: Activity duration (time.Duration object)
+- `.DurationHMS`: Duration formatted as HH:MM:SS
+
+```
+
 **Flags:**
 
 - `--format string`: Go template for output format
