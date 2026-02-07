@@ -248,7 +248,7 @@ func (m *reportModel) renderDetails() string {
 		Render(m.viewport.View())
 }
 
-//molint:funlen //it's more readable to keep the content generation in one place for now
+//nolint:funlen //it's more readable to keep the content generation in one place for now
 func (m *reportModel) updateViewportContent() {
 	day := m.currentDate.Day()
 	report, ok := m.monthReports[day]

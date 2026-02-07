@@ -126,4 +126,97 @@ func TestService_Start(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "new", started.Project)
 	})
+
+	t.Run("start with specific time stops running activity at that time", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		svc := activity.NewService(repo)
+		ctx := context.Background()
+
+		now := time.Now()
+		newStartTime := now.Add(-10 * time.Minute)
+
+		runningAct := models.Activity{
+			Project:   "prev",
+			StartTime: now.Add(-1 * time.Hour),
+		}
+
+		// 1. Find running
+		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+			return f.IsRunning != nil && *f.IsRunning
+		})).Return([]models.Activity{runningAct}, nil)
+
+		// 2. Save (stop) running - Expect EndTime to be newStartTime
+		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
+			if a.Project != "prev" {
+				return false
+			}
+			if a.EndTime == nil {
+				return false
+			}
+			return a.EndTime.Equal(newStartTime)
+		})).Return(nil)
+
+		// 3. Save new
+		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
+			return a.Project == "new" && a.StartTime.Equal(newStartTime)
+		})).Return(nil)
+
+		req := dto.StartActivityRequest{
+			Project:     "new",
+			Description: "task",
+			StartTime:   newStartTime,
+		}
+		started, err := svc.Start(ctx, req)
+		require.NoError(t, err)
+		assert.Equal(t, "new", started.Project)
+		assert.Equal(t, newStartTime, started.StartTime)
+	})
+
+	t.Run("start time before running start time falls back to now", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		svc := activity.NewService(repo)
+		ctx := context.Background()
+
+		now := time.Now()
+		// Start time is VERY old, before the running activity started
+		newStartTime := now.Add(-2 * time.Hour)
+
+		runningAct := models.Activity{
+			Project:   "prev",
+			StartTime: now.Add(-1 * time.Hour), // Started 1 hour ago
+		}
+
+		// 1. Find running
+		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+			return f.IsRunning != nil && *f.IsRunning
+		})).Return([]models.Activity{runningAct}, nil)
+
+		// 2. Save (stop) running - Expect EndTime to correspond to Now (approx) or at least NOT be newStartTime
+		// The implementation uses time.Now() when overlap is detected.
+		// Since time.Now() moves, we can't test equality exactly, but we can check it's after runningAct.StartTime
+		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
+			if a.Project != "prev" {
+				return false
+			}
+			if a.EndTime == nil {
+				return false
+			}
+			// Should be roughly now, definitely not 2 hours ago
+			return a.EndTime.After(runningAct.StartTime)
+		})).Return(nil)
+
+		// 3. Save new
+		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
+			return a.Project == "new" && a.StartTime.Equal(newStartTime)
+		})).Return(nil)
+
+		req := dto.StartActivityRequest{
+			Project:     "new",
+			Description: "task",
+			StartTime:   newStartTime,
+		}
+		started, err := svc.Start(ctx, req)
+		require.NoError(t, err)
+		assert.Equal(t, "new", started.Project)
+	})
 }

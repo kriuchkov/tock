@@ -27,9 +27,17 @@ func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*mod
 		return nil, errors.Wrap(err, "find running activities")
 	}
 
-	now := time.Now()
+	startTime := req.StartTime
+	if startTime.IsZero() {
+		startTime = time.Now()
+	}
+
 	for _, act := range running {
-		act.EndTime = &now
+		stopTime := startTime
+		if stopTime.Before(act.StartTime) {
+			stopTime = time.Now()
+		}
+		act.EndTime = &stopTime
 		if saveErr := s.repo.Save(ctx, act); saveErr != nil {
 			return nil, errors.Wrap(saveErr, "stop running activity")
 		}
@@ -38,11 +46,7 @@ func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*mod
 	newActivity := models.Activity{
 		Description: req.Description,
 		Project:     req.Project,
-		StartTime:   req.StartTime,
-	}
-
-	if newActivity.StartTime.IsZero() {
-		newActivity.StartTime = time.Now()
+		StartTime:   startTime,
 	}
 
 	if saveErr := s.repo.Save(ctx, newActivity); saveErr != nil {
