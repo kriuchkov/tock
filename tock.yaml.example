@@ -46,6 +46,22 @@ calendar:
   # will wrap around (e.g. 25h becomes 01:00).
   # time_spent_format: "15:04"
 
+  # Format for start time display.
+  # Uses Go's standard time formatting syntax.
+  # Defaults to global time_format (24-hour: "15:04", 12-hour: "03:04 PM")
+  # time_start_format: "15:04"
+
+  # Format for end time display (appended after duration).
+  # Uses Go's standard time formatting syntax.
+  # This string is appended directly, so include any separators you want.
+  # Defaults to " • " + global time_format
+  # Example: " 🏁 15:04" results in " ... 01:30 🏁 17:00"
+  # time_end_format: " • 15:04"
+
+  # Format for total daily duration.
+  # Defaults to time_spent_format.
+  # time_total_format: "15:04"
+
 # Time format configuration
 # time_format: "24"  # 24-hour format (default): 15:04
 # time_format: "12"  # 12-hour format: 03:04 PM
