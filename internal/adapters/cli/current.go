@@ -113,6 +113,7 @@ Available variables:
 	}
 
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}'). See --help for variables.")
+	cmd.Flags().
+		StringVarP(&format, "format", "F", "", "Format output using a Go template (e.g. '{{.Project}}: {{.Duration}}'). See --help for variables.")
 	return cmd
 }

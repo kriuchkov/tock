@@ -124,6 +124,10 @@ theme:
     text: '#FFFFFF'
 timewarrior:
     data_path: /Users/user/.timewarrior/data
+calendar:
+    time_spent_format: "15:04"
+    time_start_format: "15:04"
+    time_end_format: " • 15:04"
 export:
     ical:
         file_name: "tock_export.ics"
@@ -177,6 +181,30 @@ Or use flags:
 
 ```bash
 tock --backend timewarrior list
+```
+
+### Calendar View
+
+Customize the time format in the calendar view (`tock calendar`).
+
+```yaml
+calendar:
+  # Format for duration display (Go time syntax)
+  time_spent_format: "15:04" # Default
+
+  # Format for start time (Go time syntax)
+  # Default: uses global time_format
+  time_start_format: "15:04"
+
+  # Format for end time (appended to duration)
+  # Includes separators or icons.
+  # Default: " • " + global time_format
+  # Example: " 🏁 15:04"
+  time_end_format: " • 15:04"
+
+  # Format for total daily duration.
+  # Defaults to time_spent_format.
+  time_total_format: "15:04"
 ```
 
 ## Theming

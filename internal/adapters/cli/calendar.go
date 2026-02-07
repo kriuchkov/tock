@@ -248,6 +248,7 @@ func (m *reportModel) renderDetails() string {
 		Render(m.viewport.View())
 }
 
+//molint:funlen //it's more readable to keep the content generation in one place for now
 func (m *reportModel) updateViewportContent() {
 	day := m.currentDate.Day()
 	report, ok := m.monthReports[day]
@@ -275,7 +276,12 @@ func (m *reportModel) updateViewportContent() {
 
 	for i, act := range activities {
 		isLast := i == len(activities)-1
-		start := act.StartTime.Format(m.timeFormat.GetDisplayFormat())
+
+		startFormat := m.config.Calendar.TimeStartFormat
+		if startFormat == "" {
+			startFormat = m.timeFormat.GetDisplayFormat()
+		}
+		start := act.StartTime.Format(startFormat)
 
 		// Timeline styles
 		dot := "●"
@@ -288,7 +294,11 @@ func (m *reportModel) updateViewportContent() {
 		// Content
 		durStr := timeutil.FormatDuration(act.Duration(), m.config.Calendar.TimeSpentFormat)
 		if act.EndTime != nil {
-			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
+			if m.config.Calendar.TimeEndFormat != "" {
+				durStr += act.EndTime.Format(m.config.Calendar.TimeEndFormat)
+			} else {
+				durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
+			}
 		}
 
 		// Row 1: Time | Dot | Project
@@ -332,7 +342,8 @@ func (m *reportModel) updateViewportContent() {
 		}
 	}
 
-	totalDurStr := timeutil.FormatDuration(report.TotalDuration.Round(time.Minute), m.config.Calendar.TimeSpentFormat)
+	totalFormat := m.config.Calendar.TimeTotalFormat
+	totalDurStr := timeutil.FormatDuration(report.TotalDuration.Round(time.Minute), totalFormat)
 	b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(fmt.Sprintf("Total: %s", totalDurStr)))
 	b.WriteString("\n")
 
