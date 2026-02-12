@@ -344,7 +344,16 @@ func (m *reportModel) updateViewportContent() {
 
 	totalFormat := m.config.Calendar.TimeTotalFormat
 	totalDurStr := timeutil.FormatDuration(report.TotalDuration.Round(time.Minute), totalFormat)
-	b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(fmt.Sprintf("Total: %s", totalDurStr)))
+
+	if m.config.Calendar.AlignDurationLeft {
+		b.WriteString(lipgloss.NewStyle().
+			Foreground(m.styles.Weekday.GetForeground()).
+			Render(fmt.Sprintf("%s Total", totalDurStr)))
+	} else {
+		b.WriteString(lipgloss.NewStyle().
+			Foreground(m.styles.Weekday.GetForeground()).
+			Render(fmt.Sprintf("Total: %s", totalDurStr)))
+	}
 	b.WriteString("\n")
 
 	// Project breakdown
@@ -361,13 +370,24 @@ func (m *reportModel) updateViewportContent() {
 	})
 
 	for _, s := range stats {
-		b.WriteString(fmt.Sprintf("- %s: %s\n",
-			m.styles.Project.Render(s.Name),
-			m.styles.Duration.Render(timeutil.FormatDuration(s.Duration, m.config.Calendar.TimeSpentFormat)),
-		))
+		b.WriteString(m.formatProjectStat(s.Name, s.Duration))
 	}
 
 	m.viewport.SetContent(b.String())
+}
+
+func (m *reportModel) formatProjectStat(name string, duration time.Duration) string {
+	dur := timeutil.FormatDuration(duration, m.config.Calendar.TimeSpentFormat)
+	if m.config.Calendar.AlignDurationLeft {
+		return fmt.Sprintf("%s %s\n",
+			m.styles.Duration.Render(dur),
+			m.styles.Project.Render(name),
+		)
+	}
+	return fmt.Sprintf("- %s: %s\n",
+		m.styles.Project.Render(name),
+		m.styles.Duration.Render(dur),
+	)
 }
 
 // Messages and Commands

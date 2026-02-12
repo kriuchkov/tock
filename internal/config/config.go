@@ -21,10 +21,11 @@ type Config struct {
 }
 
 type CalendarConfig struct {
-	TimeSpentFormat string `mapstructure:"time_spent_format"`
-	TimeStartFormat string `mapstructure:"time_start_format"`
-	TimeEndFormat   string `mapstructure:"time_end_format"`
-	TimeTotalFormat string `mapstructure:"time_total_format"`
+	TimeSpentFormat   string `mapstructure:"time_spent_format"`
+	TimeStartFormat   string `mapstructure:"time_start_format"`
+	TimeEndFormat     string `mapstructure:"time_end_format"`
+	TimeTotalFormat   string `mapstructure:"time_total_format"`
+	AlignDurationLeft bool   `mapstructure:"align_duration_left"`
 }
 
 type ExportConfig struct {
