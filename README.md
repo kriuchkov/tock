@@ -205,6 +205,11 @@ calendar:
   # Format for total daily duration.
   # Defaults to time_spent_format.
   time_total_format: "15:04"
+
+  # Align duration to the left side in the details view
+  # true:  "01:30 Project Name"
+  # false: "- Project Name: 01:30" (Default)
+  align_duration_left: false
 ```
 
 ## Theming
