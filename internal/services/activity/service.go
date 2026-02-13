@@ -204,11 +204,6 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 		}
 	}
 
-	// Enrich recent activities if needed?
-	// GetRecent is used for completion. Notes don't matter?
-	// User said list/calendar display them.
-	// But it might be nice to see them.
-	// Let's enrich recent - it's a small list.
 	return s.enrichActivities(ctx, recent)
 }
 
