@@ -64,9 +64,9 @@ func NewRootCmd() *cobra.Command {
 
 			repo := initRepository(backend, filePath)
 
-			notesBase := cfg.File.Path
+			notesBase := filePath
 			if notesBase == "" {
-				notesBase = "." // fallback
+				notesBase, _ = os.UserHomeDir()
 			}
 			notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
 			notesRepo := notes.NewRepository(notesPath)
@@ -157,9 +157,9 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 
 	repo := initRepository(backend, filePath)
 
-	notesBase := cfg.File.Path
+	notesBase := filePath
 	if notesBase == "" {
-		notesBase = "." // fallback
+		notesBase, _ = os.UserHomeDir()
 	}
 	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
 	notesRepo := notes.NewRepository(notesPath)
