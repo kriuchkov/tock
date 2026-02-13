@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -12,13 +13,16 @@ import (
 	"github.com/spf13/pflag"
 )
 
+//nolint:gocognit,funlen // Include all logic in one function
 func NewStartCmd() *cobra.Command {
 	var description string
 	var project string
 	var at string
+	var notes string
+	var tags []string
 
 	cmd := &cobra.Command{
-		Use:   "start [project] [description]",
+		Use:   "start [project] [description] [notes] [tags]",
 		Short: "Start a new activity",
 		ValidArgsFunction: func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 			var completions []string
@@ -43,12 +47,24 @@ func NewStartCmd() *cobra.Command {
 				}
 			}
 
-			// Support positional arguments: tock start Project Description
+			// Support positional arguments: tock start Project Description [Notes] [Tags]
 			if project == "" && len(args) > 0 {
 				project = args[0]
 			}
 			if description == "" && len(args) > 1 {
 				description = args[1]
+			}
+
+			if notes == "" && len(args) > 2 {
+				notes = args[2]
+			}
+
+			if len(tags) == 0 && len(args) > 3 {
+				for t := range strings.SplitSeq(args[3], ",") {
+					if trimmed := strings.TrimSpace(t); trimmed != "" {
+						tags = append(tags, trimmed)
+					}
+				}
 			}
 
 			// Interactive mode if project or description is missing
@@ -75,6 +91,8 @@ func NewStartCmd() *cobra.Command {
 				Description: description,
 				Project:     project,
 				StartTime:   startTime,
+				Notes:       notes,
+				Tags:        tags,
 			}
 
 			activity, err := service.Start(cmd.Context(), req)
@@ -95,6 +113,8 @@ func NewStartCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Activity description")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project name")
 	cmd.Flags().StringVarP(&at, "time", "t", "", "Start time (HH:MM)")
+	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
+	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
 
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)

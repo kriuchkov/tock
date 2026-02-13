@@ -15,6 +15,7 @@ type Theme struct {
 	SubText   lipgloss.Color
 	Faint     lipgloss.Color
 	Highlight lipgloss.Color
+	Tag       lipgloss.Color
 }
 
 // Styles holds all the lipgloss styles used in the UI.
@@ -44,6 +45,7 @@ func DarkTheme() Theme {
 		SubText:   lipgloss.Color("248"), // Light Grey
 		Faint:     lipgloss.Color("240"), // Dark Grey
 		Highlight: lipgloss.Color("214"), // Orange/Gold
+		Tag:       lipgloss.Color("120"), // Light Green
 	}
 }
 
@@ -56,6 +58,7 @@ func LightTheme() Theme {
 		SubText:   lipgloss.Color("240"), // Dark Grey
 		Faint:     lipgloss.Color("250"), // Light Grey
 		Highlight: lipgloss.Color("166"), // Orange (Darker than 214)
+		Tag:       lipgloss.Color("28"),  // Dark Green
 	}
 }
 
@@ -68,6 +71,7 @@ func ANSIDarkTheme() Theme {
 		SubText:   lipgloss.Color("7"),  // Light Grey
 		Faint:     lipgloss.Color("8"),  // Dark Grey
 		Highlight: lipgloss.Color("3"),  // Yellow
+		Tag:       lipgloss.Color("2"),  // Green
 	}
 }
 
@@ -80,6 +84,7 @@ func ANSILightTheme() Theme {
 		SubText:   lipgloss.Color("8"), // Dark Grey
 		Faint:     lipgloss.Color("7"), // Light Grey
 		Highlight: lipgloss.Color("5"), // Magenta (Yellow is often invisible on white)
+		Tag:       lipgloss.Color("2"), // Green
 	}
 }
 
@@ -105,6 +110,9 @@ func CustomTheme(cfg config.ThemeConfig) Theme {
 	}
 	if cfg.Highlight != "" {
 		t.Highlight = lipgloss.Color(cfg.Highlight)
+	}
+	if cfg.Tag != "" {
+		t.Tag = lipgloss.Color(cfg.Tag)
 	}
 
 	return t

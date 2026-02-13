@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -69,6 +70,8 @@ func (m *model) initTable() {
 		{Title: "Project", Width: 20},
 		{Title: "Description", Width: 40},
 		{Title: "Duration", Width: 10},
+		{Title: "Tags", Width: 15},
+		{Title: "Notes", Width: 30},
 	}
 
 	t := table.New(
@@ -178,7 +181,14 @@ func (m *model) renderTable(activities []models.Activity) {
 		}
 
 		key := fmt.Sprintf("%s-%02d", a.StartTime.Format("2006-01-02"), i+1)
-		rows = append(rows, table.Row{key, timeStr, a.Project, a.Description, duration})
+
+		tagsStr := strings.Join(a.Tags, ", ")
+		notesStr := strings.ReplaceAll(a.Notes, "\n", " ")
+		if len(notesStr) > 27 {
+			notesStr = notesStr[:27] + "..."
+		}
+
+		rows = append(rows, table.Row{key, timeStr, a.Project, a.Description, duration, tagsStr, notesStr})
 	}
 	m.table.SetRows(rows)
 }

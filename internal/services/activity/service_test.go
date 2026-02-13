@@ -17,206 +17,288 @@ import (
 )
 
 func TestService_Stop(t *testing.T) {
-	t.Run("stop running activity", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
+	now := time.Now()
 
-		now := time.Now()
-		runningAct := models.Activity{
-			Project:     "test",
-			Description: "running",
-			StartTime:   now.Add(-1 * time.Hour),
-			EndTime:     nil,
-		}
+	tests := []struct {
+		name      string
+		setup     func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository)
+		req       dto.StopActivityRequest
+		assert    func(t *testing.T, act *models.Activity)
+		assertErr func(t *testing.T, err error)
+	}{
+		{
+			name: "stop running activity",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				runningAct := models.Activity{
+					Project:     "test",
+					Description: "running",
+					StartTime:   now.Add(-1 * time.Hour),
+					EndTime:     nil,
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
 
-		// Expect Find with IsRunning=true
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{runningAct}, nil)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == runningAct.Project && a.EndTime != nil
+				})).Return(nil)
+			},
+			req: dto.StopActivityRequest{EndTime: now},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.NotNil(t, act.EndTime)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "stop with multiple running activities (should pick latest)",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				act1 := models.Activity{
+					Project:   "old",
+					StartTime: now.Add(-5 * time.Hour),
+					EndTime:   nil,
+				}
+				act2 := models.Activity{
+					Project:   "new",
+					StartTime: now.Add(-1 * time.Hour),
+					EndTime:   nil,
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{act1, act2}, nil)
 
-		// Expect Save with EndTime set
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == runningAct.Project && a.EndTime != nil
-		})).Return(nil)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "new" && a.EndTime != nil
+				})).Return(nil)
+			},
+			req: dto.StopActivityRequest{EndTime: now},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "new", act.Project)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "no running activity",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{}, nil)
+			},
+			req:    dto.StopActivityRequest{EndTime: now},
+			assert: func(_ *testing.T, _ *models.Activity) {},
+			assertErr: func(t *testing.T, err error) {
+				assert.ErrorIs(t, err, coreErrors.ErrNoActiveActivity)
+			},
+		},
+		{
+			name: "stop with notes and tags updates activity",
+			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
+				runningAct := models.Activity{
+					Project:     "test",
+					Description: "running",
+					StartTime:   now.Add(-1 * time.Hour),
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
 
-		req := dto.StopActivityRequest{EndTime: now}
-		stopped, err := svc.Stop(ctx, req)
-		require.NoError(t, err)
-		assert.NotNil(t, stopped.EndTime)
-	})
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "test" &&
+						a.EndTime != nil &&
+						a.Notes == "closing note" &&
+						len(a.Tags) == 2 && a.Tags[0] == "done"
+				})).Return(nil)
 
-	t.Run("stop with multiple running activities (should pick latest)", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
+				notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), "closing note", []string{"done", "success"}).
+					Return(nil)
+			},
+			req: dto.StopActivityRequest{
+				EndTime: now,
+				Notes:   "closing note",
+				Tags:    []string{"done", "success"},
+			},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "closing note", act.Notes)
+				assert.Equal(t, []string{"done", "success"}, act.Tags)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+	}
 
-		now := time.Now()
-		// Older running activity (maybe zombie)
-		act1 := models.Activity{
-			Project:   "old",
-			StartTime: now.Add(-5 * time.Hour),
-			EndTime:   nil,
-		}
-		// Newer running activity
-		act2 := models.Activity{
-			Project:   "new",
-			StartTime: now.Add(-1 * time.Hour),
-			EndTime:   nil,
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := portsmocks.NewMockActivityRepository(t)
+			notesRepo := new(portsmocks.MockNotesRepository)
+			tt.setup(repo, notesRepo)
 
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{act1, act2}, nil)
-
-		// Expect Save to be called for act2 (the latest one)
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == "new" && a.EndTime != nil
-		})).Return(nil)
-
-		req := dto.StopActivityRequest{EndTime: now}
-		stopped, err := svc.Stop(ctx, req)
-		require.NoError(t, err)
-		assert.Equal(t, "new", stopped.Project)
-	})
-
-	t.Run("no running activity", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
-
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{}, nil)
-
-		req := dto.StopActivityRequest{EndTime: time.Now()}
-		_, err := svc.Stop(ctx, req)
-		assert.ErrorIs(t, err, coreErrors.ErrNoActiveActivity)
-	})
+			svc := activity.NewService(repo, notesRepo)
+			got, err := svc.Stop(context.Background(), tt.req)
+			tt.assertErr(t, err)
+			tt.assert(t, got)
+		})
+	}
 }
 
 func TestService_Start(t *testing.T) {
-	t.Run("start stops currently running", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
+	now := time.Now()
 
-		runningAct := models.Activity{
-			Project:   "prev",
-			StartTime: time.Now().Add(-1 * time.Hour),
-		}
+	tests := []struct {
+		name      string
+		setup     func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository)
+		req       dto.StartActivityRequest
+		assert    func(t *testing.T, act *models.Activity)
+		assertErr func(t *testing.T, err error)
+	}{
+		{
+			name: "start stops currently running",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				runningAct := models.Activity{
+					Project:   "prev",
+					StartTime: now.Add(-1 * time.Hour),
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
 
-		// 1. Find running
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{runningAct}, nil)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "prev" && a.EndTime != nil
+				})).Return(nil)
 
-		// 2. Save (stop) running
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == "prev" && a.EndTime != nil
-		})).Return(nil)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "new" && a.EndTime == nil
+				})).Return(nil)
+			},
+			req: dto.StartActivityRequest{Project: "new", Description: "task"},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "new", act.Project)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "start with specific time stops running activity at that time",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				newStartTime := now.Add(-10 * time.Minute)
+				runningAct := models.Activity{
+					Project:   "prev",
+					StartTime: now.Add(-1 * time.Hour),
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
 
-		// 3. Save new
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == "new" && a.EndTime == nil
-		})).Return(nil)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					if a.Project != "prev" {
+						return false
+					}
+					if a.EndTime == nil {
+						return false
+					}
+					return a.EndTime.Equal(newStartTime)
+				})).Return(nil)
 
-		req := dto.StartActivityRequest{Project: "new", Description: "task"}
-		started, err := svc.Start(ctx, req)
-		require.NoError(t, err)
-		assert.Equal(t, "new", started.Project)
-	})
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "new" && a.StartTime.Equal(newStartTime)
+				})).Return(nil)
+			},
+			req: dto.StartActivityRequest{
+				Project:     "new",
+				Description: "task",
+				StartTime:   now.Add(-10 * time.Minute),
+			},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "new", act.Project)
+				assert.Equal(t, now.Add(-10*time.Minute), act.StartTime)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "start time before running start time falls back to now",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				newStartTime := now.Add(-2 * time.Hour)
+				runningAct := models.Activity{
+					Project:   "prev",
+					StartTime: now.Add(-1 * time.Hour), // Started 1 hour ago
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
 
-	t.Run("start with specific time stops running activity at that time", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					if a.Project != "prev" {
+						return false
+					}
+					if a.EndTime == nil {
+						return false
+					}
+					return a.EndTime.After(runningAct.StartTime)
+				})).Return(nil)
 
-		now := time.Now()
-		newStartTime := now.Add(-10 * time.Minute)
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "new" && a.StartTime.Equal(newStartTime)
+				})).Return(nil)
+			},
+			req: dto.StartActivityRequest{
+				Project:     "new",
+				Description: "task",
+				StartTime:   now.Add(-2 * time.Hour),
+			},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "new", act.Project)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "start with notes and tags",
+			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{}, nil)
 
-		runningAct := models.Activity{
-			Project:   "prev",
-			StartTime: now.Add(-1 * time.Hour),
-		}
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "project" && a.Notes == "note" && len(a.Tags) == 2
+				})).Return(nil)
 
-		// 1. Find running
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{runningAct}, nil)
+				notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), "note", []string{"tag1", "tag2"}).
+					Return(nil)
+			},
+			req: dto.StartActivityRequest{
+				Project:     "project",
+				Description: "desc",
+				StartTime:   now,
+				Notes:       "note",
+				Tags:        []string{"tag1", "tag2"},
+			},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "note", act.Notes)
+				assert.Equal(t, []string{"tag1", "tag2"}, act.Tags)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+	}
 
-		// 2. Save (stop) running - Expect EndTime to be newStartTime
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			if a.Project != "prev" {
-				return false
-			}
-			if a.EndTime == nil {
-				return false
-			}
-			return a.EndTime.Equal(newStartTime)
-		})).Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := portsmocks.NewMockActivityRepository(t)
+			notesRepo := new(portsmocks.MockNotesRepository)
+			tt.setup(repo, notesRepo)
 
-		// 3. Save new
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == "new" && a.StartTime.Equal(newStartTime)
-		})).Return(nil)
-
-		req := dto.StartActivityRequest{
-			Project:     "new",
-			Description: "task",
-			StartTime:   newStartTime,
-		}
-		started, err := svc.Start(ctx, req)
-		require.NoError(t, err)
-		assert.Equal(t, "new", started.Project)
-		assert.Equal(t, newStartTime, started.StartTime)
-	})
-
-	t.Run("start time before running start time falls back to now", func(t *testing.T) {
-		repo := portsmocks.NewMockActivityRepository(t)
-		svc := activity.NewService(repo)
-		ctx := context.Background()
-
-		now := time.Now()
-		// Start time is VERY old, before the running activity started
-		newStartTime := now.Add(-2 * time.Hour)
-
-		runningAct := models.Activity{
-			Project:   "prev",
-			StartTime: now.Add(-1 * time.Hour), // Started 1 hour ago
-		}
-
-		// 1. Find running
-		repo.EXPECT().Find(ctx, mock.MatchedBy(func(f dto.ActivityFilter) bool {
-			return f.IsRunning != nil && *f.IsRunning
-		})).Return([]models.Activity{runningAct}, nil)
-
-		// 2. Save (stop) running - Expect EndTime to correspond to Now (approx) or at least NOT be newStartTime
-		// The implementation uses time.Now() when overlap is detected.
-		// Since time.Now() moves, we can't test equality exactly, but we can check it's after runningAct.StartTime
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			if a.Project != "prev" {
-				return false
-			}
-			if a.EndTime == nil {
-				return false
-			}
-			// Should be roughly now, definitely not 2 hours ago
-			return a.EndTime.After(runningAct.StartTime)
-		})).Return(nil)
-
-		// 3. Save new
-		repo.EXPECT().Save(ctx, mock.MatchedBy(func(a models.Activity) bool {
-			return a.Project == "new" && a.StartTime.Equal(newStartTime)
-		})).Return(nil)
-
-		req := dto.StartActivityRequest{
-			Project:     "new",
-			Description: "task",
-			StartTime:   newStartTime,
-		}
-		started, err := svc.Start(ctx, req)
-		require.NoError(t, err)
-		assert.Equal(t, "new", started.Project)
-	})
+			svc := activity.NewService(repo, notesRepo)
+			got, err := svc.Start(context.Background(), tt.req)
+			tt.assertErr(t, err)
+			tt.assert(t, got)
+		})
+	}
 }

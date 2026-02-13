@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"github.com/kriuchkov/tock/internal/adapters/file"
-	"github.com/kriuchkov/tock/internal/adapters/timewarrior"
+	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
+	"github.com/kriuchkov/tock/internal/adapters/repositories/notes"
+
+	"github.com/kriuchkov/tock/internal/adapters/repositories/timewarrior"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
@@ -61,7 +64,14 @@ func NewRootCmd() *cobra.Command {
 
 			repo := initRepository(backend, filePath)
 
-			svc := activity.NewService(repo)
+			notesBase := filePath
+			if notesBase == "" {
+				notesBase, _ = os.UserHomeDir()
+			}
+			notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
+			notesRepo := notes.NewRepository(notesPath)
+
+			svc := activity.NewService(repo, notesRepo)
 
 			ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
 			ctx = context.WithValue(ctx, configKey{}, cfg)
@@ -146,7 +156,15 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 	}
 
 	repo := initRepository(backend, filePath)
-	return activity.NewService(repo), nil
+
+	notesBase := filePath
+	if notesBase == "" {
+		notesBase, _ = os.UserHomeDir()
+	}
+	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
+	notesRepo := notes.NewRepository(notesPath)
+
+	return activity.NewService(repo, notesRepo), nil
 }
 
 func projectRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

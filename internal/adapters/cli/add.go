@@ -19,6 +19,8 @@ type addOptions struct {
 	StartStr    string
 	EndStr      string
 	DurationStr string
+	Notes       string
+	Tags        []string
 }
 
 func NewAddCmd() *cobra.Command {
@@ -51,6 +53,8 @@ func NewAddCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.StartStr, "start", "s", "", "Start time (HH:MM)")
 	cmd.Flags().StringVarP(&opts.EndStr, "end", "e", "", "End time (HH:MM)")
 	cmd.Flags().StringVar(&opts.DurationStr, "duration", "", "Duration (e.g. 1h, 30m)")
+	cmd.Flags().StringVar(&opts.Notes, "note", "", "Activity notes")
+	cmd.Flags().StringSliceVar(&opts.Tags, "tag", nil, "Activity tags")
 
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)
@@ -97,6 +101,8 @@ func runAdd(cmd *cobra.Command, opts *addOptions) error {
 		Project:     opts.Project,
 		StartTime:   startTime,
 		EndTime:     endTime,
+		Notes:       opts.Notes,
+		Tags:        opts.Tags,
 	}
 
 	activity, err := service.Add(cmd.Context(), req)

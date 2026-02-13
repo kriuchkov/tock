@@ -14,6 +14,7 @@
 Features include:
 
 - 📝 **Simple plaintext format** - Activities stored in human-readable files
+- 📅 **Notes & Tags** - Attach detailed notes and tags to activities
 - 🎨 **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
 - ⚡ **Fast & Lightweight** - Single binary, no dependencies
 - 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
@@ -64,28 +65,34 @@ Download the latest release from the [Releases](https://github.com/kriuchkov/toc
 <img src="assets/demo.gif" width="820px" />
 <hr clear="right"/>
 
-Start tracking time (Interactive wizard):
+Start tracking time:
 
 ```bash
-tock start
-```
-
-Start tracking time (Quick):
-
-```bash
-tock start "My Project" "Implementing features"
-```
-
-Start tracking time (Flags):
-
-```bash
-tock start -d "Implementing features" -p "My Project"
+tock start # Interactive mode (requires no arguments)
+tock start "My Project" "Implementing features" # Quick start with arguments
+tock start "My Project" "Implementing features" "Some notes" "tag1,tag2"  # Quick start with arguments + notes/tags
+tock start -d "Implementing features" -p "My Project" # Start with flags
+tock start -d "Implementing features" -p "My Project" -t 14:30 --note "Some notes" --tag "afternoon" # Start with flags + time + notes/tags
 ```
 
 Stop the current activity:
 
 ```bash
-tock stop
+tock stop # Stop now
+tock stop -t 17:00 # Stop at specific time
+tock stop --note "Finished for the day" # Stop with a note
+tock stop --tag "end-of-day" # Stop with a tag
+```
+
+Continue a previous activity (Create a new entry with the same project/description):
+
+```bash
+tock continue  # Continue the last activity
+tock continue 1   # Continue the 2nd to last activity
+tock continue -d "New" # Continue last activity but with new description
+tock continue -p "New Project" # Continue last activity but with new project
+tock continue -t 14:00 # Continue last activity but with specific start time
+tock continue --note "Resuming work" --tag "resumed" # Continue last activity with a note and tag
 ```
 
 View activities in interactive calendar:
@@ -93,6 +100,18 @@ View activities in interactive calendar:
 ```bash
 tock list
 ```
+
+Calendar controls:
+
+- `Arrow Keys` / `h,j,k,l`: Navigate days
+- `n`: Next month
+- `p`: Previous month
+- `q` / `Esc`: Quit
+
+```bash
+tock calendar
+```
+
 
 ## Configuration
 
@@ -150,6 +169,8 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 - `TOCK_EXPORT_ICAL_FILE_NAME`: Custom filename for bulk iCal export (default: `tock_export.ics`)
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
+Notes are stored as individual files in `~/.tock/notes/` (or relative to your configured file path).
+
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
 - `TOCK_WEEKLY_TARGET`: Weekly workload target as a duration (e.g., `40h`, `37h30m`)
 
@@ -254,8 +275,7 @@ export TOCK_COLOR_PRIMARY="63"   # Blue
 export TOCK_COLOR_SECONDARY="196" # Red
 export TOCK_COLOR_TEXT="255"     # White
 export TOCK_COLOR_SUBTEXT="248"  # Light Grey
-export TOCK_COLOR_FAINT="240"    # Dark Grey
-export TOCK_COLOR_HIGHLIGHT="214" # Orange/Gold
+export TOCK_COLOR_TAG="34"       # Green
 ```
 
 ### Example: Cyberpunk / Fuchsia Theme
@@ -268,6 +288,9 @@ export TOCK_COLOR_PRIMARY="#FF00FF"   # Fuchsia
 export TOCK_COLOR_SECONDARY="#00FFFF" # Cyan
 export TOCK_COLOR_TEXT="#FFFFFF"      # White
 export TOCK_COLOR_SUBTEXT="#B0B0B0"   # Light Grey
+export TOCK_COLOR_FAINT="#404040"     # Dark Grey
+export TOCK_COLOR_HIGHLIGHT="#FFFF00" # Yellow
+export TOCK_COLOR_TAG="#00FF00"       # GreenGrey
 export TOCK_COLOR_FAINT="#404040"     # Dark Grey
 export TOCK_COLOR_HIGHLIGHT="#FFFF00" # Yellow
 ```
@@ -357,9 +380,11 @@ Use "tock [command] --help" for more information about a command.
 Start a new activity. You can provide project and task as arguments, use flags, or use the interactive mode.
 
 ```bash
-tock start                                   # Interactive mode
-tock start "Project Name" "Task description" # Positional arguments
-tock start -p "Project" -d "Task" -t 14:30   # Start at specific time
+tock start                                             # Interactive mode
+tock start "Project Name" "Task description"           # Positional arguments
+tock start "Project" "Desc" "My note" "tag1, tag2"     # Positional notes/tags
+tock start -p "Project" -d "Task" -t 14:30             # Start at specific time
+tock start --note "Meeting notes" --tag "meeting"      # Start with note & tag flags
 ```
 
 **Flags:**
@@ -367,6 +392,8 @@ tock start -p "Project" -d "Task" -t 14:30   # Start at specific time
 - `-d, --description`: Activity description
 - `-p, --project`: Project name
 - `-t, --time`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM", optional, defaults to now)
+- `--note`: Activity notes
+- `--tag`: Activity tags (can be used multiple times)
 
 ### Stop tracking
 
@@ -374,12 +401,16 @@ Stop the currently running activity.
 
 ```bash
 tock stop
-tock stop -t 17:00  # Stop at specific time
+tock stop -t 17:00                          # Stop at specific time
+tock stop --note "Done for today"           # Stop and append a note
+tock stop --tag "coding,feature"            # Stop and add tags
 ```
 
 **Flags:**
 
 - `-t, --time`: End time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM", optional, defaults to now)
+- `--note`: Activity notes
+- `--tag`: Activity tags (can be used multiple times)
 
 ### Add past activity
 
@@ -389,6 +420,7 @@ Add a completed activity manually. You can use flags or the interactive wizard.
 tock add                                         # Interactive wizard
 tock add -p "Project" -d "Task" -s 10:00 -e 11:00
 tock add -p "Project" -d "Task" -s 14:00 --duration 1h30m
+tock add -p "Project" -d "Task" -s 10:00 -e 11:00 --note "Fixed bug #123" --tag "bugfix"
 ```
 
 **Flags:**
@@ -398,6 +430,8 @@ tock add -p "Project" -d "Task" -s 14:00 --duration 1h30m
 - `-s, --start`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `-e, --end`: End time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.
+- `--note`: Activity notes
+- `--tag`: Activity tags (can be used multiple times)
 
 ### Continue activity
 
@@ -407,6 +441,7 @@ Continue a previously tracked activity. Useful for resuming work on a recent tas
 tock continue          # Continue the last activity
 tock continue 1        # Continue the 2nd to last activity
 tock continue -d "New" # Continue last activity but with new description
+tock continue --note "Starting phase 2" --tag "phase-2" # Continue with notes/tags
 ```
 
 **Flags:**
@@ -414,6 +449,8 @@ tock continue -d "New" # Continue last activity but with new description
 - `-d, --description`: Override description
 - `-p, --project`: Override project
 - `-t, --time`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM or "h:mm AM/PM")
+- `--note`: Activity notes
+- `--tag`: Activity tags (can be used multiple times)
 
 ### Current activity
 

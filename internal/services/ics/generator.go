@@ -47,7 +47,23 @@ func GenerateEvent(act models.Activity, uidKey string) string {
 	sb.WriteString(fmt.Sprintf("DTSTART:%s\n", start))
 	sb.WriteString(fmt.Sprintf("DTEND:%s\n", end))
 	sb.WriteString(fmt.Sprintf("SUMMARY:%s\n", escapeProperty(summary)))
-	sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\n", escapeProperty(act.Description)))
+
+	description := act.Description
+	if act.Notes != "" {
+		description += "\n\n" + act.Notes
+	}
+
+	sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\n", escapeProperty(description)))
+
+	if len(act.Tags) > 0 {
+		escapedTags := make([]string, len(act.Tags))
+		for i, tag := range act.Tags {
+			escapedTags[i] = escapeProperty(tag)
+		}
+
+		sb.WriteString(fmt.Sprintf("CATEGORIES:%s\n", strings.Join(escapedTags, ",")))
+	}
+
 	sb.WriteString("END:VEVENT\n")
 	return sb.String()
 }

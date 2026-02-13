@@ -21,6 +21,8 @@ func NewContinueCmd() *cobra.Command {
 	var description string
 	var project string
 	var at string
+	var notes string
+	var tags []string
 
 	cmd := &cobra.Command{
 		Use:     "continue [NUMBER]",
@@ -98,6 +100,8 @@ func NewContinueCmd() *cobra.Command {
 				Description: newDescription,
 				Project:     newProject,
 				StartTime:   startTime,
+				Notes:       notes,
+				Tags:        tags,
 			}
 
 			startedActivity, err := service.Start(ctx, req)
@@ -118,5 +122,7 @@ func NewContinueCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&description, "description", "d", "", "the description of the new activity")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "the project to which the new activity belongs")
 	cmd.Flags().StringVarP(&at, "time", "t", "", "the time for changing the activity status (HH:MM)")
+	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
+	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
 	return cmd
 }
