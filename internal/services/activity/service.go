@@ -13,11 +13,12 @@ import (
 )
 
 type service struct {
-	repo ports.ActivityRepository
+	repo      ports.ActivityRepository
+	notesRepo ports.NotesRepository
 }
 
-func NewService(repo ports.ActivityRepository) ports.ActivityResolver {
-	return &service{repo: repo}
+func NewService(repo ports.ActivityRepository, notesRepo ports.NotesRepository) ports.ActivityResolver {
+	return &service{repo: repo, notesRepo: notesRepo}
 }
 
 func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error) {
@@ -47,11 +48,20 @@ func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*mod
 		Description: req.Description,
 		Project:     req.Project,
 		StartTime:   startTime,
+		Notes:       req.Notes,
+		Tags:        req.Tags,
 	}
 
 	if saveErr := s.repo.Save(ctx, newActivity); saveErr != nil {
 		return nil, errors.Wrap(saveErr, "save activity")
 	}
+
+	if s.notesRepo != nil && (req.Notes != "" || len(req.Tags) > 0) {
+		if err = s.notesRepo.Save(ctx, newActivity.ID(), newActivity.StartTime, req.Notes, req.Tags); err != nil {
+			return nil, errors.Wrap(err, "save notes")
+		}
+	}
+
 	return &newActivity, nil
 }
 
@@ -84,8 +94,22 @@ func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*model
 	}
 
 	last.EndTime = &endTime
+	// Update notes/tags if provided
+	if req.Notes != "" {
+		last.Notes = req.Notes
+	}
+	if len(req.Tags) > 0 {
+		last.Tags = req.Tags
+	}
+
 	if saveErr := s.repo.Save(ctx, *last); saveErr != nil {
 		return nil, errors.Wrap(saveErr, "save activity")
+	}
+
+	if s.notesRepo != nil && (req.Notes != "" || len(req.Tags) > 0) {
+		if err = s.notesRepo.Save(ctx, last.ID(), last.StartTime, last.Notes, last.Tags); err != nil {
+			return nil, errors.Wrap(err, "save notes")
+		}
 	}
 
 	return last, nil
@@ -97,22 +121,39 @@ func (s *service) Add(ctx context.Context, req dto.AddActivityRequest) (*models.
 		Project:     req.Project,
 		StartTime:   req.StartTime,
 		EndTime:     &req.EndTime,
+		Notes:       req.Notes,
+		Tags:        req.Tags,
 	}
 
 	if saveErr := s.repo.Save(ctx, newActivity); saveErr != nil {
 		return nil, errors.Wrap(saveErr, "save activity")
 	}
+
+	if s.notesRepo != nil && (req.Notes != "" || len(req.Tags) > 0) {
+		if err := s.notesRepo.Save(ctx, newActivity.ID(), newActivity.StartTime, req.Notes, req.Tags); err != nil {
+			return nil, errors.Wrap(err, "save notes")
+		}
+	}
+
 	return &newActivity, nil
 }
 
 func (s *service) List(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
-	return s.repo.Find(ctx, filter)
+	activites, err := s.repo.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return s.enrichActivities(ctx, activites)
 }
 
 func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error) {
 	activities, err := s.repo.Find(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "find activities")
+	}
+
+	if s.notesRepo != nil {
+		activities, _ = s.enrichActivities(ctx, activities)
 	}
 
 	report := &dto.Report{
@@ -162,5 +203,25 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 			break
 		}
 	}
-	return recent, nil
+
+	// Enrich recent activities if needed?
+	// GetRecent is used for completion. Notes don't matter?
+	// User said list/calendar display them.
+	// But it might be nice to see them.
+	// Let's enrich recent - it's a small list.
+	return s.enrichActivities(ctx, recent)
+}
+
+func (s *service) enrichActivities(ctx context.Context, activities []models.Activity) ([]models.Activity, error) {
+	if s.notesRepo == nil {
+		return activities, nil
+	}
+	for i := range activities {
+		notes, tags, err := s.notesRepo.Get(ctx, activities[i].ID(), activities[i].StartTime)
+		if err == nil {
+			activities[i].Notes = notes
+			activities[i].Tags = tags
+		}
+	}
+	return activities, nil
 }

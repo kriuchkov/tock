@@ -301,13 +301,19 @@ func (m *reportModel) updateViewportContent() {
 			}
 		}
 
-		// Row 1: Time | Dot | Project
+		// Row 1: Time | Dot | Project [Tags]
+		projectLine := m.styles.Project.Render(act.Project)
+		if len(act.Tags) > 0 {
+			tagsStr := fmt.Sprintf("[%s]", strings.Join(act.Tags, ", "))
+			projectLine += " " + lipgloss.NewStyle().Foreground(m.theme.Tag).Render(tagsStr)
+		}
+
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
 			m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
 			"  ",
 			dotStyle.Render(dot),
 			"  ",
-			m.styles.Project.Render(act.Project),
+			projectLine,
 		) + "\n")
 
 		// Row 2:      | Line | Description
@@ -329,6 +335,19 @@ func (m *reportModel) updateViewportContent() {
 			"  ",
 			m.styles.Duration.Render(durStr),
 		) + "\n")
+
+		// Row 4:      | Line | Notes
+		if act.Notes != "" {
+			notes := strings.ReplaceAll(act.Notes, "\n", " ") // flatten notes for list view
+
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.NewStyle().Width(9).Render(""),
+				"  ",
+				lineStyle.Render(line),
+				"  ",
+				lipgloss.NewStyle().Faint(true).Render(notes),
+			) + "\n")
+		}
 
 		// Spacer
 		if !isLast {

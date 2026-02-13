@@ -52,6 +52,7 @@ type ThemeConfig struct {
 	SubText   string `mapstructure:"sub_text"`
 	Faint     string `mapstructure:"faint"`
 	Highlight string `mapstructure:"highlight"`
+	Tag       string `mapstructure:"tag"`
 }
 
 type Option func(*viper.Viper)

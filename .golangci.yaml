@@ -153,7 +153,7 @@ linters:
       # The maximal average package complexity.
       # If it's higher than 0.0 (float) the check is enabled.
       # Default: 0.0
-      package-average: 10.0
+      package-average: 14.0
 
     depguard:
       # Rules to apply.

@@ -6,3 +6,4 @@ packages:
     interfaces:
       ActivityResolver:
       ActivityRepository:
+      NotesRepository:

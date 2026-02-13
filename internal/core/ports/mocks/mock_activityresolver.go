@@ -39,6 +39,74 @@ func (_m *MockActivityResolver) EXPECT() *MockActivityResolver_Expecter {
 	return &MockActivityResolver_Expecter{mock: &_m.Mock}
 }
 
+// Add provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) Add(ctx context.Context, req dto.AddActivityRequest) (*models.Activity, error) {
+	ret := _mock.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Add")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.AddActivityRequest) (*models.Activity, error)); ok {
+		return returnFunc(ctx, req)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.AddActivityRequest) *models.Activity); ok {
+		r0 = returnFunc(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.AddActivityRequest) error); ok {
+		r1 = returnFunc(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_Add_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Add'
+type MockActivityResolver_Add_Call struct {
+	*mock.Call
+}
+
+// Add is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req dto.AddActivityRequest
+func (_e *MockActivityResolver_Expecter) Add(ctx interface{}, req interface{}) *MockActivityResolver_Add_Call {
+	return &MockActivityResolver_Add_Call{Call: _e.mock.On("Add", ctx, req)}
+}
+
+func (_c *MockActivityResolver_Add_Call) Run(run func(ctx context.Context, req dto.AddActivityRequest)) *MockActivityResolver_Add_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 dto.AddActivityRequest
+		if args[1] != nil {
+			arg1 = args[1].(dto.AddActivityRequest)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_Add_Call) Return(activity *models.Activity, err error) *MockActivityResolver_Add_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_Add_Call) RunAndReturn(run func(ctx context.Context, req dto.AddActivityRequest) (*models.Activity, error)) *MockActivityResolver_Add_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRecent provides a mock function for the type MockActivityResolver
 func (_mock *MockActivityResolver) GetRecent(ctx context.Context, limit int) ([]models.Activity, error) {
 	ret := _mock.Called(ctx, limit)

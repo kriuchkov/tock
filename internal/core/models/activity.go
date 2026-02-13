@@ -12,6 +12,12 @@ type Activity struct {
 	Project     string     `json:"project"`
 	StartTime   time.Time  `json:"start_time"`
 	EndTime     *time.Time `json:"end_time,omitempty"` // nil if active
+	Notes       string     `json:"notes,omitempty"`
+	Tags        []string   `json:"tags,omitempty"`
+}
+
+func (a Activity) ID() string {
+	return a.StartTime.Format("150405")
 }
 
 func (a Activity) Duration() time.Duration {

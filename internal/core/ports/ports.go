@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
@@ -20,4 +21,9 @@ type ActivityRepository interface {
 	Save(ctx context.Context, activity models.Activity) error
 	FindLast(ctx context.Context) (*models.Activity, error)
 	Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error)
+}
+
+type NotesRepository interface {
+	Save(ctx context.Context, activityID string, date time.Time, notes string, tags []string) error
+	Get(ctx context.Context, activityID string, date time.Time) (string, []string, error)
 }

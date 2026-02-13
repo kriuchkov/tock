@@ -13,6 +13,8 @@ import (
 
 func NewStopCmd() *cobra.Command {
 	var at string
+	var notes string
+	var tags []string
 
 	fn := func(cmd *cobra.Command, _ []string) error {
 		service := getService(cmd)
@@ -26,7 +28,11 @@ func NewStopCmd() *cobra.Command {
 			}
 		}
 
-		req := dto.StopActivityRequest{EndTime: endTime}
+		req := dto.StopActivityRequest{
+			EndTime: endTime,
+			Notes:   notes,
+			Tags:    tags,
+		}
 
 		activity, err := service.Stop(cmd.Context(), req)
 		if err != nil {
@@ -49,5 +55,7 @@ func NewStopCmd() *cobra.Command {
 		RunE:    fn,
 	}
 	cmd.Flags().StringVarP(&at, "time", "t", "", "End time (HH:MM)")
+	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
+	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
 	return cmd
 }

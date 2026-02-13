@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/kriuchkov/tock/internal/adapters/file"
+	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 

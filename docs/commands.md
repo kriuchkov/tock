@@ -28,20 +28,18 @@ Start a new activity.
 **Usage:**
 
 ```bash
-tock start [project] [description] [flags]
+tock start [project] [description] [notes] [tags] [flags]
 ```
 
 **Examples:**
 
 ```bash
-# Interactive mode (requires no arguments)
-tock start
 
-# Quick start with arguments
-tock start "Backend" "API implementation"
-
-# Start at a specific time
-tock start -p "Backend" -d "API implementation" -t 09:30
+tock start                                              # Interactive mode (requires no arguments)
+tock start "Backend" "API implementation"                # Quick start with arguments
+tock start "Project" "Desc" "My note" "tag1, tag2"       # Positional notes/tags
+tock start -p "Backend" -d "API implementation" -t 09:30 # Start at a specific time
+tock start --note "Meeting notes" --tag "meeting"        # Start with note & tag flags
 ```
 
 **Flags:**
@@ -49,6 +47,8 @@ tock start -p "Backend" -d "API implementation" -t 09:30
 - `-p, --project string`: Project name
 - `-d, --description string`: Activity description
 - `-t, --time string`: Start time (HH:MM or "h:mm AM/PM")
+- `--note string`: Activity notes
+- `--tag strings`: Activity tags (can be specified multiple times)
 
 ---
 
@@ -70,11 +70,19 @@ tock stop
 
 # Stop at a specific time
 tock stop -t 17:00
+
+# Stop and add a note
+tock stop --note "Finished the API integration"
+
+# Stop and add tags
+tock stop --tag "coding,feature"
 ```
 
 **Flags:**
 
 - `-t, --time string`: End time (HH:MM or "h:mm AM/PM")
+- `--note string`: Activity notes
+- `--tag strings`: Activity tags
 
 ---
 
@@ -91,17 +99,12 @@ tock add [flags]
 **Examples:**
 
 ```bash
-# Interactive mode
-tock add
 
-# Add with start and end times
-tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15
-
-# Add with duration
-tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m
-
-# Add for a specific date
-tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"
+tock add                                                                   # Interactive mode
+tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15.                # Add with start and end times
+tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m              # Add with duration
+tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00" # Add for a specific date
+tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "Investigate new features" --tag "planning" --tag "tock" # Add with notes and tags
 ```
 
 **Flags:**
@@ -111,6 +114,8 @@ tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"
 - `-s, --start string`: Start time (HH:MM or YYYY-MM-DD HH:MM)
 - `-e, --end string`: End time (HH:MM or YYYY-MM-DD HH:MM)
 - `--duration string`: Duration (e.g., "1h30m", "10m"). Used if end time is omitted.
+- `--note string`: Activity notes
+- `--tag strings`: Activity tags
 
 ---
 
@@ -141,6 +146,9 @@ tock continue 2
 # Continue the most recent activity but with a different description
 tock continue 1 -d "Code review"
 
+# Continue with notes and tags
+tock continue --note "Starting phase 2" --tag "phase-2"
+
 # Continue with a different description
 tock continue -d "Fixing regression"
 ```
@@ -150,6 +158,8 @@ tock continue -d "Fixing regression"
 - `-p, --project string`: Override project name
 - `-d, --description string`: Override description
 - `-t, --start string`: Start time
+- `--note string`: Activity notes
+- `--tag strings`: Activity tags
 
 ---
 
@@ -189,6 +199,7 @@ tock list
 **Description:**
 This command opens an interactive table view focusing on the activities of a single day.
 It is useful when you want to see a clean, detailed list of tasks without the calendar grid.
+Activities with notes or tags will display indicators next to the description.
 
 **Controls:**
 
@@ -212,7 +223,7 @@ tock calendar
 This is the full TUI experience for Tock. Depending on your terminal size, it displays:
 
 1. **Calendar Grid**: A monthly view to visualize days with activity.
-2. **Daily Details**: A timeline view of activities for the selected date.
+2. **Daily Details**: A timeline view of activities for the selected date, showing project, description, duration, and any tags or notes.
 3. **Sidebar**: Contextual information and stats.
 
 **Controls:**
@@ -236,14 +247,9 @@ tock current [flags]
 **Examples:**
 
 ```bash
-# Default output
-tock current
-
-# JSON output
-tock current --json
-
-# Custom format
-tock current --format "{{.Project}}: {{.Duration}}"
+tock current                                        # Default output
+tock current --json                                 # JSON output
+tock current --format "{{.Project}}: {{.Duration}}" # Custom format
 ```
 
 **Format Variables:**
