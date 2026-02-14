@@ -10,7 +10,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`watch`](#watch)
 - [Viewing & Reporting](#viewing--reporting)
   - [`calendar`](#calendar)
-  - [`list`](#list-alias-ls-calendar)
+  - [`list`](#list-alias-ls)
   - [`current`](#current)
   - [`last`](#last-alias-lt)
   - [`report`](#report)
@@ -34,12 +34,13 @@ tock start [project] [description] [notes] [tags] [flags]
 **Examples:**
 
 ```bash
-
-tock start                                              # Interactive mode (requires no arguments)
-tock start "Backend" "API implementation"                # Quick start with arguments
-tock start "Project" "Desc" "My note" "tag1, tag2"       # Positional notes/tags
-tock start -p "Backend" -d "API implementation" -t 09:30 # Start at a specific time
-tock start --note "Meeting notes" --tag "meeting"        # Start with note & tag flags
+tock start                                                                         # Interactive mode
+tock start "Backend" "API implementation"                                          # Positional arguments: Project and Description
+tock start "Project" "Desc" "My note" "tag1, tag2"                                 # Positional arguments including note and tags
+tock start --project "Backend" --description "API implementation"                  # Using explicit flags
+tock start -p "Backend" -d "API implementation" -t 09:30                           # Start at a specific time
+tock start -p "Design" -d "Mockups" --note "Home page redesign" --tag "ui,figma"   # Start with notes and tags
+tock start "Backend" "API implementation" -t 10:00                                 # Mixed usage (positional + flags)
 ```
 
 **Flags:**
@@ -48,7 +49,7 @@ tock start --note "Meeting notes" --tag "meeting"        # Start with note & tag
 - `-d, --description string`: Activity description
 - `-t, --time string`: Start time (HH:MM or "h:mm AM/PM")
 - `--note string`: Activity notes
-- `--tag strings`: Activity tags (can be specified multiple times)
+- `--tag strings`: Activity tags
 
 ---
 
@@ -65,17 +66,12 @@ tock stop [flags]
 **Examples:**
 
 ```bash
-# Stop now
-tock stop
-
-# Stop at a specific time
-tock stop -t 17:00
-
-# Stop and add a note
-tock stop --note "Finished the API integration"
-
-# Stop and add tags
-tock stop --tag "coding,feature"
+tock stop                                                         # Stop current activity now
+tock stop -t 17:00                                                # Stop at a specific time
+tock stop --time "17:00"                                          # Stop at a specific time (long flag)
+tock stop --note "Finished the API integration, ready for review" # Stop and append a note
+tock stop --tag "coding,feature"                                  # Stop and add tags
+tock stop -t 18:00 --note "Leaving office"                        # Stop at 18:00 with a note
 ```
 
 **Flags:**
@@ -99,12 +95,11 @@ tock add [flags]
 **Examples:**
 
 ```bash
-
-tock add                                                                   # Interactive mode
-tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15.                # Add with start and end times
-tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m              # Add with duration
-tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00" # Add for a specific date
-tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "Investigate new features" --tag "planning" --tag "tock" # Add with notes and tags
+tock add                                                                                                                           # Interactive mode
+tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15                                                                         # Add with start and end times
+tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m                                                                      # Add using start time and duration
+tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"                                                         # Add for a specific past date
+tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "New features" --tag "planning" --tag "tock"               # Add with notes and tags
 ```
 
 **Flags:**
@@ -137,33 +132,13 @@ tock continue [index] [flags]
 **Examples:**
 
 ```bash
-# Continue the most recent activity
-tock continue
-
-# Continue the 2nd most recent activity (see 'tock last' or use `tock continue <tab>`)
-tock continue 2
-
-# Continue the most recent activity but with a different description
-tock continue 1 -d "Code review"
-
-# Continue with notes and tags
-tock continue --note "Starting phase 2" --tag "phase-2"
-
-# Continue with a different description
-tock continue -d "Fixing regression"
+tock continue                                        # Continue the most recent activity
+tock continue 1                                      # Continue the 2nd most recent activity (index 1)
+tock continue -d "Code review"                       # Continue last activity with a new description
+tock continue 1 -p "New Project"                     # Continue 2nd last activity with a new project
+tock continue --note "Starting phase 2" --tag "dev"  # Continue with new notes and tags
+tock continue -t 09:00                               # Continue starting at a specific time
 ```
-
-**Flags:**
-
-- `-p, --project string`: Override project name
-- `-d, --description string`: Override description
-- `-t, --start string`: Start time
-- `--note string`: Activity notes
-- `--tag strings`: Activity tags
-
----
-
-### `watch`
 
 Display a full-screen stopwatch for the current activity.
 
@@ -185,29 +160,6 @@ tock watch [flags]
 ---
 
 ## Viewing & Reporting
-
-### `list` (alias: `ls`)
-
-View a simple list of activities for a specific day.
-
-**Usage:**
-
-```bash
-tock list
-```
-
-**Description:**
-This command opens an interactive table view focusing on the activities of a single day.
-It is useful when you want to see a clean, detailed list of tasks without the calendar grid.
-Activities with notes or tags will display indicators next to the description.
-
-**Controls:**
-
-- `Left` / `h`: Previous day
-- `Right` / `l`: Next day
-- `q` / `Ctrl+C`: Quit
-
----
 
 ### `calendar`
 
@@ -234,6 +186,31 @@ This is the full TUI experience for Tock. Depending on your terminal size, it di
 - `j` / `k`: Scroll through the activity list (if it overflows)
 - `q` / `Esc`: Quit
 
+---
+
+### `list` (alias: `ls`)
+
+View a simple list of activities for a specific day.
+
+**Usage:**
+
+```bash
+tock list
+```
+
+**Description:**
+This command opens an interactive table view focusing on the activities of a single day.
+It is useful when you want to see a clean, detailed list of tasks without the calendar grid.
+Activities with notes or tags will display indicators next to the description.
+
+**Controls:**
+
+- `Left` / `h`: Previous day
+- `Right` / `l`: Next day
+- `q` / `Ctrl+C`: Quit
+
+---
+
 ### `current`
 
 Display information about the currently running activity.
@@ -247,32 +224,16 @@ tock current [flags]
 **Examples:**
 
 ```bash
-tock current                                        # Default output
-tock current --json                                 # JSON output
-tock current --format "{{.Project}}: {{.Duration}}" # Custom format
+tock current                                        # Show current activity details
+tock current --json                                 # Output as JSON  
+tock current --format "{{.Project}}: {{.Duration}}" # Show with custom Go template format
+tock current --format "{{.Duration}}"               # Show only duration
+tock current --format "{{.DurationHMS}}"            # Show duration in HH:MM:SS format
 ```
-
-**Format Variables:**
-
-- `.Project`: Project name
-- `.Description`: Activity description
-- `.StartTime`: Start time (time.Time object)
-- `.EndTime`: End time (time.Time object, usually nil)
-- `.Duration`: Activity duration (time.Duration object)
-- `.DurationHMS`: Duration formatted as HH:MM:SS
-
-```
-
-**Flags:**
-
-- `--format string`: Go template for output format
-- `--json`: Output as JSON
-
----
 
 ### `last` (alias: `lt`)
 
-List recent unique activities. Useful for finding IDs for `tock continue`.
+List recent activities.
 
 **Usage:**
 
@@ -283,17 +244,13 @@ tock last [flags]
 **Examples:**
 
 ```bash
-# Show last 10 activities (default)
-tock last
-
-# Show last 20
-tock last -n 20
+tock last        # Show last 10 activities (default)
+tock last -n 20  # Show last 20 activities
 ```
 
 **Flags:**
 
 - `-n, --number int`: Number of activities to show (default 10)
-- `--json`: Output as JSON
 
 ---
 
@@ -310,38 +267,16 @@ tock report [flags]
 **Examples:**
 
 ```bash
-# Report for today
-tock report --today
-
-# Report for yesterday
-tock report --yesterday
-
-# Report for a specific date
-tock report --date 2023-10-15
-
-# Filter by project "Work" and show summaries only
-tock report -p "Work" --summary
-
-# JSON output for external scripts
-tock report --today --json
-
-# JSON output for a specific project
-tock report --date 2023-10-15 -p "Work" --json
+tock report --today                               # Report for today
+tock report --yesterday                           # Report for yesterday
+tock report --date 2023-10-15                     # Report for a specific date
+tock report -p "Work"                             # Filter by project "Work"
+tock report -d "meeting"                          # Filter by description containing "meeting"
+tock report --summary                             # Show summary statistics only
+tock report -p "Work" --summary                   # Show summary for project "Work"
+tock report --today --json                        # JSON output for today
+tock report --date 2023-10-15 -p "Work" --json    # Filtered JSON output
 ```
-
-**Flags:**
-
-- `--today`: Report for today
-- `--yesterday`: Report for yesterday
-- `--date string`: Report for date (YYYY-MM-DD)
-- `-p, --project string`: Filter by project name
-- `-d, --description string`: Filter by description text (substring)
-- `-s, --summary`: Show only project totals, hide individual tasks
-- `--json`: Output as JSON
-
----
-
-## Data & Analysis
 
 ### `analyze`
 
@@ -356,11 +291,8 @@ tock analyze [flags]
 **Examples:**
 
 ```bash
-# Analyze last 30 days (default)
-tock analyze
-
-# Analyze last 7 days
-tock analyze -n 7
+tock analyze      # Analyze last 30 days (default)
+tock analyze -n 7 # Analyze last 7 days
 ```
 
 **Flags:**
@@ -382,31 +314,14 @@ tock ical [id] [flags]
 **Examples:**
 
 ```bash
-# Export single activity by ID (from list/report view)
-tock ical 2026-01-29-01
-
-# Export and open in default calendar app (macOS)
-tock ical 2026-01-29-01 --open
-
-# Bulk export all activities to a directory
-tock ical --path ./calendar_export
+tock ical 2026-01-29-01                 # Export specific activity to stdout
+tock ical 2026-01-29-01 > meeting.ics   # Save specific activity to file
+tock ical 2026-01-29-01 --open          # Export and open in default calendar app
+tock ical --path ./calendar_export      # Bulk export all activities to directory
+tock ical 2026-01-07 --path ./export    # Export single day activities to directory
 ```
 
 **Flags:**
 
 - `--path string`: Output directory for files
 - `--open`: Open generated file in system calendar
-
----
-
-## Global Flags
-
-These flags can be used with any command.
-
-| Flag | Description |
-|------|-------------|
-| `-b, --backend string` | Storage backend: `file` (default) or `timewarrior` |
-| `--config string` | Path to config file (default `~/.config/tock/tock.yaml`) |
-| `-f, --file string` | Path to data file (or directory for TimeWarrior) |
-| `-h, --help` | Show help for command |
-| `-v, --version` | Show version info |
