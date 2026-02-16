@@ -43,7 +43,11 @@ func NewWatchCmd() *cobra.Command {
 
 			activity := activities[0]
 			theme := GetTheme(cfg.Theme)
-			p := tea.NewProgram(initialWatchModel(activity, service, theme))
+
+			var opts []tea.ProgramOption
+			opts = append(opts, tea.WithAltScreen())
+
+			p := tea.NewProgram(initialWatchModel(activity, service, theme), opts...)
 			if _, err = p.Run(); err != nil {
 				return fmt.Errorf("run program: %w", err)
 			}

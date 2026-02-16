@@ -31,7 +31,11 @@ func NewCalendarCmd() *cobra.Command {
 			cfg := getConfig(cmd)
 			tf := getTimeFormatter(cmd)
 			m := initialReportModel(service, cfg, tf)
-			p := tea.NewProgram(&m)
+
+			var opts []tea.ProgramOption
+			opts = append(opts, tea.WithAltScreen())
+
+			p := tea.NewProgram(&m, opts...)
 			if _, err := p.Run(); err != nil {
 				return errors.Wrap(err, "run program")
 			}
