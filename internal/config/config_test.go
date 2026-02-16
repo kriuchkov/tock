@@ -13,7 +13,7 @@ func TestLoadDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "nonexistent.yaml")
 
-	cfg, err := Load(WithConfigFile(configFile))
+	cfg, _, err := Load(WithConfigFile(configFile))
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
@@ -49,7 +49,7 @@ theme:
 	require.NoError(t, err)
 
 	// Load config using the explicit file
-	cfg, err := Load(WithConfigFile(configPath))
+	cfg, _, err := Load(WithConfigFile(configPath))
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
@@ -84,7 +84,7 @@ theme:
 	require.NoError(t, err)
 
 	// Load config - env vars should override file values
-	cfg, err := Load(WithConfigFile(configPath))
+	cfg, _, err := Load(WithConfigFile(configPath))
 	require.NoError(t, err)
 
 	assert.Equal(t, "file", cfg.Backend)
@@ -101,7 +101,7 @@ func TestInitialCreationFromEnv(t *testing.T) {
 
 	require.NoFileExists(t, configPath)
 
-	cfg, err := Load(WithConfigFile(configPath))
+	cfg, _, err := Load(WithConfigFile(configPath))
 	require.NoError(t, err)
 
 	// Check in-memory config

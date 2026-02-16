@@ -584,6 +584,12 @@ tock analyze --days 7
 
 - `-n, --days`: Number of days to analyze (default 30)
 
+## Update Check
+
+Tock automatically checks for updates once a week. When a new version is available, you will see a notification after running commands like `start` or `stop`.
+
+You can disable this check by setting `check_updates: false` in your configuration file or using the environment variable `TOCK_CHECK_UPDATES=false`.
+
 ## File Format
 
 Activities are stored in plaintext format (compatible with Bartib):

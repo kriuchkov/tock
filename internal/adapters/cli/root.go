@@ -25,6 +25,7 @@ const (
 
 type serviceKey struct{}
 type configKey struct{}
+type viperKey struct{}
 type timeFormatterKey struct{}
 
 func NewRootCmd() *cobra.Command {
@@ -42,7 +43,7 @@ func NewRootCmd() *cobra.Command {
 				opts = append(opts, config.WithConfigFile(configPath))
 			}
 
-			cfg, err := config.Load(opts...)
+			cfg, v, err := config.Load(opts...)
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
 			}
@@ -75,6 +76,7 @@ func NewRootCmd() *cobra.Command {
 
 			ctx := context.WithValue(cmd.Context(), serviceKey{}, svc)
 			ctx = context.WithValue(ctx, configKey{}, cfg)
+			ctx = context.WithValue(ctx, viperKey{}, v)
 			ctx = context.WithValue(ctx, timeFormatterKey{}, tf)
 			cmd.SetContext(ctx)
 			return nil
@@ -135,7 +137,7 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 		opts = append(opts, config.WithConfigFile(configPath))
 	}
 
-	cfg, err := config.Load(opts...)
+	cfg, _, err := config.Load(opts...)
 	if err != nil {
 		return nil, err
 	}
