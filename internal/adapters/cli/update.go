@@ -49,7 +49,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	if !cfg.CheckUpdates || (version == "" || version == "unknown") {
+	if !cfg.CheckUpdates || (version == "" || version == "unknown" || version == "dev") {
 		return
 	}
 
