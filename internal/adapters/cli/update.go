@@ -43,7 +43,7 @@ func checkUpdate() (githubRelease, error) {
 
 func runUpdateCheck(cmd *cobra.Command) {
 	if cfg, ok := cmd.Context().Value(configKey{}).(*config.Config); ok {
-		if !cfg.CheckUpdates && (version == "" || version == "unknown" || version == "dev") {
+		if !cfg.CheckUpdates || (version == "" || version == "unknown" || version == "dev") {
 			return
 		}
 
