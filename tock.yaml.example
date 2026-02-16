@@ -6,6 +6,7 @@
 # TOCK_FILE_PATH=/custom/path/tock.txt
 # TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
 # TOCK_TIME_FORMAT=12
+# TOCK_CHECK_UPDATES=false
 
 # Storage backend: file or timewarrior
 backend: file
@@ -21,6 +22,10 @@ timewarrior:
   # Path to timewarrior data directory
   # Default: ~/.timewarrior/data
   data_path: ~/.timewarrior/data
+
+# Check for updates
+# Default: true
+check_updates: true
 
 # Export settings
 export:

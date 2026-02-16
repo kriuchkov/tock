@@ -20,6 +20,7 @@ type githubRelease struct {
 
 func checkUpdate() (githubRelease, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
+
 	//nolint:noctx // No context needed for this simple request
 	resp, err := client.Get(
 		"https://api.github.com/repos/kriuchkov/tock/releases/latest",
@@ -42,7 +43,7 @@ func checkUpdate() (githubRelease, error) {
 
 func runUpdateCheck(cmd *cobra.Command) {
 	if cfg, ok := cmd.Context().Value(configKey{}).(*config.Config); ok {
-		if !cfg.CheckUpdates || version == "" || version == "unknown" || version == "dev" {
+		if !cfg.CheckUpdates && (version == "" || version == "unknown" || version == "dev") {
 			return
 		}
 
