@@ -10,15 +10,16 @@ import (
 )
 
 type Config struct {
-	Backend      string            `mapstructure:"backend"`
-	File         FileConfig        `mapstructure:"file"`
-	Timewarrior  TimewarriorConfig `mapstructure:"timewarrior"`
-	Theme        ThemeConfig       `mapstructure:"theme"`
-	Calendar     CalendarConfig    `mapstructure:"calendar"`
-	TimeFormat   string            `mapstructure:"time_format"`
-	Export       ExportConfig      `mapstructure:"export"`
-	WeeklyTarget time.Duration     `mapstructure:"weekly_target"`
-	CheckUpdates bool              `mapstructure:"check_updates"`
+	Backend         string            `mapstructure:"backend"`
+	File            FileConfig        `mapstructure:"file"`
+	Timewarrior     TimewarriorConfig `mapstructure:"timewarrior"`
+	Theme           ThemeConfig       `mapstructure:"theme"`
+	Calendar        CalendarConfig    `mapstructure:"calendar"`
+	TimeFormat      string            `mapstructure:"time_format"`
+	Export          ExportConfig      `mapstructure:"export"`
+	WeeklyTarget    time.Duration     `mapstructure:"weekly_target"`
+	CheckUpdates    bool              `mapstructure:"check_updates"`
+	LastUpdateCheck time.Time         `mapstructure:"last_update_check"`
 }
 
 type CalendarConfig struct {
@@ -76,7 +77,7 @@ func WithConfigFile(file string) Option {
 	}
 }
 
-func Load(opts ...Option) (*Config, error) {
+func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v := viper.New()
 	var err error
 
@@ -141,11 +142,11 @@ func Load(opts ...Option) (*Config, error) {
 					v.Set(key, val)
 				}
 				if err = v.WriteConfigAs(writePath); err != nil {
-					return nil, errors.Wrap(err, "write default config")
+					return nil, nil, errors.Wrap(err, "write default config")
 				}
 			}
 		} else {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		for _, key := range v.AllKeys() {
@@ -156,7 +157,7 @@ func Load(opts ...Option) (*Config, error) {
 
 	var cfg Config
 	if err = v.Unmarshal(&cfg); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &cfg, nil
+	return &cfg, v, nil
 }

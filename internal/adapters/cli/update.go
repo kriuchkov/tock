@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/kriuchkov/tock/internal/config"
 )
@@ -42,22 +43,37 @@ func checkUpdate() (githubRelease, error) {
 }
 
 func runUpdateCheck(cmd *cobra.Command) {
-	if cfg, ok := cmd.Context().Value(configKey{}).(*config.Config); ok {
-		if !cfg.CheckUpdates || (version == "" || version == "unknown" || version == "dev") {
-			return
-		}
+	ctx := cmd.Context()
+	cfg, ok := ctx.Value(configKey{}).(*config.Config)
+	if !ok {
+		return
+	}
 
-		remote, err := checkUpdate()
-		if err != nil {
-			fmt.Printf("Failed to check for updates: %v\n", err)
-			return
-		}
+	if !cfg.CheckUpdates || (version == "" || version == "unknown") {
+		return
+	}
 
-		remoteVersion := strings.TrimPrefix(remote.TagName, "v")
-		localVersion := strings.TrimPrefix(version, "v")
+	if time.Since(cfg.LastUpdateCheck) < 7*24*time.Hour {
+		return
+	}
 
-		if remoteVersion != localVersion {
-			fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", version, remote.TagName, remote.HTMLURL)
+	remote, err := checkUpdate()
+	if err != nil {
+		fmt.Printf("Failed to check for updates: %v\n", err)
+		return
+	}
+
+	if v, done := ctx.Value(viperKey{}).(*viper.Viper); done {
+		v.Set("last_update_check", time.Now())
+		if err = v.WriteConfig(); err != nil {
+			fmt.Printf("Failed to save update check time: %v\n", err)
 		}
+	}
+
+	remoteVersion := strings.TrimPrefix(remote.TagName, "v")
+	localVersion := strings.TrimPrefix(version, "v")
+
+	if remoteVersion != localVersion {
+		fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", version, remote.TagName, remote.HTMLURL)
 	}
 }
