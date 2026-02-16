@@ -17,6 +17,8 @@ func NewStopCmd() *cobra.Command {
 	var tags []string
 
 	fn := func(cmd *cobra.Command, _ []string) error {
+		defer runUpdateCheck(cmd)
+
 		service := getService(cmd)
 		tf := getTimeFormatter(cmd)
 		endTime := time.Now()

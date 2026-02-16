@@ -151,6 +151,7 @@ export:
     ical:
         file_name: "tock_export.ics"
 weekly_target: "40h"
+check_updates: true
 ```
 
 You can specify a custom config file path with the `--config` flag:
@@ -173,6 +174,7 @@ Notes are stored as individual files in `~/.tock/notes/` (or relative to your co
 
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
 - `TOCK_WEEKLY_TARGET`: Weekly workload target as a duration (e.g., `40h`, `37h30m`)
+- `TOCK_CHECK_UPDATES`: Check for updates (default: `true`)
 
 ### Storage Backends
 
