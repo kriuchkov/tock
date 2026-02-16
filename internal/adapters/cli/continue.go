@@ -53,6 +53,8 @@ func NewContinueCmd() *cobra.Command {
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			defer runUpdateCheck(cmd)
+
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
 			ctx := context.Background()

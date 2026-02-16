@@ -62,6 +62,8 @@ func NewAddCmd() *cobra.Command {
 }
 
 func runAdd(cmd *cobra.Command, opts *addOptions) error {
+	defer runUpdateCheck(cmd)
+
 	service := getService(cmd)
 	theme := GetTheme(getConfig(cmd).Theme)
 

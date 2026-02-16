@@ -50,6 +50,8 @@ Available variables:
   .Duration     - Activity duration (time.Duration object)
   .DurationHMS  - Duration formatted as HH:MM:SS`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			defer runUpdateCheck(cmd)
+
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
 			ctx := context.Background()

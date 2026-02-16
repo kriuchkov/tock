@@ -18,6 +18,7 @@ type Config struct {
 	TimeFormat   string            `mapstructure:"time_format"`
 	Export       ExportConfig      `mapstructure:"export"`
 	WeeklyTarget time.Duration     `mapstructure:"weekly_target"`
+	CheckUpdates bool              `mapstructure:"check_updates"`
 }
 
 type CalendarConfig struct {
@@ -99,6 +100,7 @@ func Load(opts ...Option) (*Config, error) {
 	v.SetDefault("backend", "file")
 	v.SetDefault("time_format", "24")
 	v.SetDefault("export.ical.file_name", "tock_export.ics")
+	v.SetDefault("check_updates", true)
 
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
@@ -118,6 +120,7 @@ func Load(opts ...Option) (*Config, error) {
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
 	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
+	_ = v.BindEnv("check_updates", "TOCK_CHECK_UPDATES")
 
 	for _, opt := range opts {
 		opt(v)

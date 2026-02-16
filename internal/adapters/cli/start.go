@@ -35,6 +35,8 @@ func NewStartCmd() *cobra.Command {
 			return completions, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			defer runUpdateCheck(cmd)
+
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
 			startTime := time.Now()
