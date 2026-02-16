@@ -28,7 +28,11 @@ func NewListCmd() *cobra.Command {
 			service := getService(cmd)
 			tf := getTimeFormatter(cmd)
 			m := initialModel(service, tf)
-			p := tea.NewProgram(&m)
+
+			var opts []tea.ProgramOption
+			opts = append(opts, tea.WithAltScreen())
+
+			p := tea.NewProgram(&m, opts...)
 			if _, err := p.Run(); err != nil {
 				return errors.Wrap(err, "run program")
 			}
