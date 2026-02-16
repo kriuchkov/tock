@@ -20,9 +20,10 @@ type githubRelease struct {
 
 func checkUpdate() (githubRelease, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
+	//nolint:noctx // No context needed for this simple request
 	resp, err := client.Get(
 		"https://api.github.com/repos/kriuchkov/tock/releases/latest",
-	) //nolint:noctx // No context needed for this simple request
+	)
 	if err != nil {
 		return githubRelease{}, errors.Wrap(err, "fetch latest release")
 	}
