@@ -15,12 +15,15 @@ type ActivityResolver interface {
 	List(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error)
 	GetReport(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error)
 	GetRecent(ctx context.Context, limit int) ([]models.Activity, error)
+	GetLast(ctx context.Context) (*models.Activity, error)
+	Remove(ctx context.Context, activity models.Activity) error
 }
 
 type ActivityRepository interface {
 	Save(ctx context.Context, activity models.Activity) error
 	FindLast(ctx context.Context) (*models.Activity, error)
 	Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error)
+	Remove(ctx context.Context, activity models.Activity) error
 }
 
 type NotesRepository interface {

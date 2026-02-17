@@ -207,6 +207,14 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 	return s.enrichActivities(ctx, recent)
 }
 
+func (s *service) GetLast(ctx context.Context) (*models.Activity, error) {
+	return s.repo.FindLast(ctx)
+}
+
+func (s *service) Remove(ctx context.Context, activity models.Activity) error {
+	return s.repo.Remove(ctx, activity)
+}
+
 func (s *service) enrichActivities(ctx context.Context, activities []models.Activity) ([]models.Activity, error) {
 	if s.notesRepo == nil {
 		return activities, nil

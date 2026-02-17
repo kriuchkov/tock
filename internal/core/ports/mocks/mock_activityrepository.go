@@ -225,3 +225,60 @@ func (_c *MockActivityRepository_Save_Call) RunAndReturn(run func(ctx context.Co
 	_c.Call.Return(run)
 	return _c
 }
+
+// Remove provides a mock function for the type MockActivityRepository
+func (_mock *MockActivityRepository) Remove(ctx context.Context, activity models.Activity) error {
+	ret := _mock.Called(ctx, activity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Remove")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity) error); ok {
+		r0 = returnFunc(ctx, activity)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockActivityRepository_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type MockActivityRepository_Remove_Call struct {
+	*mock.Call
+}
+
+// Remove is a helper method to define mock.On call
+//   - ctx context.Context
+//   - activity models.Activity
+func (_e *MockActivityRepository_Expecter) Remove(ctx interface{}, activity interface{}) *MockActivityRepository_Remove_Call {
+	return &MockActivityRepository_Remove_Call{Call: _e.mock.On("Remove", ctx, activity)}
+}
+
+func (_c *MockActivityRepository_Remove_Call) Run(run func(ctx context.Context, activity models.Activity)) *MockActivityRepository_Remove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.Activity
+		if args[1] != nil {
+			arg1 = args[1].(models.Activity)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityRepository_Remove_Call) Return(err error) *MockActivityRepository_Remove_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockActivityRepository_Remove_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity) error) *MockActivityRepository_Remove_Call {
+	_c.Call.Return(run)
+	return _c
+}

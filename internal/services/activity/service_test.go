@@ -2,6 +2,7 @@ package activity_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -299,6 +300,51 @@ func TestService_Start(t *testing.T) {
 			got, err := svc.Start(context.Background(), tt.req)
 			tt.assertErr(t, err)
 			tt.assert(t, got)
+		})
+	}
+}
+
+func TestService_Remove(t *testing.T) {
+	tests := []struct {
+		name      string
+		activity  models.Activity
+		setup     func(repo *portsmocks.MockActivityRepository)
+		assertErr func(t *testing.T, err error)
+	}{
+		{
+			name:     "success",
+			activity: models.Activity{Project: "A", Description: "Task A"},
+			setup: func(repo *portsmocks.MockActivityRepository) {
+				repo.EXPECT().Remove(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "A"
+				})).Return(nil)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:     "failure",
+			activity: models.Activity{Project: "NonExistent"},
+			setup: func(repo *portsmocks.MockActivityRepository) {
+				repo.EXPECT().Remove(mock.Anything, mock.Anything).Return(errors.New("not found"))
+			},
+			assertErr: func(t *testing.T, err error) {
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := portsmocks.NewMockActivityRepository(t)
+			tt.setup(repo)
+
+			svc := activity.NewService(repo, nil)
+			err := svc.Remove(context.Background(), tt.activity)
+			if tt.assertErr != nil {
+				tt.assertErr(t, err)
+			}
 		})
 	}
 }

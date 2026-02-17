@@ -3,6 +3,7 @@ package file_test
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -284,6 +285,117 @@ func TestRepository_Save_UpdateMiddle(t *testing.T) {
 	require.NotNil(t, foundA.EndTime)
 	// Compare using Equal but ensure we are comparing apples to apples (both truncated to minute effectively)
 	assert.True(t, endTime.Equal(*foundA.EndTime), "Expected %v, got %v", endTime, *foundA.EndTime)
+}
+
+func TestRepository_Remove(t *testing.T) {
+	// Setup temporary file
+	f, createErr := os.CreateTemp(t.TempDir(), "tock_test_remove_*.txt")
+	require.NoError(t, createErr)
+	defer os.Remove(f.Name())
+	f.Close()
+
+	repo := file.NewRepository(f.Name())
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Minute)
+
+	actA := models.Activity{
+		Project:     "A",
+		Description: "Task A",
+		StartTime:   now.Add(-2 * time.Hour),
+	}
+	require.NoError(t, repo.Save(ctx, actA))
+
+	actB := models.Activity{
+		Project:     "B",
+		Description: "Task B",
+		StartTime:   now.Add(-1 * time.Hour),
+	}
+	require.NoError(t, repo.Save(ctx, actB))
+
+	// Verify both exist
+	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 2)
+
+	// Remove A
+	require.NoError(t, repo.Remove(ctx, actA))
+
+	// Verify only B remains
+	activities, err = repo.Find(ctx, dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 1)
+	assert.Equal(t, "B", activities[0].Project)
+
+	// Try removing A again (should fail)
+	err = repo.Remove(ctx, actA)
+	require.Error(t, err)
+}
+
+func TestRepository_Remove_WhitespaceHandling(t *testing.T) {
+	// Setup temporary file
+	f, createErr := os.CreateTemp(t.TempDir(), "tock_test_rem_ws_*.txt")
+	require.NoError(t, createErr)
+	defer os.Remove(f.Name())
+
+	// Write content with extra whitespace and newlines
+	// A, then empty lines, then B, then empty lines
+	content := `2023-10-26 10:00 - 2023-10-26 11:00 | ProjectA | Task 1
+
+
+2023-10-26 12:00 | ProjectB | Task 2
+
+`
+	_, createErr = f.WriteString(content)
+	require.NoError(t, createErr)
+	f.Close()
+
+	repo := file.NewRepository(f.Name())
+	ctx := context.Background()
+
+	// Activity to remove: Task 1
+	startTime, _ := time.ParseInLocation("2006-01-02 15:04", "2023-10-26 10:00", time.Local)
+	actA := models.Activity{
+		StartTime: startTime,
+	}
+
+	// Remove Task 1
+	require.NoError(t, repo.Remove(ctx, actA))
+
+	// Verify Task 2 remains
+	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 1)
+	assert.Equal(t, "Task 2", activities[0].Description)
+
+	// Read file content raw to check for cleanup
+	bytes, err := os.ReadFile(f.Name())
+	require.NoError(t, err)
+	lines := strings.Split(string(bytes), "\n")
+
+	// Expected behavior:
+	// - The empty lines after Task 1 might be preserved or collapsed, but definitely not multiplied.
+	// - Our new logic should collapse multiple empty lines into one or remove leading empty lines.
+	// Since Task 1 was first, and followed by empty lines, removing it leaves empty lines at start.
+	// Our logic skips leading empty lines in `newLines` if it starts empty.
+
+	// Let's check that we don't have excessive empty lines.
+	// We expect roughly:
+	// "2023-10-26 12:00 | ProjectB | Task 2"
+	// (possibly with a trailing newline)
+
+	nonEmptyLines := 0
+	for _, l := range lines {
+		if strings.TrimSpace(l) != "" {
+			nonEmptyLines++
+			assert.Contains(t, l, "Task 2")
+		}
+	}
+	assert.Equal(t, 1, nonEmptyLines, "Only Task 2 line should remain")
+
+	// Check for excessive empty lines
+	// Join back and look for double newlines
+	fullContent := string(bytes)
+	assert.NotContains(t, fullContent, "\n\n\n", "Should not have triple newlines")
 }
 
 func ptr[T any](v T) *T {

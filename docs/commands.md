@@ -6,6 +6,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`start`](#start)
   - [`stop`](#stop-alias-s)
   - [`add`](#add)
+  - [`remove`](#remove-alias-rm)
   - [`continue`](#continue-alias-c)
   - [`watch`](#watch)
 - [Viewing & Reporting](#viewing--reporting)
@@ -111,6 +112,31 @@ tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "New fea
 - `--duration string`: Duration (e.g., "1h30m", "10m"). Used if end time is omitted.
 - `--note string`: Activity notes
 - `--tag strings`: Activity tags
+
+---
+
+### `remove` (alias: `rm`)
+
+Remove an activity.
+
+**Usage:**
+
+```bash
+tock remove [date-index] [flags]
+```
+
+**Examples:**
+
+```bash
+tock remove                                      # Remove the last activity (asks confirmation)
+tock remove -y                                   # Remove the last activity without confirmation
+tock remove 2023-10-15-01                        # Remove specific activity by ID
+tock remove 2023-10-15-01 --yes                  # Remove specific activity without confirmation
+```
+
+**Flags:**
+
+- `-y, --yes`: Skip confirmation
 
 ---
 
