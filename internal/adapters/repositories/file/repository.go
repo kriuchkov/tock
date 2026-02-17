@@ -165,6 +165,67 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 	return nil
 }
 
+func (r *repository) Remove(_ context.Context, activity models.Activity) error {
+	lines, err := r.readLines()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(err, "read lines")
+	}
+
+	var newLines []string
+	removed := false
+
+	// Iterate over lines.
+	// We want to avoid consecutive empty lines if removing an item causes it.
+	// We implement a simple cleanup: remove consecutive empty lines.
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// If current line is empty, check if previous was also empty in our new list.
+		if trimmed == "" {
+			if len(newLines) == 0 {
+				continue // Skip leading empty lines
+			}
+			if strings.TrimSpace(newLines[len(newLines)-1]) == "" {
+				continue // Skip duplicate empty line
+			}
+			newLines = append(newLines, line)
+			continue
+		}
+
+		act, parseErr := ParseActivity(line)
+		if parseErr != nil {
+			newLines = append(newLines, line)
+			continue
+		}
+
+		if act.StartTime.Equal(activity.StartTime) {
+			removed = true
+			continue
+		}
+		newLines = append(newLines, line)
+	}
+
+	// Remove trailing empty line if it exists to avoid double newlines at EOF
+	if len(newLines) > 0 {
+		if strings.TrimSpace(newLines[len(newLines)-1]) == "" {
+			newLines = newLines[:len(newLines)-1]
+		}
+	}
+
+	if !removed {
+		return errors.New("activity not found")
+	}
+
+	if err = r.writeLines(newLines); err != nil {
+		return errors.Wrap(err, "write lines")
+	}
+	return nil
+}
+
 func (r *repository) readLines() ([]string, error) {
 	f, err := os.Open(r.filePath)
 	if err != nil {

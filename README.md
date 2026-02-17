@@ -360,6 +360,7 @@ Available Commands:
   ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks
   last        List recent unique activities
   list        List activities (Calendar View)
+  remove      Remove an activity
   report      Generate time tracking report
   start       Start a new activity
   stop        Stop the current activity
@@ -434,6 +435,20 @@ tock add -p "Project" -d "Task" -s 10:00 -e 11:00 --note "Fixed bug #123" --tag 
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.
 - `--note`: Activity notes
 - `--tag`: Activity tags (can be used multiple times)
+
+### Remove activity
+
+Remove a previously tracked activity.
+
+```bash
+tock remove                      # Remove the last activity (asks for confirmation)
+tock remove -y                   # Remove the last activity without confirmation
+tock remove 2025-12-10-01        # Remove a specific activity by ID
+```
+
+**Flags:**
+
+- `-y, --yes`: Skip confirmation
 
 ### Continue activity
 

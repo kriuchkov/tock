@@ -368,3 +368,43 @@ func TestRepository_Find_CrossMonth(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, acts, 2)
 }
+
+func TestRepository_Remove(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	actA := models.Activity{
+		Project:     "A",
+		Description: "Task A",
+		StartTime:   now.Add(-2 * time.Hour),
+		EndTime:     ptr(now.Add(-1 * time.Hour)),
+	}
+	require.NoError(t, repo.Save(ctx, actA))
+
+	actB := models.Activity{
+		Project:     "B",
+		Description: "Task B",
+		StartTime:   now.Add(-1 * time.Hour),
+	}
+	require.NoError(t, repo.Save(ctx, actB))
+
+	// Verify both exist
+	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 2)
+
+	// Remove A
+	require.NoError(t, repo.Remove(ctx, actA))
+
+	// Verify only B remains
+	activities, err = repo.Find(ctx, dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 1)
+	assert.Equal(t, "B", activities[0].Project)
+
+	// Try removing A again (should fail)
+	err = repo.Remove(ctx, actA)
+	require.Error(t, err)
+}

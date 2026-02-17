@@ -179,6 +179,36 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 	return r.writeIntervalsToFile(filePath, intervals)
 }
 
+func (r *repository) Remove(_ context.Context, activity models.Activity) error {
+	filePath := r.getMonthFilePath(activity.StartTime)
+
+	intervals, err := r.readIntervalsFromFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(err, "read intervals")
+	}
+
+	targetStart := toTWInterval(activity).Start
+
+	var newIntervals []twInterval
+	removed := false
+	for _, iv := range intervals {
+		if iv.Start == targetStart {
+			removed = true
+			continue
+		}
+		newIntervals = append(newIntervals, iv)
+	}
+
+	if !removed {
+		return errors.New("activity not found")
+	}
+
+	return r.writeIntervalsToFile(filePath, newIntervals)
+}
+
 func (r *repository) getMonthFilePath(t time.Time) string {
 	filename := fmt.Sprintf("%04d-%02d.data", t.Year(), t.Month())
 	return filepath.Join(r.dataDir, filename)
