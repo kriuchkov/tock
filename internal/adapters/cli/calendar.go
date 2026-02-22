@@ -320,15 +320,19 @@ func (m *reportModel) updateViewportContent() {
 			projectLine,
 		) + "\n")
 
-		// Row 2:      | Line | Description
+		// Row 2:      | Line | Description (word-wrapped, continuation lines stay aligned)
 		if act.Description != "" {
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(9).Render(""),
-				"  ",
-				lineStyle.Render(line),
-				"  ",
-				m.styles.Desc.Render(act.Description),
-			) + "\n")
+			// prefix: 9 (time) + 2 + 1 (│) + 2 = 14 chars; viewport padding = 2
+			availWidth := m.viewport.Width - 14 - 2
+			for _, dl := range wrapText(act.Description, availWidth) {
+				b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+					lipgloss.NewStyle().Width(9).Render(""),
+					"  ",
+					lineStyle.Render(line),
+					"  ",
+					m.styles.Desc.Render(dl),
+				) + "\n")
+			}
 		}
 
 		// Row 3:      | Line | Duration
@@ -340,17 +344,19 @@ func (m *reportModel) updateViewportContent() {
 			m.styles.Duration.Render(durStr),
 		) + "\n")
 
-		// Row 4:      | Line | Notes
+		// Row 4:      | Line | Notes (word-wrapped, same alignment as description)
 		if act.Notes != "" {
 			notes := strings.ReplaceAll(act.Notes, "\n", " ") // flatten notes for list view
-
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(9).Render(""),
-				"  ",
-				lineStyle.Render(line),
-				"  ",
-				lipgloss.NewStyle().Faint(true).Render(notes),
-			) + "\n")
+			availWidth := m.viewport.Width - 14 - 2
+			for _, nl := range wrapText(notes, availWidth) {
+				b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+					lipgloss.NewStyle().Width(9).Render(""),
+					"  ",
+					lineStyle.Render(line),
+					"  ",
+					lipgloss.NewStyle().Faint(true).Render(nl),
+				) + "\n")
+			}
 		}
 
 		// Spacer
@@ -411,6 +417,43 @@ func (m *reportModel) formatProjectStat(name string, duration time.Duration) str
 		m.styles.Project.Render(name),
 		m.styles.Duration.Render(dur),
 	)
+}
+
+// wrapText splits text into lines of at most maxWidth runes, breaking at word boundaries.
+func wrapText(text string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{text}
+	}
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	var lines []string
+	var current strings.Builder
+	currentLen := 0
+
+	for _, word := range words {
+		wordLen := len([]rune(word))
+		switch {
+		case currentLen == 0:
+			current.WriteString(word)
+			currentLen = wordLen
+		case currentLen+1+wordLen <= maxWidth:
+			current.WriteString(" ")
+			current.WriteString(word)
+			currentLen += 1 + wordLen
+		default:
+			lines = append(lines, current.String())
+			current.Reset()
+			current.WriteString(word)
+			currentLen = wordLen
+		}
+	}
+	if currentLen > 0 {
+		lines = append(lines, current.String())
+	}
+	return lines
 }
 
 // Messages and Commands
