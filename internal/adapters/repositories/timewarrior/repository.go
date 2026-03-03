@@ -294,13 +294,42 @@ func (r *repository) writeIntervalsToFile(path string, intervals []twInterval) e
 
 	w := bufio.NewWriter(f)
 	for _, iv := range intervals {
-		var b []byte
-		if b, err = json.Marshal(iv); err != nil {
-			continue
-		}
-		fmt.Fprintln(w, string(b))
+		line := formatIncLine(iv)
+		fmt.Fprintln(w, line)
 	}
 	return w.Flush()
+}
+
+func formatIncLine(iv twInterval) string {
+	var sb strings.Builder
+	sb.WriteString("inc ")
+	sb.WriteString(iv.Start)
+	if iv.End != "" {
+		sb.WriteString(" - ")
+		sb.WriteString(iv.End)
+	}
+
+	if len(iv.Tags) > 0 || iv.Annotation != "" {
+		sb.WriteString(" #")
+		for _, tag := range iv.Tags {
+			sb.WriteString(" ")
+			sb.WriteString(quoteToken(tag))
+		}
+	}
+
+	if iv.Annotation != "" {
+		sb.WriteString(" # ")
+		sb.WriteString(quoteToken(iv.Annotation))
+	}
+
+	return sb.String()
+}
+
+func quoteToken(s string) string {
+	if strings.ContainsAny(s, " \"") || s == "" {
+		return fmt.Sprintf("%q", s)
+	}
+	return s
 }
 
 func toTWInterval(a models.Activity) twInterval {
