@@ -30,7 +30,7 @@ func TestRepository_Save(t *testing.T) {
 				StartTime:   time.Date(2023, 10, 1, 10, 0, 0, 0, time.UTC),
 			},
 			wantFile: "2023-10.data",
-			want:     `{"start":"20231001T100000Z","tags":["ProjectA"],"annotation":"Task 1"}`,
+			want:     `inc 20231001T100000Z # ProjectA # "Task 1"`,
 		},
 		{
 			name: "save activity with end time",
@@ -41,7 +41,7 @@ func TestRepository_Save(t *testing.T) {
 				EndTime:     ptr(time.Date(2023, 10, 1, 13, 0, 0, 0, time.UTC)),
 			},
 			wantFile: "2023-10.data",
-			want:     `{"start":"20231001T120000Z","end":"20231001T130000Z","tags":["ProjectB"],"annotation":"Task 2"}`,
+			want:     `inc 20231001T120000Z - 20231001T130000Z # ProjectB # "Task 2"`,
 		},
 		{
 			name: "update existing activity",
@@ -59,7 +59,7 @@ func TestRepository_Save(t *testing.T) {
 				EndTime:     ptr(time.Date(2023, 11, 1, 10, 0, 0, 0, time.UTC)),
 			},
 			wantFile: "2023-11.data",
-			want:     `{"start":"20231101T090000Z","end":"20231101T100000Z","tags":["ProjectC"],"annotation":"Task 3"}`,
+			want:     `inc 20231101T090000Z - 20231101T100000Z # ProjectC # "Task 3"`,
 		},
 	}
 
