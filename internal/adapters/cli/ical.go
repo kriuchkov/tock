@@ -156,8 +156,7 @@ func parseKeyOrDate(keyOrDate string) (time.Time, int, bool, error) {
 	parts := strings.Split(keyOrDate, "-")
 
 	if len(parts) == 3 {
-		// Date only: YYYY-MM-DD
-		date, err := time.Parse("2006-01-02", keyOrDate)
+		date, err := time.ParseInLocation("2006-01-02", keyOrDate, time.Local)
 		if err != nil {
 			return time.Time{}, 0, false, errors.Wrap(err, "invalid date format (expected YYYY-MM-DD)")
 		}
@@ -165,7 +164,6 @@ func parseKeyOrDate(keyOrDate string) (time.Time, int, bool, error) {
 	}
 
 	if len(parts) >= 4 {
-		// Key: YYYY-MM-DD-NN
 		seqStr := parts[len(parts)-1]
 		seq, err := strconv.Atoi(seqStr)
 		if err != nil {
@@ -173,7 +171,7 @@ func parseKeyOrDate(keyOrDate string) (time.Time, int, bool, error) {
 		}
 
 		dateStr := strings.Join(parts[:len(parts)-1], "-")
-		date, err := time.Parse("2006-01-02", dateStr)
+		date, err := time.ParseInLocation("2006-01-02", dateStr, time.Local)
 		if err != nil {
 			return time.Time{}, 0, false, errors.Wrap(err, "invalid date format")
 		}
@@ -186,8 +184,7 @@ func getActivitiesForDate(cmd *cobra.Command, date time.Time) ([]models.Activity
 	service := getService(cmd)
 	ctx := context.Background()
 
-	start := date.Truncate(24 * time.Hour)
-	end := start.Add(24 * time.Hour)
+	start, end := localDayBounds(date)
 	filter := dto.ActivityFilter{
 		FromDate: &start,
 		ToDate:   &end,

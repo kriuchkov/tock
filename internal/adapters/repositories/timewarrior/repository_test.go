@@ -174,6 +174,31 @@ func TestRepository_Find(t *testing.T) {
 	}
 }
 
+func TestRepository_Find_DateRangeIncludesCrossMonthOverlap(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	start := time.Date(2026, 3, 31, 23, 30, 0, 0, time.UTC)
+	end := time.Date(2026, 4, 1, 0, 30, 0, 0, time.UTC)
+	require.NoError(t, repo.Save(ctx, models.Activity{
+		Project:     "ProjectA",
+		Description: "Cross-month activity",
+		StartTime:   start,
+		EndTime:     &end,
+	}))
+
+	from := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(24 * time.Hour)
+	got, err := repo.Find(ctx, dto.ActivityFilter{
+		FromDate: &from,
+		ToDate:   &to,
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Cross-month activity", got[0].Description)
+}
+
 func TestRepository_FindLast(t *testing.T) {
 	t.Run("find last activity", func(t *testing.T) {
 		tmpDir := t.TempDir()

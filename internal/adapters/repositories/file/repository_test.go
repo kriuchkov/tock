@@ -100,6 +100,35 @@ func TestRepository_Find(t *testing.T) {
 	}
 }
 
+func TestRepository_Find_DateRangeIncludesOverlappingActivity(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "tock_test_overlap_*.txt")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+	f.Close()
+
+	repo := file.NewRepository(f.Name())
+	ctx := context.Background()
+
+	start := time.Date(2026, 3, 4, 22, 25, 0, 0, time.Local)
+	end := time.Date(2026, 3, 5, 1, 21, 0, 0, time.Local)
+	require.NoError(t, repo.Save(ctx, models.Activity{
+		Project:     "ProjectA",
+		Description: "Cross-day activity",
+		StartTime:   start,
+		EndTime:     &end,
+	}))
+
+	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
+	to := from.Add(24 * time.Hour)
+	got, err := repo.Find(ctx, dto.ActivityFilter{
+		FromDate: &from,
+		ToDate:   &to,
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Cross-day activity", got[0].Description)
+}
+
 func TestRepository_FindLast(t *testing.T) {
 	f, err := os.CreateTemp(t.TempDir(), "tock_test_last_*.txt")
 	require.NoError(t, err)
