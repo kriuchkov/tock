@@ -161,8 +161,9 @@ func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dt
 		ByProject:  make(map[string]dto.ProjectReport),
 	}
 
+	now := time.Now()
 	for _, a := range activities {
-		clipped, ok := clipActivityByRange(a, filter, time.Now())
+		clipped, ok := clipActivityByRange(a, filter, now)
 		if !ok {
 			continue
 		}

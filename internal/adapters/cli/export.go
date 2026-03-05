@@ -115,11 +115,11 @@ func buildExportFilter(opt *exportOptions) (dto.ActivityFilter, error) {
 
 	switch {
 	case opt.Today:
-		start, end := localDayBounds(time.Now())
+		start, end := timeutil.LocalDayBounds(time.Now())
 		filter.FromDate = &start
 		filter.ToDate = &end
 	case opt.Yesterday:
-		todayStart, _ := localDayBounds(time.Now())
+		todayStart, _ := timeutil.LocalDayBounds(time.Now())
 		start := todayStart.AddDate(0, 0, -1)
 		end := todayStart
 		filter.FromDate = &start
@@ -129,7 +129,7 @@ func buildExportFilter(opt *exportOptions) (dto.ActivityFilter, error) {
 		if err != nil {
 			return dto.ActivityFilter{}, errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
 		}
-		start, end := localDayBounds(parsedDate)
+		start, end := timeutil.LocalDayBounds(parsedDate)
 		filter.FromDate = &start
 		filter.ToDate = &end
 	}

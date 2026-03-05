@@ -18,6 +18,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/services/ics"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 func NewICalCmd() *cobra.Command {
@@ -184,7 +185,7 @@ func getActivitiesForDate(cmd *cobra.Command, date time.Time) ([]models.Activity
 	service := getService(cmd)
 	ctx := context.Background()
 
-	start, end := localDayBounds(date)
+	start, end := timeutil.LocalDayBounds(date)
 	filter := dto.ActivityFilter{
 		FromDate: &start,
 		ToDate:   &end,

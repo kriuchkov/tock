@@ -15,7 +15,9 @@ import (
 	"github.com/kriuchkov/tock/internal/core/models"
 	portsmocks "github.com/kriuchkov/tock/internal/core/ports/mocks"
 	"github.com/kriuchkov/tock/internal/services/activity"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
+
 
 func TestService_Stop(t *testing.T) {
 	now := time.Now()
@@ -311,7 +313,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayEnd(t *testing.T) {
 	start := time.Date(2026, 3, 4, 22, 25, 0, 0, time.Local)
 	end := time.Date(2026, 3, 5, 1, 21, 0, 0, time.Local)
 	from := time.Date(2026, 3, 4, 0, 0, 0, 0, time.Local)
-	to := from.Add(24 * time.Hour)
+	_, to := timeutil.LocalDayBounds(from)
 
 	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
 		return f.FromDate != nil && f.ToDate != nil &&
@@ -350,7 +352,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayStart(t *testing.T) {
 	start := time.Date(2026, 3, 4, 22, 25, 0, 0, time.Local)
 	end := time.Date(2026, 3, 5, 1, 21, 0, 0, time.Local)
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
-	to := from.Add(24 * time.Hour)
+	_, to := timeutil.LocalDayBounds(from)
 
 	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
 		return f.FromDate != nil && f.ToDate != nil &&

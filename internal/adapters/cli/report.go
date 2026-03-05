@@ -13,6 +13,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 	ce "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
 )
@@ -68,11 +69,11 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 	// Determine date range based on flags
 	switch {
 	case opt.Today:
-		start, end := localDayBounds(time.Now())
+		start, end := timeutil.LocalDayBounds(time.Now())
 		filter.FromDate = &start
 		filter.ToDate = &end
 	case opt.Yesterday:
-		todayStart, _ := localDayBounds(time.Now())
+		todayStart, _ := timeutil.LocalDayBounds(time.Now())
 		start := todayStart.AddDate(0, 0, -1)
 		end := todayStart
 		filter.FromDate = &start
@@ -82,7 +83,7 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
 		}
-		start, end := localDayBounds(parsedDate)
+		start, end := timeutil.LocalDayBounds(parsedDate)
 		filter.FromDate = &start
 		filter.ToDate = &end
 	}
@@ -198,10 +199,4 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 	totalMinutes := int(report.TotalDuration.Minutes()) % 60
 	fmt.Printf("⏱️  Total: %dh %dm\n", int(totalHours), totalMinutes)
 	return nil
-}
-
-func localDayBounds(t time.Time) (time.Time, time.Time) {
-	local := t.In(time.Local)
-	start := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
-	return start, start.AddDate(0, 0, 1)
 }

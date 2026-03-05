@@ -13,6 +13,7 @@ import (
 	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
 	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 func TestRepository_Find(t *testing.T) {
@@ -119,7 +120,7 @@ func TestRepository_Find_DateRangeIncludesOverlappingActivity(t *testing.T) {
 	}))
 
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
-	to := from.Add(24 * time.Hour)
+	_, to := timeutil.LocalDayBounds(from)
 	got, err := repo.Find(ctx, dto.ActivityFilter{
 		FromDate: &from,
 		ToDate:   &to,
