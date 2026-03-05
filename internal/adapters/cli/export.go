@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"math"
 	"os"
@@ -274,14 +275,33 @@ func writeExportFile(outputDir, format string, content []byte) (string, error) {
 		return "", errors.Wrap(err, "create output directory")
 	}
 
-	filename := fmt.Sprintf("tock-report-%s.%s", time.Now().Format("20060102-150405"), format)
-	fullPath := filepath.Join(outputDir, filename)
+	baseName := "tock-report-" + time.Now().Format("20060102-150405.000000000")
+	for attempt := 0; attempt < 1000; attempt++ {
+		filename := fmt.Sprintf("%s.%s", baseName, format)
+		if attempt > 0 {
+			filename = fmt.Sprintf("%s-%d.%s", baseName, attempt, format)
+		}
 
-	if err := os.WriteFile(fullPath, content, 0600); err != nil {
-		return "", errors.Wrap(err, "write output file")
+		fullPath := filepath.Join(outputDir, filename)
+		file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			if stdErrors.Is(err, os.ErrExist) {
+				continue
+			}
+			return "", errors.Wrap(err, "create output file")
+		}
+
+		if _, err = file.Write(content); err != nil {
+			_ = file.Close()
+			return "", errors.Wrap(err, "write output file")
+		}
+		if err = file.Close(); err != nil {
+			return "", errors.Wrap(err, "close output file")
+		}
+		return fullPath, nil
 	}
 
-	return fullPath, nil
+	return "", errors.New("unable to allocate unique output filename")
 }
 
 func getDefaultExportDir(cmd *cobra.Command) (string, error) {
