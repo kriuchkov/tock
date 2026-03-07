@@ -67,7 +67,7 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 func determineDateRange(filter dto.ActivityFilter) (time.Time, time.Time) {
 	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	if filter.FromDate != nil {
-		start = *filter.FromDate
+		start = filter.FromDate.AddDate(0, 0, -1)
 	}
 	end := time.Now().AddDate(1, 0, 0) // Future
 	if filter.ToDate != nil {
@@ -80,21 +80,11 @@ func matchesFilter(act models.Activity, filter dto.ActivityFilter) bool {
 	if filter.Project != nil && act.Project != *filter.Project {
 		return false
 	}
-	if filter.FromDate != nil && act.StartTime.Before(*filter.FromDate) {
-		return false
-	}
 	if filter.Description != nil && act.Description != *filter.Description {
 		return false
 	}
-
-	if filter.ToDate != nil {
-		actEnd := act.StartTime
-		if act.EndTime != nil {
-			actEnd = *act.EndTime
-		}
-		if actEnd.After(*filter.ToDate) {
-			return false
-		}
+	if !overlapsDateRange(act, filter.FromDate, filter.ToDate) {
+		return false
 	}
 
 	if filter.IsRunning != nil {
@@ -106,6 +96,21 @@ func matchesFilter(act models.Activity, filter dto.ActivityFilter) bool {
 		}
 	}
 
+	return true
+}
+
+func overlapsDateRange(act models.Activity, fromDate, toDate *time.Time) bool {
+	actEnd := time.Now()
+	if act.EndTime != nil {
+		actEnd = *act.EndTime
+	}
+
+	if fromDate != nil && !actEnd.After(*fromDate) {
+		return false
+	}
+	if toDate != nil && !act.StartTime.Before(*toDate) {
+		return false
+	}
 	return true
 }
 

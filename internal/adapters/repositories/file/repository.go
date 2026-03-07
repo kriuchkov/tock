@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-faster/errors"
 
@@ -59,18 +60,8 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 			continue
 		}
 
-		if filter.FromDate != nil && act.StartTime.Before(*filter.FromDate) {
+		if !overlapsDateRange(*act, filter.FromDate, filter.ToDate) {
 			continue
-		}
-
-		if filter.ToDate != nil {
-			activityEnd := act.StartTime
-			if act.EndTime != nil {
-				activityEnd = *act.EndTime
-			}
-			if activityEnd.After(*filter.ToDate) {
-				continue
-			}
 		}
 
 		if filter.IsRunning != nil {
@@ -88,6 +79,21 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 		return activities, errors.Wrap(scanErr, "scan file")
 	}
 	return activities, nil
+}
+
+func overlapsDateRange(act models.Activity, fromDate, toDate *time.Time) bool {
+	actEnd := time.Now()
+	if act.EndTime != nil {
+		actEnd = *act.EndTime
+	}
+
+	if fromDate != nil && !actEnd.After(*fromDate) {
+		return false
+	}
+	if toDate != nil && !act.StartTime.Before(*toDate) {
+		return false
+	}
+	return true
 }
 
 func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {

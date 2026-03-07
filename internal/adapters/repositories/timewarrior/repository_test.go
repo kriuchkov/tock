@@ -92,8 +92,8 @@ func TestRepository_Find(t *testing.T) {
 		{
 			Project:     "Work",
 			Description: "Meeting",
-			StartTime:   baseTime.Add(-24 * time.Hour), // Oct 14
-			EndTime:     ptr(baseTime.Add(-23 * time.Hour)),
+			StartTime:   baseTime.AddDate(0, 0, -1), // Oct 14
+			EndTime:     ptr(baseTime.AddDate(0, 0, -1).Add(1 * time.Hour)),
 		},
 		{
 			Project:     "Personal",
@@ -104,8 +104,8 @@ func TestRepository_Find(t *testing.T) {
 		{
 			Project:     "Work",
 			Description: "Coding",
-			StartTime:   baseTime.Add(24 * time.Hour), // Oct 16
-			EndTime:     nil,                          // Running
+			StartTime:   baseTime.AddDate(0, 0, 1), // Oct 16
+			EndTime:     nil,                       // Running
 		},
 	}
 
@@ -172,6 +172,31 @@ func TestRepository_Find(t *testing.T) {
 			assert.Len(t, got, tt.wantCount)
 		})
 	}
+}
+
+func TestRepository_Find_DateRangeIncludesCrossMonthOverlap(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	start := time.Date(2026, 3, 31, 23, 30, 0, 0, time.UTC)
+	end := time.Date(2026, 4, 1, 0, 30, 0, 0, time.UTC)
+	require.NoError(t, repo.Save(ctx, models.Activity{
+		Project:     "ProjectA",
+		Description: "Cross-month activity",
+		StartTime:   start,
+		EndTime:     &end,
+	}))
+
+	from := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 0, 1)
+	got, err := repo.Find(ctx, dto.ActivityFilter{
+		FromDate: &from,
+		ToDate:   &to,
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Cross-month activity", got[0].Description)
 }
 
 func TestRepository_FindLast(t *testing.T) {

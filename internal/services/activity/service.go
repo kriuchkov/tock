@@ -161,26 +161,64 @@ func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dt
 		ByProject:  make(map[string]dto.ProjectReport),
 	}
 
+	now := time.Now()
 	for _, a := range activities {
-		report.Activities = append(report.Activities, a)
-		duration := a.Duration()
+		clipped, ok := clipActivityByRange(a, filter, now)
+		if !ok {
+			continue
+		}
+
+		report.Activities = append(report.Activities, clipped)
+		duration := clipped.Duration()
 		report.TotalDuration += duration
 
-		// Aggregate by project
-		projectReport, exists := report.ByProject[a.Project]
+		projectReport, exists := report.ByProject[clipped.Project]
 		if !exists {
 			projectReport = dto.ProjectReport{
-				ProjectName: a.Project,
+				ProjectName: clipped.Project,
 				Duration:    0,
 				Activities:  []models.Activity{},
 			}
 		}
 
 		projectReport.Duration += duration
-		projectReport.Activities = append(projectReport.Activities, a)
-		report.ByProject[a.Project] = projectReport
+		projectReport.Activities = append(projectReport.Activities, clipped)
+		report.ByProject[clipped.Project] = projectReport
 	}
 	return report, nil
+}
+
+func clipActivityByRange(
+	activity models.Activity,
+	filter dto.ActivityFilter,
+	now time.Time,
+) (models.Activity, bool) {
+	start := activity.StartTime
+	end := now
+	if activity.EndTime != nil {
+		end = *activity.EndTime
+	}
+
+	if filter.FromDate != nil && start.Before(*filter.FromDate) {
+		start = *filter.FromDate
+	}
+	if filter.ToDate != nil && end.After(*filter.ToDate) {
+		end = *filter.ToDate
+	}
+	if !end.After(start) {
+		return models.Activity{}, false
+	}
+
+	clipped := activity
+	clipped.StartTime = start
+	if activity.EndTime == nil && (filter.ToDate == nil || !filter.ToDate.Before(now)) && end.Equal(now) {
+		clipped.EndTime = nil
+		return clipped, true
+	}
+
+	clippedEnd := end
+	clipped.EndTime = &clippedEnd
+	return clipped, true
 }
 
 func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, error) {

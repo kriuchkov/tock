@@ -13,6 +13,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/dto"
 	ce "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
 )
@@ -68,22 +69,21 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 	// Determine date range based on flags
 	switch {
 	case opt.Today:
-		start := time.Now().Truncate(24 * time.Hour)
-		end := start.Add(24 * time.Hour)
+		start, end := timeutil.LocalDayBounds(time.Now())
 		filter.FromDate = &start
 		filter.ToDate = &end
 	case opt.Yesterday:
-		start := time.Now().Truncate(24 * time.Hour).Add(-24 * time.Hour)
-		end := start.Add(24 * time.Hour)
+		todayStart, _ := timeutil.LocalDayBounds(time.Now())
+		start := todayStart.AddDate(0, 0, -1)
+		end := todayStart
 		filter.FromDate = &start
 		filter.ToDate = &end
 	case opt.Date != "":
-		parsedDate, err := time.Parse("2006-01-02", opt.Date)
+		parsedDate, err := time.ParseInLocation("2006-01-02", opt.Date, time.Local)
 		if err != nil {
 			return errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
 		}
-		start := parsedDate.Truncate(24 * time.Hour)
-		end := start.Add(24 * time.Hour)
+		start, end := timeutil.LocalDayBounds(parsedDate)
 		filter.FromDate = &start
 		filter.ToDate = &end
 	}
