@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/kriuchkov/tock/internal/core/models"
 )
 
 func TestNotesRepository_SaveAndGet(t *testing.T) {
@@ -74,7 +75,9 @@ func TestNotesRepository_SaveAndGet(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			retrievedNotes, retrievedTags, err := notesRepo.Get(ctx, "ignored-id-on-get", tc.activity.StartTime)
+			var retrievedNotes string
+			var retrievedTags []string
+			retrievedNotes, retrievedTags, err = notesRepo.Get(ctx, "ignored-id-on-get", tc.activity.StartTime)
 			require.NoError(t, err)
 			assert.Equal(t, tc.notes, retrievedNotes)
 
