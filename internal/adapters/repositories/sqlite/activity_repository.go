@@ -13,11 +13,11 @@ import (
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
-type Repository struct {
-	db *sql.DB
+type ActivityRepository struct {
+	DB *sql.DB
 }
 
-func NewSQLiteActivityRepository(ctx context.Context, dataSourceName string) (*Repository, error) {
+func NewSQLiteActivityRepository(ctx context.Context, dataSourceName string) (*ActivityRepository, error) {
 	db, err := sql.Open("sqlite3", dataSourceName)
 	if err != nil {
 		return nil, errors.Wrap(err, "open database")
@@ -27,7 +27,7 @@ func NewSQLiteActivityRepository(ctx context.Context, dataSourceName string) (*R
 		return nil, errors.Wrap(pingErr, "ping database")
 	}
 
-	repo := &Repository{db: db}
+	repo := &ActivityRepository{DB: db}
 	if initErr := repo.initSchema(ctx); initErr != nil {
 		return nil, errors.Wrap(initErr, "initialize schema")
 	}
@@ -35,7 +35,7 @@ func NewSQLiteActivityRepository(ctx context.Context, dataSourceName string) (*R
 	return repo, nil
 }
 
-func (r *Repository) initSchema(ctx context.Context) error {
+func (r *ActivityRepository) initSchema(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS activities (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,11 +48,11 @@ func (r *Repository) initSchema(ctx context.Context) error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_start_time ON activities(start_time);
 	`
-	_, err := r.db.ExecContext(ctx, query)
+	_, err := r.DB.ExecContext(ctx, query)
 	return err
 }
 
-func (r *Repository) Save(ctx context.Context, activity models.Activity) error {
+func (r *ActivityRepository) Save(ctx context.Context, activity models.Activity) error {
 	tagsJSON, err := json.Marshal(activity.Tags)
 	if err != nil {
 		return errors.Wrap(err, "serialize tags")
@@ -68,7 +68,7 @@ func (r *Repository) Save(ctx context.Context, activity models.Activity) error {
 		notes=excluded.notes,
 		tags=excluded.tags;
 	`
-	_, err = r.db.ExecContext(ctx, query,
+	_, err = r.DB.ExecContext(ctx, query,
 		activity.Description,
 		activity.Project,
 		activity.StartTime.UTC(),
@@ -82,18 +82,18 @@ func (r *Repository) Save(ctx context.Context, activity models.Activity) error {
 	return nil
 }
 
-func (r *Repository) FindLast(ctx context.Context) (*models.Activity, error) {
+func (r *ActivityRepository) FindLast(ctx context.Context) (*models.Activity, error) {
 	query := `
 	SELECT description, project, start_time, end_time, notes, tags
 	FROM activities
 	ORDER BY start_time DESC
 	LIMIT 1
 	`
-	row := r.db.QueryRowContext(ctx, query)
+	row := r.DB.QueryRowContext(ctx, query)
 	return scanActivity(row)
 }
 
-func (r *Repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (r *ActivityRepository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
 	dialect := goqu.Dialect("sqlite3")
 	dataset := dialect.From("activities").
 		Select("description", "project", "start_time", "end_time", "notes", "tags").
@@ -124,7 +124,7 @@ func (r *Repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]mod
 		return nil, errors.Wrap(err, "build query")
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "find activities")
 	}
@@ -148,9 +148,9 @@ func (r *Repository) Find(ctx context.Context, filter dto.ActivityFilter) ([]mod
 	return activities, nil
 }
 
-func (r *Repository) Remove(ctx context.Context, activity models.Activity) error {
+func (r *ActivityRepository) Remove(ctx context.Context, activity models.Activity) error {
 	query := `DELETE FROM activities WHERE start_time = ?`
-	_, err := r.db.ExecContext(ctx, query, activity.StartTime.UTC())
+	_, err := r.DB.ExecContext(ctx, query, activity.StartTime.UTC())
 	if err != nil {
 		return errors.Wrap(err, "remove activity")
 	}

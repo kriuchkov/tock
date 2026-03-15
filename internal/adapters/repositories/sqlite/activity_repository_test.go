@@ -18,7 +18,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
-func setupTestDB(t *testing.T) *Repository {
+func setupTestDB(t *testing.T) *ActivityRepository {
 	t.Helper()
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test_tock.db")
@@ -35,8 +35,8 @@ func TestSQLiteRepository_Save(t *testing.T) {
 	tests := []struct {
 		name     string
 		activity models.Activity
-		setup    func(repo *Repository)
-		verify   func(t *testing.T, repo *Repository)
+		setup    func(repo *ActivityRepository)
+		verify   func(t *testing.T, repo *ActivityRepository)
 	}{
 		{
 			name: "insert new running activity",
@@ -47,7 +47,7 @@ func TestSQLiteRepository_Save(t *testing.T) {
 				Tags:        []string{"bug", "golang"},
 				Notes:       "Found a few issues in the repo",
 			},
-			verify: func(t *testing.T, repo *Repository) {
+			verify: func(t *testing.T, repo *ActivityRepository) {
 				last, err := repo.FindLast(ctx)
 				require.NoError(t, err)
 				require.NotNil(t, last)
@@ -69,7 +69,7 @@ func TestSQLiteRepository_Save(t *testing.T) {
 				Tags:        []string{"updated"},
 				Notes:       "Updated notes",
 			},
-			setup: func(repo *Repository) {
+			setup: func(repo *ActivityRepository) {
 				// Insert the initial record
 				_ = repo.Save(ctx, models.Activity{
 					Description: "Fix bugs",
@@ -78,7 +78,7 @@ func TestSQLiteRepository_Save(t *testing.T) {
 					Tags:        []string{"bug"},
 				})
 			},
-			verify: func(t *testing.T, repo *Repository) {
+			verify: func(t *testing.T, repo *ActivityRepository) {
 				last, err := repo.FindLast(ctx)
 				require.NoError(t, err)
 				require.NotNil(t, last)
@@ -114,18 +114,18 @@ func TestSQLiteRepository_FindLast(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setup        func(repo *Repository)
+		setup        func(repo *ActivityRepository)
 		expectNil    bool
 		expectedDesc string
 	}{
 		{
 			name:      "empty database",
-			setup:     func(_ *Repository) {},
+			setup:     func(_ *ActivityRepository) {},
 			expectNil: true,
 		},
 		{
 			name: "multiple activities, returns the most recent one",
-			setup: func(repo *Repository) {
+			setup: func(repo *ActivityRepository) {
 				_ = repo.Save(ctx, models.Activity{Description: "Past", Project: "A", StartTime: now.Add(-2 * time.Hour)})
 				_ = repo.Save(ctx, models.Activity{Description: "Present", Project: "B", StartTime: now})
 				_ = repo.Save(ctx, models.Activity{Description: "Older", Project: "A", StartTime: now.Add(-4 * time.Hour)})
@@ -159,7 +159,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 
 	// We create a standard set of records for filtering out
-	standardSetup := func(repo *Repository) {
+	standardSetup := func(repo *ActivityRepository) {
 		// Act 1: Tock project, ran 2 hours ago for 1 hour
 		_ = repo.Save(ctx, models.Activity{
 			Description: "Design architecture",
@@ -294,13 +294,13 @@ func TestSQLiteRepository_Remove(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setup      func(repo *Repository)
+		setup      func(repo *ActivityRepository)
 		toRemove   models.Activity
 		finalCount int
 	}{
 		{
 			name: "remove existing activity",
-			setup: func(repo *Repository) {
+			setup: func(repo *ActivityRepository) {
 				_ = repo.Save(ctx, models.Activity{Description: "A", Project: "1", StartTime: now})
 				_ = repo.Save(ctx, models.Activity{Description: "B", Project: "2", StartTime: now.Add(-time.Hour)})
 			},
@@ -309,7 +309,7 @@ func TestSQLiteRepository_Remove(t *testing.T) {
 		},
 		{
 			name: "remove non-existing activity (no-op)",
-			setup: func(repo *Repository) {
+			setup: func(repo *ActivityRepository) {
 				_ = repo.Save(ctx, models.Activity{Description: "A", Project: "1", StartTime: now})
 			},
 			toRemove:   models.Activity{StartTime: now.Add(-time.Hour)},

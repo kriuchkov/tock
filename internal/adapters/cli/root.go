@@ -59,14 +59,7 @@ func NewRootCmd() *cobra.Command {
 
 			filePath = resolveFilePath(backend, filePath, cfg)
 
-			repo := initRepository(cmd.Context(), backend, filePath)
-
-			notesBase := filePath
-			if notesBase == "" {
-				notesBase, _ = os.UserHomeDir()
-			}
-			notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
-			notesRepo := notes.NewRepository(notesPath)
+			repo, notesRepo := initRepositories(cmd.Context(), backend, filePath)
 
 			svc := activity.NewService(repo, notesRepo)
 
@@ -121,18 +114,24 @@ func getTimeFormatter(cmd *cobra.Command) *timeutil.Formatter {
 	return cmd.Context().Value(timeFormatterKey{}).(*timeutil.Formatter) //nolint:errcheck // always set
 }
 
-func initRepository(ctx context.Context, backend, filePath string) ports.ActivityRepository {
+func initRepositories(ctx context.Context, backend, filePath string) (ports.ActivityRepository, ports.NotesRepository) {
+	notesBase := filePath
+	if notesBase == "" {
+		notesBase, _ = os.UserHomeDir()
+	}
+	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
+
 	switch backend {
 	case backendTimewarrior:
-		return timewarrior.NewRepository(filePath)
+		return timewarrior.NewRepository(filePath), notes.NewRepository(notesPath)
 	case backendSqlite:
 		repo, err := sqlite.NewSQLiteActivityRepository(ctx, filePath)
 		if err != nil {
 			panic(fmt.Errorf("failed to init sqlite repo: %w", err))
 		}
-		return repo
+		return repo, sqlite.NewNotesRepository(repo.DB)
 	default:
-		return file.NewRepository(filePath)
+		return file.NewRepository(filePath), notes.NewRepository(notesPath)
 	}
 }
 
@@ -172,14 +171,7 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 
 	filePath = resolveFilePath(backend, filePath, cfg)
 
-	repo := initRepository(cmd.Context(), backend, filePath)
-
-	notesBase := filePath
-	if notesBase == "" {
-		notesBase, _ = os.UserHomeDir()
-	}
-	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
-	notesRepo := notes.NewRepository(notesPath)
+	repo, notesRepo := initRepositories(cmd.Context(), backend, filePath)
 
 	return activity.NewService(repo, notesRepo), nil
 }

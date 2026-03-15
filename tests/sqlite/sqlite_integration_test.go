@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,8 +64,8 @@ func TestSQLiteIntegration(t *testing.T) {
 	require.NoError(t, err, stderr)
 	assert.Contains(t, stdout, "\"project\": \"IntegrationProject\"")
 	assert.Contains(t, stdout, "\"description\": \"Testing Tock\"")
-	// lowercase tags output or Notes checking
-	assert.Contains(t, strings.ToLower(stdout), "integration")
+	assert.Contains(t, stdout, "\"notes\": \"Testing the sqlite backend\"")
+	assert.Contains(t, stdout, "\"integration\"")
 
 	// 5. Continue the activity
 	stdout, stderr, err = runTock("continue")
