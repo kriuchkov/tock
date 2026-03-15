@@ -13,6 +13,7 @@ type Config struct {
 	Backend         string            `mapstructure:"backend"`
 	File            FileConfig        `mapstructure:"file"`
 	Timewarrior     TimewarriorConfig `mapstructure:"timewarrior"`
+	Sqlite          SqliteConfig      `mapstructure:"sqlite"`
 	Theme           ThemeConfig       `mapstructure:"theme"`
 	Calendar        CalendarConfig    `mapstructure:"calendar"`
 	TimeFormat      string            `mapstructure:"time_format"`
@@ -46,6 +47,10 @@ type TimewarriorConfig struct {
 	DataPath string `mapstructure:"data_path"`
 }
 
+type SqliteConfig struct {
+	Path string `mapstructure:"path"`
+}
+
 type ThemeConfig struct {
 	Name      string `mapstructure:"name"`
 	Primary   string `mapstructure:"primary"`
@@ -77,6 +82,7 @@ func WithConfigFile(file string) Option {
 	}
 }
 
+//nolint:funlen // load and setup configuration
 func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v := viper.New()
 	var err error
@@ -105,11 +111,13 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
+		v.SetDefault("sqlite.path", filepath.Join(homeDir, ".tock.db"))
 	}
 
 	// Explicit Bindings for all supported variables
 	_ = v.BindEnv("backend", "TOCK_BACKEND")
 	_ = v.BindEnv("timewarrior.data_path", "TOCK_TIMEWARRIOR_DATA_PATH")
+	_ = v.BindEnv("sqlite.path", "TOCK_SQLITE_PATH")
 	_ = v.BindEnv("file.path", "TOCK_FILE", "TOCK_FILE_PATH")
 	_ = v.BindEnv("time_format", "TOCK_TIME_FORMAT")
 	_ = v.BindEnv("export.ical.file_name", "TOCK_EXPORT_ICAL_FILE_NAME")

@@ -13,13 +13,14 @@
 
 Features include:
 
-- 📝 **Simple plaintext format** - Activities stored in human-readable files
-- 📅 **Notes & Tags** - Attach detailed notes and tags to activities
-- 🎨 **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
-- ⚡ **Fast & Lightweight** - Single binary, no dependencies
-- 🔄 **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
-- 🎨 **Customizable Themes** - Multiple color themes and custom color support
-- 📅 **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
+- **Simple plaintext format** - Activities stored in human-readable files (default)
+- **Multiple Backends** - Support for flat files, TimeWarrior, and SQLite databases
+- **Notes & Tags** - Attach detailed notes and tags to activities
+- **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
+- **Fast & Lightweight** - Single binary, no dependencies
+- **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
+- **Customizable Themes** - Multiple color themes and custom color support
+- **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
 
 <hr clear="right"/>
 
@@ -132,6 +133,8 @@ Example `tock.yaml`:
 backend: file
 file:
     path: /Users/user/tock.txt
+sqlite:
+    path: /Users/user/tock.db
 time_format: "24"
 theme:
     faint: '#404040'
@@ -166,7 +169,7 @@ Example a config file [tock.yaml.example](tock.yaml.example).
 
 All settings can be overridden with environment variables (prefix `TOCK_`).
 
-- `TOCK_BACKEND`: `file` or `timewarrior`
+- `TOCK_BACKEND`: `file`, `timewarrior`, or `sqlite`
 - `TOCK_EXPORT_ICAL_FILE_NAME`: Custom filename for bulk iCal export (default: `tock_export.ics`)
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
@@ -198,6 +201,18 @@ export TOCK_BACKEND="timewarrior"
 
 # Optional: Specify custom data directory (default: ~/.timewarrior/data)
 export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
+```
+
+### 3. SQLite
+
+Stores activities in an SQLite database file.
+
+```bash
+# Enable SQLite backend
+export TOCK_BACKEND="sqlite"
+
+# Optional: Specify custom database file path (default: ~/.tock.db)
+export TOCK_SQLITE_PATH="/path/to/tock.db"
 ```
 
 Or use flags:
@@ -368,9 +383,9 @@ Available Commands:
   watch       Display a full-screen stopwatch for the current activity
 
 Flags:
-  -b, --backend string   Storage backend: 'file' (default) or 'timewarrior'
+  -b, --backend string   Storage backend: 'file' (default), 'timewarrior', or 'sqlite'
       --config string    Config file directory (default is $HOME/.config/tock/tock.yaml)
-  -f, --file string      Path to the activity log file (or data directory for timewarrior)
+  -f, --file string      Path to the activity log file (or data directory for timewarrior, db for sqlite)
   -h, --help             help for tock
   -v, --version          version for tock
 Use "tock [command] --help" for more information about a command.
@@ -700,8 +715,9 @@ shell = ["bash", "--noprofile", "--norc"]
 - `cmd/tock/main.go` - Entry point with DI setup
 - `internal/core/` - Domain layer (models, interfaces, DTOs)
 - `internal/services/` - Business logic
-- `internal/adapters/file/` - File storage implementation
-- `internal/adapters/timewarrior/` - TimeWarrior storage implementation
+- `internal/adapters/repositories/file/` - File storage implementation
+- `internal/adapters/repositories/timewarrior/` - TimeWarrior storage implementation
+- `internal/adapters/repositories/sqlite/` - SQLite storage implementation
 - `internal/adapters/cli/` - CLI commands and TUI
 - `internal/config/` - Configuration loading and management
 - `internal/extras/` - Extra utilities (e.g., iCal export)

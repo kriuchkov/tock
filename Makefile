@@ -10,4 +10,4 @@ test:
 	docker run -t --rm -v $$(pwd):/app -w /app \
 	-v $$(go env GOCACHE):/.cache/go-build -e GOCACHE=/.cache/go-build \
 	-v $$(go env GOMODCACHE):/.cache/mod -e GOMODCACHE=/.cache/mod \
-	--entrypoint "" golang:1.25.6-alpine sh -c "go test -v -count=1 -p 4 -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html"
+	--entrypoint "" golang:1.25.6 sh -c "go test -v -count=1 -p 4 -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html"

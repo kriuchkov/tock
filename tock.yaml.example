@@ -8,7 +8,7 @@
 # TOCK_TIME_FORMAT=12
 # TOCK_CHECK_UPDATES=false
 
-# Storage backend: file or timewarrior
+# Storage backend: file, timewarrior, or sqlite
 backend: file
 
 # File backend configuration
@@ -16,6 +16,12 @@ file:
   # Path to the activity log file
   # Default: ~/.tock.txt
   path: ~/.tock.txt
+
+# Sqlite backend configuration
+sqlite:
+  # Path to sqlite database file
+  # Default: ~/.tock.db
+  path: ~/.tock.db
 
 # Timewarrior backend configuration
 timewarrior:

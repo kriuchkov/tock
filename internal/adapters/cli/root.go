@@ -9,6 +9,7 @@ import (
 	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/notes"
 
+	"github.com/kriuchkov/tock/internal/adapters/repositories/sqlite"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/timewarrior"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -21,6 +22,7 @@ import (
 const (
 	defaultRecentActivitiesForCompletion = 1000
 	backendTimewarrior                   = "timewarrior"
+	backendSqlite                        = "sqlite"
 )
 
 type serviceKey struct{}
@@ -55,15 +57,9 @@ func NewRootCmd() *cobra.Command {
 				backend = cfg.Backend
 			}
 
-			if filePath == "" {
-				if backend == backendTimewarrior {
-					filePath = cfg.Timewarrior.DataPath
-				} else {
-					filePath = cfg.File.Path
-				}
-			}
+			filePath = resolveFilePath(backend, filePath, cfg)
 
-			repo := initRepository(backend, filePath)
+			repo := initRepository(cmd.Context(), backend, filePath)
 
 			notesBase := filePath
 			if notesBase == "" {
@@ -84,7 +80,7 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file (or data directory for timewarrior)")
-	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default) or 'timewarrior'")
+	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default), 'timewarrior', or 'sqlite'")
 	cmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default is $HOME/.config/tock/tock.yaml)")
 
 	cmd.AddCommand(NewStartCmd())
@@ -125,11 +121,34 @@ func getTimeFormatter(cmd *cobra.Command) *timeutil.Formatter {
 	return cmd.Context().Value(timeFormatterKey{}).(*timeutil.Formatter) //nolint:errcheck // always set
 }
 
-func initRepository(backend, filePath string) ports.ActivityRepository {
-	if backend == backendTimewarrior {
+func initRepository(ctx context.Context, backend, filePath string) ports.ActivityRepository {
+	switch backend {
+	case backendTimewarrior:
 		return timewarrior.NewRepository(filePath)
+	case backendSqlite:
+		repo, err := sqlite.NewSQLiteActivityRepository(ctx, filePath)
+		if err != nil {
+			panic(fmt.Errorf("failed to init sqlite repo: %w", err))
+		}
+		return repo
+	default:
+		return file.NewRepository(filePath)
 	}
-	return file.NewRepository(filePath)
+}
+
+func resolveFilePath(backend string, filePath string, cfg *config.Config) string {
+	if filePath != "" {
+		return filePath
+	}
+
+	switch backend {
+	case backendTimewarrior:
+		return cfg.Timewarrior.DataPath
+	case backendSqlite:
+		return cfg.Sqlite.Path
+	default:
+		return cfg.File.Path
+	}
 }
 
 func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error) {
@@ -151,15 +170,9 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 		backend = cfg.Backend
 	}
 
-	if filePath == "" {
-		if backend == backendTimewarrior {
-			filePath = cfg.Timewarrior.DataPath
-		} else {
-			filePath = cfg.File.Path
-		}
-	}
+	filePath = resolveFilePath(backend, filePath, cfg)
 
-	repo := initRepository(backend, filePath)
+	repo := initRepository(cmd.Context(), backend, filePath)
 
 	notesBase := filePath
 	if notesBase == "" {
