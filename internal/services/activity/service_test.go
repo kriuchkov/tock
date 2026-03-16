@@ -456,3 +456,51 @@ func TestService_Remove(t *testing.T) {
 		})
 	}
 }
+
+func TestService_List_PreservesExistingTagsWhenNotesRepoHasNoData(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := new(portsmocks.MockNotesRepository)
+	svc := activity.NewService(repo, notesRepo)
+
+	start := time.Date(2026, 3, 16, 10, 15, 0, 0, time.Local)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{
+		{
+			Project:     "Work",
+			Description: "Review PR",
+			StartTime:   start,
+			Tags:        []string{"github"},
+		},
+	}, nil)
+
+	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).Return("", []string(nil), nil)
+
+	activities, err := svc.List(context.Background(), dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 1)
+	assert.Equal(t, []string{"github"}, activities[0].Tags)
+	assert.Equal(t, "Review PR", activities[0].Description)
+}
+
+func TestService_List_OverridesWithNotesRepositoryDataWhenPresent(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := new(portsmocks.MockNotesRepository)
+	svc := activity.NewService(repo, notesRepo)
+
+	start := time.Date(2026, 3, 16, 10, 15, 0, 0, time.Local)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{
+		{
+			Project:     "Work",
+			Description: "Review PR",
+			StartTime:   start,
+			Tags:        []string{"github"},
+		},
+	}, nil)
+
+	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).Return("note from repo", []string{"desk", "focus"}, nil)
+
+	activities, err := svc.List(context.Background(), dto.ActivityFilter{})
+	require.NoError(t, err)
+	require.Len(t, activities, 1)
+	assert.Equal(t, "note from repo", activities[0].Notes)
+	assert.Equal(t, []string{"desk", "focus"}, activities[0].Tags)
+}

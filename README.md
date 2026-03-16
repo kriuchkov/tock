@@ -14,11 +14,11 @@
 Features include:
 
 - **Simple plaintext format** - Activities stored in human-readable files (default)
-- **Multiple Backends** - Support for flat files, TimeWarrior, and SQLite databases
+- **Multiple Backends** - Support for flat files, TodoTXT, TimeWarrior, and SQLite databases
 - **Notes & Tags** - Attach detailed notes and tags to activities
 - **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
 - **Fast & Lightweight** - Single binary, no dependencies
-- **Compatible** - Reads/writes Bartib file format and TimeWarrior data files
+- **Compatible** - Reads/writes Bartib file format, TodoTXT-compatible lines, and TimeWarrior data files
 - **Customizable Themes** - Multiple color themes and custom color support
 - **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
 
@@ -133,6 +133,8 @@ Example `tock.yaml`:
 backend: file
 file:
     path: /Users/user/tock.txt
+todotxt:
+  path: /Users/user/todo.txt
 sqlite:
     path: /Users/user/tock.db
 time_format: "24"
@@ -169,9 +171,10 @@ Example a config file [tock.yaml.example](tock.yaml.example).
 
 All settings can be overridden with environment variables (prefix `TOCK_`).
 
-- `TOCK_BACKEND`: `file`, `timewarrior`, or `sqlite`
+- `TOCK_BACKEND`: `file`, `todotxt`, `timewarrior`, or `sqlite`
 - `TOCK_EXPORT_ICAL_FILE_NAME`: Custom filename for bulk iCal export (default: `tock_export.ics`)
 - `TOCK_FILE_PATH`: Path to activity log
+- `TOCK_TODOTXT_PATH`: Path to TodoTXT activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
 Notes are stored as individual files in `~/.tock/notes/` (or relative to your configured file path).
 
@@ -191,7 +194,19 @@ Stores activities in a simple plaintext file.
 export TOCK_FILE_PATH="$HOME/.tock.txt"
 ```
 
-### 2. TimeWarrior
+### 2. TodoTXT
+
+Stores activities in a TodoTXT-compatible file. Tock keeps exact timestamps and full field fidelity in `tock_*` key:value extensions, so round-tripping remains lossless even though base TodoTXT has date-only task metadata.
+
+```bash
+# Enable TodoTXT backend
+export TOCK_BACKEND="todotxt"
+
+# Optional: Specify custom TodoTXT file path (default: ~/.tock.todo.txt)
+export TOCK_TODOTXT_PATH="$HOME/.tock.todo.txt"
+```
+
+### 3. TimeWarrior
 
 Integrates with [TimeWarrior](https://timewarrior.net/) data files.
 
@@ -203,7 +218,7 @@ export TOCK_BACKEND="timewarrior"
 export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
 ```
 
-### 3. SQLite
+### 4. SQLite
 
 Stores activities in an SQLite database file.
 

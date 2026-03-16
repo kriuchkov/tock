@@ -27,6 +27,7 @@ func TestLoadFromFile(t *testing.T) {
 	t.Setenv("TOCK_BACKEND", "")
 	t.Setenv("TOCK_FILE", "")
 	t.Setenv("TOCK_FILE_PATH", "")
+	t.Setenv("TOCK_TODOTXT_PATH", "")
 	t.Setenv("TOCK_TIMEWARRIOR_DATA_PATH", "")
 	t.Setenv("TOCK_THEME", "")
 	t.Setenv("TOCK_THEME_NAME", "")
