@@ -8,6 +8,7 @@ import (
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/notes"
+	"github.com/kriuchkov/tock/internal/adapters/repositories/todotxt"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/sqlite"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/timewarrior"
@@ -21,6 +22,7 @@ import (
 
 const (
 	defaultRecentActivitiesForCompletion = 1000
+	backendTodoTXT                       = "todotxt"
 	backendTimewarrior                   = "timewarrior"
 	backendSqlite                        = "sqlite"
 )
@@ -73,7 +75,8 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "Path to the activity log file (or data directory for timewarrior)")
-	cmd.PersistentFlags().StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default), 'timewarrior', or 'sqlite'")
+	cmd.PersistentFlags().
+		StringVarP(&backend, "backend", "b", "", "Storage backend: 'file' (default), 'todotxt', 'timewarrior', or 'sqlite'")
 	cmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default is $HOME/.config/tock/tock.yaml)")
 
 	cmd.AddCommand(NewStartCmd())
@@ -122,6 +125,8 @@ func initRepositories(ctx context.Context, backend, filePath string) (ports.Acti
 	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
 
 	switch backend {
+	case backendTodoTXT:
+		return todotxt.NewRepository(filePath), notes.NewRepository(notesPath)
 	case backendTimewarrior:
 		return timewarrior.NewRepository(filePath), notes.NewRepository(notesPath)
 	case backendSqlite:
@@ -141,6 +146,8 @@ func resolveFilePath(backend string, filePath string, cfg *config.Config) string
 	}
 
 	switch backend {
+	case backendTodoTXT:
+		return cfg.TodoTXT.Path
 	case backendTimewarrior:
 		return cfg.Timewarrior.DataPath
 	case backendSqlite:

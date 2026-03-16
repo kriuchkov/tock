@@ -261,8 +261,12 @@ func (s *service) enrichActivities(ctx context.Context, activities []models.Acti
 	for i := range activities {
 		notes, tags, err := s.notesRepo.Get(ctx, activities[i].ID(), activities[i].StartTime)
 		if err == nil {
-			activities[i].Notes = notes
-			activities[i].Tags = tags
+			if notes != "" {
+				activities[i].Notes = notes
+			}
+			if len(tags) > 0 {
+				activities[i].Tags = tags
+			}
 		}
 	}
 

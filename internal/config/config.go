@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Backend         string            `mapstructure:"backend"`
 	File            FileConfig        `mapstructure:"file"`
+	TodoTXT         TodoTXTConfig     `mapstructure:"todotxt"`
 	Timewarrior     TimewarriorConfig `mapstructure:"timewarrior"`
 	Sqlite          SqliteConfig      `mapstructure:"sqlite"`
 	Theme           ThemeConfig       `mapstructure:"theme"`
@@ -40,6 +41,10 @@ type ICalConfig struct {
 }
 
 type FileConfig struct {
+	Path string `mapstructure:"path"`
+}
+
+type TodoTXTConfig struct {
 	Path string `mapstructure:"path"`
 }
 
@@ -116,6 +121,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 
 	// Explicit Bindings for all supported variables
 	_ = v.BindEnv("backend", "TOCK_BACKEND")
+	_ = v.BindEnv("todotxt.path", "TOCK_TODOTXT_PATH")
 	_ = v.BindEnv("timewarrior.data_path", "TOCK_TIMEWARRIOR_DATA_PATH")
 	_ = v.BindEnv("sqlite.path", "TOCK_SQLITE_PATH")
 	_ = v.BindEnv("file.path", "TOCK_FILE", "TOCK_FILE_PATH")

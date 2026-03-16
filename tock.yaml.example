@@ -4,11 +4,12 @@
 # You can override any setting using environment variables:
 # TOCK_BACKEND=timewarrior
 # TOCK_FILE_PATH=/custom/path/tock.txt
+# TOCK_TODOTXT_PATH=/custom/path/todo.txt
 # TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
 # TOCK_TIME_FORMAT=12
 # TOCK_CHECK_UPDATES=false
 
-# Storage backend: file, timewarrior, or sqlite
+# Storage backend: file, todotxt, timewarrior, or sqlite
 backend: file
 
 # File backend configuration
@@ -16,6 +17,13 @@ file:
   # Path to the activity log file
   # Default: ~/.tock.txt
   path: ~/.tock.txt
+
+# TodoTXT backend configuration
+todotxt:
+  # Path to TodoTXT activity file
+  # Default: ~/.tock.todo.txt
+  # Tock stores exact timestamps in tock_* key:value extensions.
+  path: ~/.tock.todo.txt
 
 # Sqlite backend configuration
 sqlite:
