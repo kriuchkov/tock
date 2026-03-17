@@ -17,6 +17,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`report`](#report)
 - [Data & Analysis](#data--analysis)
   - [`analyze`](#analyze)
+  - [`export`](#export-alias-e)
   - [`ical`](#ical)
 - [Global Flags](#global-flags)
 
@@ -324,6 +325,41 @@ tock analyze -n 7 # Analyze last 7 days
 **Flags:**
 
 - `-n, --days int`: Number of days to analyze (default 30)
+
+---
+
+### `export` (alias: `e`)
+
+Export report data as text, CSV, or JSON.
+
+**Usage:**
+
+```bash
+tock export [flags]
+```
+
+**Examples:**
+
+```bash
+tock export --today                             # Export today's report as a text file
+tock export --yesterday --format csv           # Export yesterday's report as CSV
+tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
+tock export -p "Work" -d "meeting" -m csv      # Export filtered activities as CSV
+tock export --today --stdout                   # Print the export to stdout instead of writing a file
+tock export --today -o ./exports               # Write the export file to a specific directory
+```
+
+**Flags:**
+
+- `--today`: Export data for today
+- `--yesterday`: Export data for yesterday
+- `--date string`: Export data for a specific date (`YYYY-MM-DD`)
+- `-p, --project string`: Filter by project
+- `-d, --description string`: Filter by description
+- `-m, --format string`: Export format: `txt`, `csv`, or `json` (default `txt`)
+- `--fmt string`: Alias for `--format`
+- `-o, --path string`: Output directory
+- `--stdout`: Print output to stdout instead of writing a file
 
 ---
 
