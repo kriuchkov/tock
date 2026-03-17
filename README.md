@@ -20,6 +20,7 @@ Features include:
 - **Fast & Lightweight** - Single binary, no dependencies
 - **Compatible** - Reads/writes Bartib file format, TodoTXT-compatible lines, and TimeWarrior data files
 - **Customizable Themes** - Multiple color themes and custom color support
+- **Report Export** - Export report data as text, CSV, or JSON
 - **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
 
 <hr clear="right"/>
@@ -386,8 +387,9 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   continue    Continues a previous activity
   current     Lists all currently running activities
+  export      Export report data to file
   help        Help about any command
-  ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks
+  ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.
   last        List recent unique activities
   list        List activities (Calendar View)
   remove      Remove an activity
@@ -398,11 +400,12 @@ Available Commands:
   watch       Display a full-screen stopwatch for the current activity
 
 Flags:
-  -b, --backend string   Storage backend: 'file' (default), 'timewarrior', or 'sqlite'
-      --config string    Config file directory (default is $HOME/.config/tock/tock.yaml)
-  -f, --file string      Path to the activity log file (or data directory for timewarrior, db for sqlite)
+  -b, --backend string   Storage backend: 'file' (default), 'todotxt', 'timewarrior', or 'sqlite'
+      --config string    Config file path (default is $HOME/.config/tock/tock.yaml)
+  -f, --file string      Path to the activity log file (or data directory for timewarrior)
   -h, --help             help for tock
   -v, --version          version for tock
+
 Use "tock [command] --help" for more information about a command.
 ```
 
@@ -577,6 +580,31 @@ tock report --json           # Output in JSON format
 - `-d, --description`: Filter by description (case-insensitive substring)
 - `-s, --summary`: Show only project summaries
 - `--json`: Output report as JSON
+
+### Report Export
+
+Export report data as text, CSV, or JSON.
+
+```bash
+tock export --today                             # Export today's report as a text file
+tock export --yesterday --format csv           # Export yesterday's report as CSV
+tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
+tock export -p "Work" -d "meeting" -m csv      # Export filtered activities as CSV
+tock export --today --stdout                   # Print the export to stdout
+tock export --today -o ./exports               # Write the export file to a specific directory
+```
+
+**Flags:**
+
+- `--today`: Export data for today
+- `--yesterday`: Export data for yesterday
+- `--date`: Export data for a specific date (YYYY-MM-DD)
+- `-p, --project`: Filter by project
+- `-d, --description`: Filter by description
+- `-m, --format`: Export format: `txt`, `csv`, or `json` (default `txt`)
+- `--fmt`: Alias for `--format`
+- `-o, --path`: Output directory
+- `--stdout`: Print output to stdout instead of writing a file
 
 ### Calendar Integration (iCal)
 
