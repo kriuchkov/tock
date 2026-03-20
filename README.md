@@ -1,6 +1,25 @@
 # Tock
 
-[![Release](https://img.shields.io/github/v/release/kriuchkov/tock?style=flat-square)](https://github.com/kriuchkov/tock/releases) [![License](https://img.shields.io/github/license/kriuchkov/tock?style=flat-square)](LICENSE) [![Stars](https://img.shields.io/github/stars/kriuchkov/tock?style=flat-square)](https://github.com/kriuchkov/tock/stargazers) [![Go Version](https://img.shields.io/github/go-mod/go-version/kriuchkov/tock?style=flat-square&logo=go&label=Go)](go.mod) [![CI](https://img.shields.io/github/actions/workflow/status/kriuchkov/tock/ci.yml?style=flat-square&label=tests)](https://github.com/kriuchkov/tock/actions) [![OpenClaw](https://img.shields.io/badge/OpenClaw-ready-0A84FF?style=flat-square)](docs/openclaw.md)
+<p align="center">
+  <a href="https://github.com/kriuchkov/tock/releases">
+    <img src="https://img.shields.io/github/v/release/kriuchkov/tock?style=flat-square" alt="Release" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/kriuchkov/tock?style=flat-square" alt="License" />
+  </a>
+  <a href="https://github.com/kriuchkov/tock/stargazers">
+    <img src="https://img.shields.io/github/stars/kriuchkov/tock?style=flat-square" alt="Stars" />
+  </a>
+  <a href="go.mod">
+    <img src="https://img.shields.io/github/go-mod/go-version/kriuchkov/tock?style=flat-square&logo=go&label=Go" alt="Go Version" />
+  </a>
+  <a href="https://github.com/kriuchkov/tock/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/kriuchkov/tock/ci.yml?style=flat-square&label=tests" alt="CI" />
+  </a>
+  <a href="docs/openclaw.md">
+    <img src="https://img.shields.io/badge/OpenClaw-ready-0A84FF?style=flat-square" alt="OpenClaw" />
+  </a>
+</p>
 
 <p align="center">
   <a href="#features"><strong>Features</strong></a>
