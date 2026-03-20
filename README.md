@@ -186,6 +186,22 @@ Notes are stored as individual files in `~/.tock/notes/` (or relative to your co
 
 Tock supports multiple storage backends.
 
+## OpenClaw
+
+Tock includes a workspace-ready OpenClaw skill in `skills/tock`.
+
+This integration model uses the local `tock` CLI instead of coupling Tock to OpenClaw internals. For agent-safe flows, use machine-readable commands where possible:
+
+```bash
+tock current --json
+tock last --json -n 10
+tock export --today --format json --stdout
+tock start -p "Backend" -d "Implement OpenClaw skill" --json
+tock stop --json
+```
+
+Setup details are documented in [docs/openclaw.md](docs/openclaw.md).
+
 ### 1. Flat File (Default)
 
 Stores activities in a simple plaintext file.

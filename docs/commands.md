@@ -18,7 +18,6 @@ This document provides a comprehensive reference for all Tock commands, flags, a
 - [Data & Analysis](#data--analysis)
   - [`analyze`](#analyze)
   - [`ical`](#ical)
-- [Global Flags](#global-flags)
 
 ## Core Commands
 
@@ -42,6 +41,7 @@ tock start --project "Backend" --description "API implementation"               
 tock start -p "Backend" -d "API implementation" -t 09:30                           # Start at a specific time
 tock start -p "Design" -d "Mockups" --note "Home page redesign" --tag "ui,figma"   # Start with notes and tags
 tock start "Backend" "API implementation" -t 10:00                                 # Mixed usage (positional + flags)
+tock start -p "Backend" -d "API implementation" --json                             # Output created activity as JSON
 ```
 
 **Flags:**
@@ -51,6 +51,7 @@ tock start "Backend" "API implementation" -t 10:00                              
 - `-t, --time string`: Start time (HH:MM or "h:mm AM/PM")
 - `--note string`: Activity notes
 - `--tag strings`: Activity tags
+- `--json`: Output the created activity as JSON
 
 ---
 
@@ -73,6 +74,7 @@ tock stop --time "17:00"                                          # Stop at a sp
 tock stop --note "Finished the API integration, ready for review" # Stop and append a note
 tock stop --tag "coding,feature"                                  # Stop and add tags
 tock stop -t 18:00 --note "Leaving office"                        # Stop at 18:00 with a note
+tock stop --json                                                  # Output stopped activity as JSON
 ```
 
 **Flags:**
@@ -80,6 +82,7 @@ tock stop -t 18:00 --note "Leaving office"                        # Stop at 18:0
 - `-t, --time string`: End time (HH:MM or "h:mm AM/PM")
 - `--note string`: Activity notes
 - `--tag strings`: Activity tags
+- `--json`: Output the stopped activity as JSON
 
 ---
 
@@ -101,6 +104,7 @@ tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15                      
 tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m                                                                      # Add using start time and duration
 tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"                                                         # Add for a specific past date
 tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "New features" --tag "planning" --tag "tock"               # Add with notes and tags
+tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15 --json                                                                  # Output created activity as JSON
 ```
 
 **Flags:**
@@ -112,6 +116,7 @@ tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "New fea
 - `--duration string`: Duration (e.g., "1h30m", "10m"). Used if end time is omitted.
 - `--note string`: Activity notes
 - `--tag strings`: Activity tags
+- `--json`: Output the created activity as JSON
 
 ---
 
@@ -132,11 +137,13 @@ tock remove                                      # Remove the last activity (ask
 tock remove -y                                   # Remove the last activity without confirmation
 tock remove 2023-10-15-01                        # Remove specific activity by ID
 tock remove 2023-10-15-01 --yes                  # Remove specific activity without confirmation
+tock remove 2023-10-15-01 --yes --json          # Remove and output the deleted activity as JSON
 ```
 
 **Flags:**
 
 - `-y, --yes`: Skip confirmation
+- `--json`: Output the removed activity as JSON
 
 ---
 
@@ -164,7 +171,21 @@ tock continue -d "Code review"                       # Continue last activity wi
 tock continue 1 -p "New Project"                     # Continue 2nd last activity with a new project
 tock continue --note "Starting phase 2" --tag "dev"  # Continue with new notes and tags
 tock continue -t 09:00                               # Continue starting at a specific time
+tock continue --json                                 # Output the new activity as JSON
 ```
+
+**Flags:**
+
+- `-d, --description string`: Override activity description
+- `-p, --project string`: Override project name
+- `-t, --time string`: Start time (HH:MM or "h:mm AM/PM")
+- `--note string`: Activity notes
+- `--tag strings`: Activity tags
+- `--json`: Output the created activity as JSON
+
+---
+
+### `watch`
 
 Display a full-screen stopwatch for the current activity.
 
@@ -303,6 +324,10 @@ tock report -p "Work" --summary                   # Show summary for project "Wo
 tock report --today --json                        # JSON output for today
 tock report --date 2023-10-15 -p "Work" --json    # Filtered JSON output
 ```
+
+---
+
+## Data & Analysis
 
 ### `analyze`
 

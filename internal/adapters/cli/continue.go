@@ -23,6 +23,7 @@ func NewContinueCmd() *cobra.Command {
 	var at string
 	var notes string
 	var tags []string
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:     "continue [NUMBER]",
@@ -111,6 +112,10 @@ func NewContinueCmd() *cobra.Command {
 				return errors.Wrap(err, "start activity")
 			}
 
+			if jsonOutput {
+				return writeJSON(startedActivity)
+			}
+
 			fmt.Printf(
 				"Started activity: %s | %s at %s\n",
 				startedActivity.Project,
@@ -126,5 +131,6 @@ func NewContinueCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&at, "time", "t", "", "the time for changing the activity status (HH:MM)")
 	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output the created activity in JSON format")
 	return cmd
 }

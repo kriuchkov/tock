@@ -20,6 +20,7 @@ func NewStartCmd() *cobra.Command {
 	var at string
 	var notes string
 	var tags []string
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:   "start [project] [description] [notes] [tags]",
@@ -102,6 +103,10 @@ func NewStartCmd() *cobra.Command {
 				return errors.Wrap(err, "start activity")
 			}
 
+			if jsonOutput {
+				return writeJSON(activity)
+			}
+
 			fmt.Printf(
 				"Started activity: %s | %s at %s\n",
 				activity.Project,
@@ -117,6 +122,7 @@ func NewStartCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&at, "time", "t", "", "Start time (HH:MM)")
 	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output the created activity in JSON format")
 
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)

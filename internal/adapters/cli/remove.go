@@ -21,6 +21,7 @@ import (
 
 func NewRemoveCmd() *cobra.Command {
 	var skipConfirm bool
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:     "remove [DATE-INDEX]",
@@ -83,12 +84,17 @@ Examples:
 				return errors.Wrap(err, "remove activity")
 			}
 
+			if jsonOutput {
+				return writeJSON(activity)
+			}
+
 			fmt.Println("Activity removed.")
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVarP(&skipConfirm, "yes", "y", false, "Skip confirmation")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output the removed activity in JSON format")
 	return cmd
 }
 

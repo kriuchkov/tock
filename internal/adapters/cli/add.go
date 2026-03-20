@@ -21,6 +21,7 @@ type addOptions struct {
 	DurationStr string
 	Notes       string
 	Tags        []string
+	JSONOutput  bool
 }
 
 func NewAddCmd() *cobra.Command {
@@ -55,6 +56,7 @@ func NewAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.DurationStr, "duration", "", "Duration (e.g. 1h, 30m)")
 	cmd.Flags().StringVar(&opts.Notes, "note", "", "Activity notes")
 	cmd.Flags().StringSliceVar(&opts.Tags, "tag", nil, "Activity tags")
+	cmd.Flags().BoolVar(&opts.JSONOutput, "json", false, "Output the created activity in JSON format")
 
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)
@@ -110,6 +112,10 @@ func runAdd(cmd *cobra.Command, opts *addOptions) error {
 	activity, err := service.Add(cmd.Context(), req)
 	if err != nil {
 		return errors.Wrap(err, "add activity")
+	}
+
+	if opts.JSONOutput {
+		return writeJSON(activity)
 	}
 
 	fmt.Printf("Added activity: %s | %s (%s - %s)\n",

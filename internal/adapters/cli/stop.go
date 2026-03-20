@@ -15,6 +15,7 @@ func NewStopCmd() *cobra.Command {
 	var at string
 	var notes string
 	var tags []string
+	var jsonOutput bool
 
 	fn := func(cmd *cobra.Command, _ []string) error {
 		defer runUpdateCheck(cmd)
@@ -41,6 +42,10 @@ func NewStopCmd() *cobra.Command {
 			return errors.Wrap(err, "stop activity")
 		}
 
+		if jsonOutput {
+			return writeJSON(activity)
+		}
+
 		fmt.Printf(
 			"Stopped activity: %s | %s at %s\n",
 			activity.Project,
@@ -59,5 +64,6 @@ func NewStopCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&at, "time", "t", "", "End time (HH:MM)")
 	cmd.Flags().StringVar(&notes, "note", "", "Activity notes")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "Activity tags")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output the stopped activity in JSON format")
 	return cmd
 }
