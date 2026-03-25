@@ -3,6 +3,7 @@ package cli
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -49,8 +50,8 @@ func NewUpdateCmd() *cobra.Command {
 		Use:     "update",
 		Aliases: []string{"upgrade"},
 		Short:   "Update to the latest official release",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return runUpdateCmd(checkOnly)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runUpdateCmd(cmd.Context(), checkOnly)
 		},
 	}
 
@@ -58,8 +59,13 @@ func NewUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-func fetchLatestRelease(client *http.Client) (githubRelease, error) {
-	resp, err := client.Get(latestReleaseURL)
+func fetchLatestRelease(ctx context.Context, client *http.Client) (githubRelease, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, latestReleaseURL, nil)
+	if err != nil {
+		return githubRelease{}, errors.Wrap(err, "create release request")
+	}
+
+	resp, err := client.Do(request)
 	if err != nil {
 		return githubRelease{}, errors.Wrap(err, "fetch latest release")
 	}
@@ -92,7 +98,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	release, err := fetchLatestRelease(&http.Client{Timeout: updateCheckTimeout})
+	release, err := fetchLatestRelease(ctx, &http.Client{Timeout: updateCheckTimeout})
 	if err != nil {
 		fmt.Printf("Failed to check for updates: %v\n", err)
 		return
@@ -107,8 +113,8 @@ func runUpdateCheck(cmd *cobra.Command) {
 
 	currentVersion := currentBuildVersion()
 	latestVersion := normalizeVersion(release.TagName)
-	comparison, comparable := compareReleaseVersions(currentVersion, latestVersion)
-	if comparable {
+	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
+	if isComparable {
 		if comparison < 0 {
 			fmt.Printf("\nUpdate available %s -> %s\nRun `tock update` or visit %s\n", currentVersion, release.TagName, release.HTMLURL)
 		}
@@ -120,21 +126,21 @@ func runUpdateCheck(cmd *cobra.Command) {
 	}
 }
 
-func runUpdateCmd(checkOnly bool) error {
-	release, err := fetchLatestRelease(&http.Client{Timeout: updateDownloadTimeout})
+func runUpdateCmd(ctx context.Context, checkOnly bool) error {
+	release, err := fetchLatestRelease(ctx, &http.Client{Timeout: updateDownloadTimeout})
 	if err != nil {
 		return err
 	}
 
 	currentVersion := currentBuildVersion()
 	latestVersion := normalizeVersion(release.TagName)
-	comparison, comparable := compareReleaseVersions(currentVersion, latestVersion)
+	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
 
 	switch {
-	case comparable && comparison == 0:
+	case isComparable && comparison == 0:
 		fmt.Printf("Already up to date: %s\n", latestVersion)
 		return nil
-	case comparable && comparison > 0:
+	case isComparable && comparison > 0:
 		fmt.Printf("Current build %s is newer than the latest official release %s\n", currentVersion, release.TagName)
 		return nil
 	case checkOnly:
@@ -158,7 +164,7 @@ func runUpdateCmd(checkOnly bool) error {
 	}
 
 	executableDir := filepath.Dir(executablePath)
-	archivePath, err := downloadReleaseArchive(&http.Client{Timeout: updateDownloadTimeout}, executableDir, asset)
+	archivePath, err := downloadReleaseArchive(ctx, &http.Client{Timeout: updateDownloadTimeout}, executableDir, asset)
 	if err != nil {
 		return err
 	}
@@ -182,13 +188,13 @@ func runUpdateCmd(checkOnly bool) error {
 }
 
 func isUnversionedBuild() bool {
-	return version == "" || version == "unknown" || version == "dev"
+	return version == "" || version == buildVersionUnknown || version == buildVersionDev
 }
 
 func currentBuildVersion() string {
 	current := normalizeVersion(version)
 	if current == "" {
-		return "unknown"
+		return buildVersionUnknown
 	}
 	return current
 }
@@ -226,7 +232,7 @@ func releaseOSName(goos string) (string, error) {
 	switch goos {
 	case "linux":
 		return "Linux", nil
-	case "darwin":
+	case darwinGOOS:
 		return "Darwin", nil
 	default:
 		return "", errors.Errorf("self-update is not supported on %s", goos)
@@ -244,8 +250,13 @@ func releaseArchName(goarch string) (string, error) {
 	}
 }
 
-func downloadReleaseArchive(client *http.Client, outputDir string, asset githubReleaseAsset) (string, error) {
-	resp, err := client.Get(asset.BrowserDownloadURL)
+func downloadReleaseArchive(ctx context.Context, client *http.Client, outputDir string, asset githubReleaseAsset) (string, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, asset.BrowserDownloadURL, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "create release download request")
+	}
+
+	resp, err := client.Do(request)
 	if err != nil {
 		return "", errors.Wrap(err, "download release asset")
 	}
@@ -316,21 +327,21 @@ func extractBinaryFromArchive(archivePath, outputDir string) (string, error) {
 
 	tarReader := tar.NewReader(gzipReader)
 	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
+		header, nextErr := tarReader.Next()
+		if errors.Is(nextErr, io.EOF) {
 			break
 		}
-		if err != nil {
-			return "", errors.Wrap(err, "read release archive")
+		if nextErr != nil {
+			return "", errors.Wrap(nextErr, "read release archive")
 		}
 
 		if header.Typeflag != tar.TypeReg || path.Base(header.Name) != "tock" {
 			continue
 		}
 
-		extractedPath, err := writeExtractedBinary(outputDir, header.FileInfo().Mode().Perm(), tarReader)
-		if err != nil {
-			return "", err
+		extractedPath, writeErr := writeExtractedBinary(outputDir, header.FileInfo().Mode().Perm(), tarReader)
+		if writeErr != nil {
+			return "", writeErr
 		}
 		return extractedPath, nil
 	}

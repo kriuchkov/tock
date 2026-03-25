@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"regexp"
 	"runtime"
 	"runtime/debug"
 	"strconv"
@@ -10,10 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+const (
+	buildVersionDev     = "dev"
+	buildVersionUnknown = "unknown"
+	buildCommitNone     = "none"
+	darwinGOOS          = "darwin"
 )
 
 type buildMetadata struct {
@@ -29,15 +31,19 @@ type semanticVersion struct {
 	prerelease string
 }
 
-func init() {
+var pseudoVersionPattern = regexp.MustCompile(`^v?([0-9]+\.[0-9]+\.[0-9]+)-(.*)-([0-9a-fA-F]{12,})$`)
+
+var (
+	version, commit, date = resolveInitialBuildMetadata()
+)
+
+func resolveInitialBuildMetadata() (string, string, string) {
 	metadata := resolveBuildMetadata(buildMetadata{
-		version: version,
-		commit:  commit,
-		date:    date,
+		version: buildVersionDev,
+		commit:  buildCommitNone,
+		date:    buildVersionUnknown,
 	}, readBuildInfo())
-	version = metadata.version
-	commit = metadata.commit
-	date = metadata.date
+	return metadata.version, metadata.commit, metadata.date
 }
 
 func NewVersionCmd() *cobra.Command {
@@ -67,13 +73,9 @@ func resolveBuildMetadata(metadata buildMetadata, info *debug.BuildInfo) buildMe
 	if needsVersionFallback(metadata.version) {
 		switch mainVersion := strings.TrimSpace(info.Main.Version); {
 		case mainVersion != "" && mainVersion != "(devel)":
-			metadata.version = normalizeVersion(mainVersion)
+			metadata.version = normalizeBuildVersion(mainVersion, settings["vcs.revision"], settings["vcs.modified"] == "true")
 		case settings["vcs.revision"] != "":
-			metadata.version = "dev-" + shortRevision(settings["vcs.revision"])
-		}
-
-		if settings["vcs.modified"] == "true" && metadata.version != "" && !strings.Contains(metadata.version, "+dirty") {
-			metadata.version += "+dirty"
+			metadata.version = normalizeBuildVersion("", settings["vcs.revision"], settings["vcs.modified"] == "true")
 		}
 	}
 
@@ -98,17 +100,17 @@ func buildSettings(info *debug.BuildInfo) map[string]string {
 
 func needsVersionFallback(value string) bool {
 	value = strings.TrimSpace(value)
-	return value == "" || value == "unknown" || value == "dev"
+	return value == "" || value == buildVersionUnknown || value == buildVersionDev
 }
 
 func needsCommitFallback(value string) bool {
 	value = strings.TrimSpace(value)
-	return value == "" || value == "none" || value == "unknown"
+	return value == "" || value == buildCommitNone || value == buildVersionUnknown
 }
 
 func needsDateFallback(value string) bool {
 	value = strings.TrimSpace(value)
-	return value == "" || value == "unknown"
+	return value == "" || value == buildVersionUnknown
 }
 
 func shortRevision(revision string) string {
@@ -122,6 +124,129 @@ func normalizeVersion(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.TrimPrefix(value, "v")
 	return value
+}
+
+func normalizeBuildVersion(value, revision string, modified bool) string {
+	value, extraBuildMetadata, metadataMarkedModified := splitBuildMetadata(strings.TrimSpace(value))
+	modified = modified || metadataMarkedModified
+	value = normalizeVersion(value)
+
+	if value == "" || value == "(devel)" {
+		if revision == "" {
+			return buildVersionDev
+		}
+		return formatDevelopmentVersion("0.0.0", buildVersionDev, shortRevision(revision), extraBuildMetadata, modified)
+	}
+
+	if display, ok := normalizePseudoVersion(value, revision, extraBuildMetadata, modified); ok {
+		return display
+	}
+
+	return appendBuildMetadata(value, extraBuildMetadata, modified)
+}
+
+func normalizePseudoVersion(value, revision, extraBuildMetadata string, modified bool) (string, bool) {
+	matches := pseudoVersionPattern.FindStringSubmatch(value)
+	if matches == nil {
+		return "", false
+	}
+
+	baseVersion := matches[1]
+	pseudoSegment := matches[2]
+	embeddedRevision := matches[3]
+
+	prereleasePrefix := buildVersionDev
+	if !isPseudoTimestamp(pseudoSegment) {
+		idx := strings.LastIndexByte(pseudoSegment, '.')
+		if idx < 0 || !isPseudoTimestamp(pseudoSegment[idx+1:]) {
+			return "", false
+		}
+
+		prefix := strings.TrimSuffix(pseudoSegment[:idx], ".0")
+		if prefix != "" && prefix != "0" {
+			prereleasePrefix = prefix + "." + buildVersionDev
+		}
+	}
+
+	usedRevision := revision
+	if usedRevision == "" {
+		usedRevision = embeddedRevision
+	}
+
+	return formatDevelopmentVersion(baseVersion, prereleasePrefix, shortRevision(usedRevision), extraBuildMetadata, modified), true
+}
+
+func formatDevelopmentVersion(baseVersion, prerelease, shortSHA, extraBuildMetadata string, modified bool) string {
+	buildMetadata := joinBuildMetadata(shortSHA, extraBuildMetadata, modified)
+	if buildMetadata == "" {
+		return baseVersion + "-" + prerelease
+	}
+
+	return baseVersion + "-" + prerelease + "+" + buildMetadata
+}
+
+func splitBuildMetadata(value string) (string, string, bool) {
+	idx := strings.IndexByte(value, '+')
+	if idx < 0 {
+		return value, "", false
+	}
+
+	var filtered []string
+	modified := false
+
+	for part := range strings.SplitSeq(value[idx+1:], ".") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if part == "dirty" {
+			modified = true
+			continue
+		}
+		filtered = append(filtered, part)
+	}
+
+	return value[:idx], strings.Join(filtered, "."), modified
+}
+
+func appendBuildMetadata(value, extraBuildMetadata string, modified bool) string {
+	buildMetadata := joinBuildMetadata("", extraBuildMetadata, modified)
+	if buildMetadata == "" {
+		return value
+	}
+	return value + "+" + buildMetadata
+}
+
+func joinBuildMetadata(shortSHA, extraBuildMetadata string, modified bool) string {
+	var parts []string
+
+	if shortSHA != "" {
+		parts = append(parts, shortSHA)
+	}
+
+	if extraBuildMetadata != "" {
+		parts = append(parts, extraBuildMetadata)
+	}
+
+	if modified {
+		parts = append(parts, "dirty")
+	}
+
+	return strings.Join(parts, ".")
+}
+
+func isPseudoTimestamp(value string) bool {
+	if len(value) != 14 {
+		return false
+	}
+
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func compareReleaseVersions(currentVersion, latestVersion string) (int, bool) {

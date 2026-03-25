@@ -36,7 +36,7 @@ func NewICalCmd() *cobra.Command {
 					return errors.New("output directory (--path) is required for bulk export unless --open is used")
 				}
 
-				if openApp && runtime.GOOS != "darwin" {
+				if openApp && runtime.GOOS != darwinGOOS {
 					return errors.New("--open is only supported on macOS")
 				}
 
@@ -52,7 +52,7 @@ func NewICalCmd() *cobra.Command {
 			if !isSingle && outputDir == "" && !openApp {
 				return errors.New("output directory (--path) is required for bulk export unless --open is used")
 			}
-			if openApp && runtime.GOOS != "darwin" {
+			if openApp && runtime.GOOS != darwinGOOS {
 				return errors.New("--open is only supported on macOS")
 			}
 
