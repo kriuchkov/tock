@@ -53,8 +53,8 @@ func TestResolveBuildMetadataNormalizesPseudoVersion(t *testing.T) {
 		date:    "unknown",
 	}, info)
 
-	if metadata.version != "1.8.1-dev+a0df8ea.dirty" {
-		t.Fatalf("expected version 1.8.1-dev+a0df8ea.dirty, got %q", metadata.version)
+	if metadata.version != "1.8.1-0.20260320192201-a0df8eaad4e2+dirty" {
+		t.Fatalf("expected version 1.8.1-0.20260320192201-a0df8eaad4e2+dirty, got %q", metadata.version)
 	}
 }
 
@@ -99,8 +99,8 @@ func TestResolveBuildMetadataFallsBackToRevisionForDevel(t *testing.T) {
 		date:    "unknown",
 	}, info)
 
-	if metadata.version != "0.0.0-dev+a0df8ea.dirty" {
-		t.Fatalf("expected 0.0.0-dev+a0df8ea.dirty, got %q", metadata.version)
+	if metadata.version != "dev" {
+		t.Fatalf("expected dev, got %q", metadata.version)
 	}
 
 	if metadata.commit != "a0df8eaad4e2b6ef65fa5cb4cf0be2dbb8d74f18" {
@@ -122,9 +122,21 @@ func TestCompareReleaseVersions(t *testing.T) {
 	}{
 		{name: "older release", current: "1.7.14", latest: "1.8.0", want: -1, ok: true},
 		{name: "same release with metadata", current: "1.8.0+dirty", latest: "v1.8.0", want: 0, ok: true},
-		{name: "dev prerelease newer than older release", current: "1.8.1-dev+a0df8ea", latest: "1.8.0", want: 1, ok: true},
-		{name: "dev prerelease older than final release", current: "1.8.1-dev+a0df8ea", latest: "1.8.1", want: -1, ok: true},
-		{name: "devel build", current: "dev-a0df8ea", latest: "1.8.0", want: 0, ok: false},
+		{
+			name:    "pseudo version newer than older release",
+			current: "1.8.1-0.20260320192201-a0df8eaad4e2+dirty",
+			latest:  "1.8.0",
+			want:    1,
+			ok:      true,
+		},
+		{
+			name:    "pseudo version older than final release",
+			current: "1.8.1-0.20260320192201-a0df8eaad4e2+dirty",
+			latest:  "1.8.1",
+			want:    -1,
+			ok:      true,
+		},
+		{name: "devel build", current: "dev", latest: "1.8.0", want: 0, ok: false},
 	}
 
 	for _, tc := range testCases {
