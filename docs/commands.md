@@ -19,6 +19,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`analyze`](#analyze)
   - [`export`](#export-alias-e)
   - [`ical`](#ical)
+  - [`update`](#update-alias-upgrade)
 
 ## Core Commands
 
@@ -412,3 +413,27 @@ tock ical 2026-01-07 --path ./export    # Export single day activities to direct
 
 - `--path string`: Output directory for files
 - `--open`: Open generated file in system calendar
+
+---
+
+### `update` (alias: `upgrade`)
+
+Update the current `tock` executable to the latest official release.
+
+**Usage:**
+
+```bash
+tock update [flags]
+```
+
+**Examples:**
+
+```bash
+tock update         # Download and install the latest official release over the current binary
+tock upgrade        # Alias for update
+tock update --check # Check whether a newer release is available without installing it
+```
+
+**Flags:**
+
+- `--check`: Check for a newer release without installing it

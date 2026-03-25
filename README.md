@@ -450,6 +450,7 @@ Available Commands:
   report      Generate time tracking report
   start       Start a new activity
   stop        Stop the current activity
+  update      Update to the latest official release
   version     Print the version info
   watch       Display a full-screen stopwatch for the current activity
 
@@ -710,6 +711,18 @@ tock analyze --days 7
 **Flags:**
 
 - `-n, --days`: Number of days to analyze (default 30)
+
+### Self Update
+
+Update the current `tock` executable to the latest official release.
+
+```bash
+tock update
+tock upgrade
+tock update --check
+```
+
+`tock update` installs the latest official release for your current OS and architecture over the executable you are currently running. `tock update --check` only reports whether a newer release is available.
 
 ## Update Check
 
