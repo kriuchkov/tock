@@ -90,10 +90,10 @@ func (m *reportModel) renderProductivityStats() string {
 		avgDuration = totalDuration / time.Duration(activeDays)
 	}
 
-	b.WriteString(fmt.Sprintf("Total:   %s\n", m.styles.Duration.Render(totalDuration.Round(time.Minute).String())))
-	b.WriteString(fmt.Sprintf("Avg/Day: %s\n", m.styles.Duration.Render(avgDuration.Round(time.Minute).String())))
-	b.WriteString(fmt.Sprintf("Max/Day: %s\n", m.styles.Duration.Render(maxDailyDuration.Round(time.Minute).String())))
-	b.WriteString(fmt.Sprintf("Streak:  %d days\n", longestStreak))
+	fmt.Fprintf(&b, "Total:   %s\n", m.styles.Duration.Render(totalDuration.Round(time.Minute).String()))
+	fmt.Fprintf(&b, "Avg/Day: %s\n", m.styles.Duration.Render(avgDuration.Round(time.Minute).String()))
+	fmt.Fprintf(&b, "Max/Day: %s\n", m.styles.Duration.Render(maxDailyDuration.Round(time.Minute).String()))
+	fmt.Fprintf(&b, "Streak:  %d days\n", longestStreak)
 
 	// Weekly target progress (only if configured)
 	if m.config.WeeklyTarget > 0 {
@@ -103,7 +103,7 @@ func (m *reportModel) renderProductivityStats() string {
 
 			weekStr := formatDurationCompact(weeklyDuration)
 			targetStr := formatDurationCompact(m.config.WeeklyTarget)
-			b.WriteString(fmt.Sprintf("Week:    %s / %s\n", m.styles.Duration.Render(weekStr), targetStr))
+			fmt.Fprintf(&b, "Week:    %s / %s\n", m.styles.Duration.Render(weekStr), targetStr)
 
 			percent := float64(weeklyDuration) / float64(m.config.WeeklyTarget) * 100
 			barPercent := min(percent, 100)
@@ -145,10 +145,8 @@ func (m *reportModel) renderWeeklyActivity() string {
 	for i := range 7 {
 		day := startOfWeek.AddDate(0, 0, i)
 		dur := time.Duration(0)
-		if day.Month() == m.viewDate.Month() {
-			if r, ok := m.monthReports[day.Day()]; ok {
-				dur = r.TotalDuration
-			}
+		if r, ok := m.reportForDate(day); ok {
+			dur = r.TotalDuration
 		}
 		weeklyDurations = append(weeklyDurations, dur)
 		if dur > maxDuration {
@@ -158,10 +156,8 @@ func (m *reportModel) renderWeeklyActivity() string {
 		// Previous week
 		prevDay := startOfPrevWeek.AddDate(0, 0, i)
 		prevDur := time.Duration(0)
-		if prevDay.Month() == m.viewDate.Month() {
-			if r, ok := m.monthReports[prevDay.Day()]; ok {
-				prevDur = r.TotalDuration
-			}
+		if r, ok := m.reportForDate(prevDay); ok {
+			prevDur = r.TotalDuration
 		}
 		prevWeeklyDurations = append(prevWeeklyDurations, prevDur)
 		if prevDur > maxDuration {
@@ -201,8 +197,8 @@ func (m *reportModel) renderWeeklyActivity() string {
 			}
 		}
 
-		b.WriteString(fmt.Sprintf("%s %s\n", dayStyle.Width(2).Render(label), lipgloss.NewStyle().Foreground(m.theme.Primary).Render(bar)))
-		b.WriteString(fmt.Sprintf("   %s\n", lipgloss.NewStyle().Foreground(m.theme.Faint).Render(prevBar)))
+		fmt.Fprintf(&b, "%s %s\n", dayStyle.Width(2).Render(label), lipgloss.NewStyle().Foreground(m.theme.Primary).Render(bar))
+		fmt.Fprintf(&b, "   %s\n", lipgloss.NewStyle().Foreground(m.theme.Faint).Render(prevBar))
 	}
 	b.WriteString("\n")
 	return b.String()
@@ -255,10 +251,10 @@ func (m *reportModel) renderTopProjects(maxHeight int) string {
 			}
 		}
 
-		b.WriteString(fmt.Sprintf("%s\n", m.styles.Project.Render(kv.Key)))
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s\n", m.styles.Project.Render(kv.Key))
+		fmt.Fprintf(&b, "%s %s\n",
 			lipgloss.NewStyle().Foreground(m.theme.Primary).Render(bar),
-			m.styles.Duration.Render(kv.Value.Round(time.Minute).String())))
+			m.styles.Duration.Render(kv.Value.Round(time.Minute).String()))
 		b.WriteString("\n")
 	}
 	return b.String()

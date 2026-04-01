@@ -52,6 +52,7 @@ type reportModel struct {
 	currentDate  time.Time           // The date currently selected
 	viewDate     time.Time           // The month currently being viewed
 	monthReports map[int]*dto.Report // Cache for daily reports in the month (day -> report)
+	dailyReports map[string]*dto.Report
 	viewport     viewport.Model
 	ready        bool
 	width        int
@@ -71,6 +72,7 @@ func initialReportModel(service ports.ActivityResolver, cfg *config.Config, tf *
 		currentDate:  now,
 		viewDate:     now,
 		monthReports: make(map[int]*dto.Report),
+		dailyReports: make(map[string]*dto.Report),
 		styles:       InitStyles(theme),
 		theme:        theme,
 	}
@@ -118,7 +120,8 @@ func (m *reportModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportContent()
 
 	case monthDataMsg:
-		m.monthReports = msg.reports
+		m.monthReports = msg.monthReports
+		m.dailyReports = msg.dailyReports
 		m.updateViewportContent()
 
 	case errMsg:
@@ -254,8 +257,7 @@ func (m *reportModel) renderDetails() string {
 
 //nolint:funlen //it's more readable to keep the content generation in one place for now
 func (m *reportModel) updateViewportContent() {
-	day := m.currentDate.Day()
-	report, ok := m.monthReports[day]
+	report, ok := m.reportForDate(m.currentDate)
 
 	var b strings.Builder
 
@@ -459,7 +461,8 @@ func wrapText(text string, maxWidth int) []string {
 // Messages and Commands
 
 type monthDataMsg struct {
-	reports map[int]*dto.Report
+	monthReports map[int]*dto.Report
+	dailyReports map[string]*dto.Report
 }
 
 type errMsg struct{ err error }
@@ -469,10 +472,12 @@ func (m *reportModel) fetchMonthData() tea.Msg {
 	year, month, _ := m.viewDate.Date()
 	startOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0)
+	fetchStart := startOfMonth.AddDate(0, 0, -14)
+	fetchEnd := endOfMonth.AddDate(0, 0, 14)
 
 	filter := dto.ActivityFilter{
-		FromDate: &startOfMonth,
-		ToDate:   &endOfMonth,
+		FromDate: &fetchStart,
+		ToDate:   &fetchEnd,
 	}
 
 	// Get report for the whole month
@@ -486,44 +491,107 @@ func (m *reportModel) fetchMonthData() tea.Msg {
 		return errMsg{errors.Wrap(err, "get report")}
 	}
 
-	// Group by day
-	dailyReports := make(map[int]*dto.Report)
+	monthReports := make(map[int]*dto.Report)
+	dailyReports := make(map[string]*dto.Report)
+	now := time.Now()
 
 	for _, act := range report.Activities {
-		day := act.StartTime.Day()
+		for _, dailyAct := range splitActivityByDay(act, now) {
+			activityDate := time.Date(
+				dailyAct.StartTime.Year(), dailyAct.StartTime.Month(), dailyAct.StartTime.Day(),
+				0, 0, 0, 0, time.Local,
+			)
 
-		// Handle activities spanning days? For now, assign to start day.
-		// Also check if activity is within the month (it should be due to filter)
-		// if act.StartTime.Month() != month {
-		// 	continue
-		// }
+			dailyKey := dateKey(activityDate)
+			dailyReport, ok := dailyReports[dailyKey]
+			if !ok {
+				dailyReport = newDailyReport()
+				dailyReports[dailyKey] = dailyReport
+			}
+			addActivityToReport(dailyReport, dailyAct)
 
-		if _, ok := dailyReports[day]; !ok {
-			dailyReports[day] = &dto.Report{
-				Activities: []models.Activity{},
-				ByProject:  make(map[string]dto.ProjectReport),
+			if activityDate.Year() == year && activityDate.Month() == month {
+				monthReport, ok := monthReports[activityDate.Day()]
+				if !ok {
+					monthReport = newDailyReport()
+					monthReports[activityDate.Day()] = monthReport
+				}
+				addActivityToReport(monthReport, dailyAct)
 			}
 		}
-
-		dr := dailyReports[day]
-		dr.Activities = append(dr.Activities, act)
-		dur := act.Duration()
-		dr.TotalDuration += dur
-
-		// Update project report for the day
-		pr, ok := dr.ByProject[act.Project]
-		if !ok {
-			pr = dto.ProjectReport{
-				ProjectName: act.Project,
-				Activities:  []models.Activity{},
-			}
-		}
-		pr.Duration += dur
-		pr.Activities = append(pr.Activities, act)
-		dr.ByProject[act.Project] = pr
 	}
 
-	return monthDataMsg{reports: dailyReports}
+	return monthDataMsg{monthReports: monthReports, dailyReports: dailyReports}
+}
+
+func newDailyReport() *dto.Report {
+	return &dto.Report{
+		Activities: []models.Activity{},
+		ByProject:  make(map[string]dto.ProjectReport),
+	}
+}
+
+func addActivityToReport(report *dto.Report, act models.Activity) {
+	report.Activities = append(report.Activities, act)
+	dur := act.Duration()
+	report.TotalDuration += dur
+
+	projectReport, ok := report.ByProject[act.Project]
+	if !ok {
+		projectReport = dto.ProjectReport{
+			ProjectName: act.Project,
+			Activities:  []models.Activity{},
+		}
+	}
+	projectReport.Duration += dur
+	projectReport.Activities = append(projectReport.Activities, act)
+	report.ByProject[act.Project] = projectReport
+}
+
+func splitActivityByDay(act models.Activity, now time.Time) []models.Activity {
+	segmentEnd := now
+	if act.EndTime != nil {
+		segmentEnd = *act.EndTime
+	}
+	if !segmentEnd.After(act.StartTime) {
+		return nil
+	}
+
+	segmentStart := act.StartTime
+	dayStart := time.Date(segmentStart.Year(), segmentStart.Month(), segmentStart.Day(), 0, 0, 0, 0, time.Local)
+	segments := make([]models.Activity, 0, 1)
+
+	for segmentStart.Before(segmentEnd) {
+		nextDayStart := dayStart.AddDate(0, 0, 1)
+		currentEnd := segmentEnd
+		if nextDayStart.Before(currentEnd) {
+			currentEnd = nextDayStart
+		}
+
+		segment := act
+		segment.StartTime = segmentStart
+		if act.EndTime == nil && currentEnd.Equal(segmentEnd) {
+			segment.EndTime = nil
+		} else {
+			clippedEnd := currentEnd
+			segment.EndTime = &clippedEnd
+		}
+		segments = append(segments, segment)
+
+		segmentStart = currentEnd
+		dayStart = nextDayStart
+	}
+
+	return segments
+}
+
+func dateKey(date time.Time) string {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local).Format(time.DateOnly)
+}
+
+func (m *reportModel) reportForDate(date time.Time) (*dto.Report, bool) {
+	report, ok := m.dailyReports[dateKey(date)]
+	return report, ok
 }
 
 // getWeeklyDuration calculates the total duration for the current week (Monday to Sunday)

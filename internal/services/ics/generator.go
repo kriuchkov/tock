@@ -42,18 +42,18 @@ func GenerateEvent(act models.Activity, uidKey string) string {
 
 	var sb strings.Builder
 	sb.WriteString("BEGIN:VEVENT\n")
-	sb.WriteString(fmt.Sprintf("UID:%s\n", uid))
-	sb.WriteString(fmt.Sprintf("DTSTAMP:%s\n", now))
-	sb.WriteString(fmt.Sprintf("DTSTART:%s\n", start))
-	sb.WriteString(fmt.Sprintf("DTEND:%s\n", end))
-	sb.WriteString(fmt.Sprintf("SUMMARY:%s\n", escapeProperty(summary)))
+	fmt.Fprintf(&sb, "UID:%s\n", uid)
+	fmt.Fprintf(&sb, "DTSTAMP:%s\n", now)
+	fmt.Fprintf(&sb, "DTSTART:%s\n", start)
+	fmt.Fprintf(&sb, "DTEND:%s\n", end)
+	fmt.Fprintf(&sb, "SUMMARY:%s\n", escapeProperty(summary))
 
 	description := act.Description
 	if act.Notes != "" {
 		description += "\n\n" + act.Notes
 	}
 
-	sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\n", escapeProperty(description)))
+	fmt.Fprintf(&sb, "DESCRIPTION:%s\n", escapeProperty(description))
 
 	if len(act.Tags) > 0 {
 		escapedTags := make([]string, len(act.Tags))
@@ -61,7 +61,7 @@ func GenerateEvent(act models.Activity, uidKey string) string {
 			escapedTags[i] = escapeProperty(tag)
 		}
 
-		sb.WriteString(fmt.Sprintf("CATEGORIES:%s\n", strings.Join(escapedTags, ",")))
+		fmt.Fprintf(&sb, "CATEGORIES:%s\n", strings.Join(escapedTags, ","))
 	}
 
 	sb.WriteString("END:VEVENT\n")
