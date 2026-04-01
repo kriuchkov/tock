@@ -511,8 +511,8 @@ func (m *reportModel) fetchMonthData() tea.Msg {
 			addActivityToReport(dailyReport, dailyAct)
 
 			if activityDate.Year() == year && activityDate.Month() == month {
-				monthReport, ok := monthReports[activityDate.Day()]
-				if !ok {
+				monthReport, monthReportExists := monthReports[activityDate.Day()]
+				if !monthReportExists {
 					monthReport = newDailyReport()
 					monthReports[activityDate.Day()] = monthReport
 				}

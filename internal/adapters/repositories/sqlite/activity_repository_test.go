@@ -9,7 +9,6 @@ import (
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3" // register the goqu sqlite3 dialect
 	_ "github.com/mattn/go-sqlite3"                    // register the sqlite3 database driver
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -65,7 +64,7 @@ func TestSQLiteRepository_Save(t *testing.T) {
 				Description: "Fix bugs (updated)",
 				Project:     "Tock",
 				StartTime:   now, // Same start time will trigger ON CONFLICT update
-				EndTime:     lo.ToPtr(now.Add(time.Hour)),
+				EndTime:     new(now.Add(time.Hour)),
 				Tags:        []string{"updated"},
 				Notes:       "Updated notes",
 			},
@@ -165,7 +164,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 			Description: "Design architecture",
 			Project:     "Tock",
 			StartTime:   now.Add(-2 * time.Hour),
-			EndTime:     lo.ToPtr(now.Add(-1 * time.Hour)),
+			EndTime:     new(now.Add(-1 * time.Hour)),
 			Tags:        []string{"design"},
 		})
 
@@ -182,7 +181,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 			Description: "Initial commit",
 			Project:     "SideProject",
 			StartTime:   now.Add(-24 * time.Hour),
-			EndTime:     lo.ToPtr(now.Add(-23 * time.Hour)),
+			EndTime:     new(now.Add(-23 * time.Hour)),
 		})
 	}
 
@@ -200,7 +199,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by project Tock",
 			filter: dto.ActivityFilter{
-				Project: lo.ToPtr("Tock"),
+				Project: new("Tock"),
 			},
 			expectedCount: 2,
 			verify: func(t *testing.T, acts []models.Activity) {
@@ -212,7 +211,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by partial description (Like clause)",
 			filter: dto.ActivityFilter{
-				Description: lo.ToPtr("DB"),
+				Description: new("DB"),
 			},
 			expectedCount: 1,
 			verify: func(t *testing.T, acts []models.Activity) {
@@ -222,7 +221,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by IsRunning (true)",
 			filter: dto.ActivityFilter{
-				IsRunning: lo.ToPtr(true),
+				IsRunning: new(true),
 			},
 			expectedCount: 1,
 			verify: func(t *testing.T, acts []models.Activity) {
@@ -233,7 +232,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by IsRunning (false)",
 			filter: dto.ActivityFilter{
-				IsRunning: lo.ToPtr(false),
+				IsRunning: new(false),
 			},
 			expectedCount: 2,
 			verify: func(t *testing.T, acts []models.Activity) {
@@ -245,14 +244,14 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by FromDate",
 			filter: dto.ActivityFilter{
-				FromDate: lo.ToPtr(now.Add(-3 * time.Hour)),
+				FromDate: new(now.Add(-3 * time.Hour)),
 			},
 			expectedCount: 2, // skips the one from 24h ago
 		},
 		{
 			name: "filter by ToDate",
 			filter: dto.ActivityFilter{
-				ToDate: lo.ToPtr(now.Add(-10 * time.Hour)),
+				ToDate: new(now.Add(-10 * time.Hour)),
 			},
 			expectedCount: 1, // only the one from 24h ago
 			verify: func(t *testing.T, acts []models.Activity) {
@@ -262,8 +261,8 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		{
 			name: "filter by combination (Project + IsRunning)",
 			filter: dto.ActivityFilter{
-				Project:   lo.ToPtr("Tock"),
-				IsRunning: lo.ToPtr(false),
+				Project:   new("Tock"),
+				IsRunning: new(false),
 			},
 			expectedCount: 1,
 			verify: func(t *testing.T, acts []models.Activity) {

@@ -230,7 +230,7 @@ func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
 		Project:     "test",
 		Description: "test task",
 		StartTime:   today.Add(10*time.Hour + 8*time.Minute),
-		EndTime:     ptr(today.Add(11*time.Hour + 27*time.Minute)),
+		EndTime:     new(today.Add(11*time.Hour + 27*time.Minute)),
 	}
 	require.NoError(t, repo.Save(context.Background(), task1))
 
@@ -248,7 +248,7 @@ func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
 		Project:     "test",
 		Description: "test task",
 		StartTime:   today.Add(0*time.Hour + 0*time.Minute),
-		EndTime:     ptr(today.Add(0*time.Hour + 10*time.Minute)),
+		EndTime:     new(today.Add(0*time.Hour + 10*time.Minute)),
 	}
 	require.NoError(t, repo.Save(context.Background(), task3))
 
@@ -286,7 +286,7 @@ func TestRepository_Save_UpdateMiddle(t *testing.T) {
 		Project:     "B",
 		Description: "Task B",
 		StartTime:   now.Add(-1 * time.Hour),
-		EndTime:     ptr(now),
+		EndTime:     new(now),
 	}
 	require.NoError(t, repo.Save(ctx, actB))
 
@@ -426,8 +426,4 @@ func TestRepository_Remove_WhitespaceHandling(t *testing.T) {
 	// Join back and look for double newlines
 	fullContent := string(bytes)
 	assert.NotContains(t, fullContent, "\n\n\n", "Should not have triple newlines")
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

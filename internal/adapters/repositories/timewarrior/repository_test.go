@@ -38,7 +38,7 @@ func TestRepository_Save(t *testing.T) {
 				Project:     "ProjectB",
 				Description: "Task 2",
 				StartTime:   time.Date(2023, 10, 1, 12, 0, 0, 0, time.UTC),
-				EndTime:     ptr(time.Date(2023, 10, 1, 13, 0, 0, 0, time.UTC)),
+				EndTime:     new(time.Date(2023, 10, 1, 13, 0, 0, 0, time.UTC)),
 			},
 			wantFile: "2023-10.data",
 			want:     `inc 20231001T120000Z - 20231001T130000Z # ProjectB # "Task 2"`,
@@ -56,7 +56,7 @@ func TestRepository_Save(t *testing.T) {
 				Project:     "ProjectC",
 				Description: "Task 3",
 				StartTime:   time.Date(2023, 11, 1, 9, 0, 0, 0, time.UTC),
-				EndTime:     ptr(time.Date(2023, 11, 1, 10, 0, 0, 0, time.UTC)),
+				EndTime:     new(time.Date(2023, 11, 1, 10, 0, 0, 0, time.UTC)),
 			},
 			wantFile: "2023-11.data",
 			want:     `inc 20231101T090000Z - 20231101T100000Z # ProjectC # "Task 3"`,
@@ -93,13 +93,13 @@ func TestRepository_Find(t *testing.T) {
 			Project:     "Work",
 			Description: "Meeting",
 			StartTime:   baseTime.AddDate(0, 0, -1), // Oct 14
-			EndTime:     ptr(baseTime.AddDate(0, 0, -1).Add(1 * time.Hour)),
+			EndTime:     new(baseTime.AddDate(0, 0, -1).Add(1 * time.Hour)),
 		},
 		{
 			Project:     "Personal",
 			Description: "Gym",
 			StartTime:   baseTime, // Oct 15
-			EndTime:     ptr(baseTime.Add(1 * time.Hour)),
+			EndTime:     new(baseTime.Add(1 * time.Hour)),
 		},
 		{
 			Project:     "Work",
@@ -122,36 +122,36 @@ func TestRepository_Find(t *testing.T) {
 		{
 			name: "filter by project Work",
 			filter: dto.ActivityFilter{
-				Project: ptr("Work"),
+				Project: new("Work"),
 			},
 			wantCount: 2,
 		},
 		{
 			name: "filter by date range (Oct 15 only)",
 			filter: dto.ActivityFilter{
-				FromDate: ptr(time.Date(2023, 10, 15, 0, 0, 0, 0, time.UTC)),
-				ToDate:   ptr(time.Date(2023, 10, 15, 23, 59, 59, 0, time.UTC)),
+				FromDate: new(time.Date(2023, 10, 15, 0, 0, 0, 0, time.UTC)),
+				ToDate:   new(time.Date(2023, 10, 15, 23, 59, 59, 0, time.UTC)),
 			},
 			wantCount: 1,
 		},
 		{
 			name: "filter running",
 			filter: dto.ActivityFilter{
-				IsRunning: ptr(true),
+				IsRunning: new(true),
 			},
 			wantCount: 1,
 		},
 		{
 			name: "filter stopped",
 			filter: dto.ActivityFilter{
-				IsRunning: ptr(false),
+				IsRunning: new(false),
 			},
 			wantCount: 2,
 		},
 		{
 			name: "filter by description",
 			filter: dto.ActivityFilter{
-				Description: ptr("Meeting"),
+				Description: new("Meeting"),
 			},
 			wantCount: 1,
 		},
@@ -209,7 +209,7 @@ func TestRepository_FindLast(t *testing.T) {
 		past := models.Activity{
 			Project:   "Old",
 			StartTime: time.Now().AddDate(0, -2, 0),
-			EndTime:   ptr(time.Now().AddDate(0, -2, 0).Add(time.Hour)),
+			EndTime:   new(time.Now().AddDate(0, -2, 0).Add(time.Hour)),
 		}
 		require.NoError(t, repo.Save(ctx, past))
 
@@ -252,7 +252,7 @@ func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
 			Project:     "test",
 			Description: "test task",
 			StartTime:   today.Add(10*time.Hour + 8*time.Minute),
-			EndTime:     ptr(today.Add(11*time.Hour + 27*time.Minute)),
+			EndTime:     new(today.Add(11*time.Hour + 27*time.Minute)),
 		}
 		require.NoError(t, repo.Save(ctx, task1))
 
@@ -270,7 +270,7 @@ func TestRepository_FindLast_WithAddedHistoricalActivity(t *testing.T) {
 			Project:     "test",
 			Description: "test task",
 			StartTime:   today.Add(0*time.Hour + 0*time.Minute),
-			EndTime:     ptr(today.Add(0*time.Hour + 10*time.Minute)),
+			EndTime:     new(today.Add(0*time.Hour + 10*time.Minute)),
 		}
 		require.NoError(t, repo.Save(ctx, task3))
 
@@ -306,7 +306,7 @@ func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
 		Project:     "historical",
 		Description: "historical task",
 		StartTime:   today.Add(9 * time.Hour),
-		EndTime:     ptr(today.Add(10 * time.Hour)),
+		EndTime:     new(today.Add(10 * time.Hour)),
 	}
 	require.NoError(t, repo.Save(ctx, historicalTask))
 
@@ -318,10 +318,6 @@ func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
 	require.Len(t, results, 1)
 	assert.Equal(t, runningTask.StartTime, results[0].StartTime)
 	assert.Equal(t, runningTask.Project, results[0].Project)
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func TestRepository_ReadIncFormat(t *testing.T) {
@@ -370,7 +366,7 @@ func TestRepository_Find_CrossMonth(t *testing.T) {
 	actOct := models.Activity{
 		Project:   "OctProject",
 		StartTime: time.Date(2023, 10, 31, 23, 0, 0, 0, time.UTC),
-		EndTime:   ptr(time.Date(2023, 10, 31, 23, 30, 0, 0, time.UTC)),
+		EndTime:   new(time.Date(2023, 10, 31, 23, 30, 0, 0, time.UTC)),
 	}
 	require.NoError(t, repo.Save(ctx, actOct))
 
@@ -378,7 +374,7 @@ func TestRepository_Find_CrossMonth(t *testing.T) {
 	actNov := models.Activity{
 		Project:   "NovProject",
 		StartTime: time.Date(2023, 11, 1, 0, 30, 0, 0, time.UTC),
-		EndTime:   ptr(time.Date(2023, 11, 1, 1, 0, 0, 0, time.UTC)),
+		EndTime:   new(time.Date(2023, 11, 1, 1, 0, 0, 0, time.UTC)),
 	}
 	require.NoError(t, repo.Save(ctx, actNov))
 
@@ -404,7 +400,7 @@ func TestRepository_Remove(t *testing.T) {
 		Project:     "A",
 		Description: "Task A",
 		StartTime:   now.Add(-2 * time.Hour),
-		EndTime:     ptr(now.Add(-1 * time.Hour)),
+		EndTime:     new(now.Add(-1 * time.Hour)),
 	}
 	require.NoError(t, repo.Save(ctx, actA))
 

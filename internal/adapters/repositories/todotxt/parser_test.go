@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +28,7 @@ func TestParseActivity(t *testing.T) {
 			line: "x 2026-03-16 2026-03-16 Deep work +focus @desk tock_start:2026-03-16T10:15:00Z tock_end:2026-03-16T11:45:00Z tock_project:Client+Work tock_desc:Deep+work+session tock_tags:desk%1Ffocus",
 			want: &models.Activity{
 				StartTime:   time.Date(2026, 3, 16, 10, 15, 0, 0, time.UTC).Local(),
-				EndTime:     lo.ToPtr(time.Date(2026, 3, 16, 11, 45, 0, 0, time.UTC).Local()),
+				EndTime:     new(time.Date(2026, 3, 16, 11, 45, 0, 0, time.UTC).Local()),
 				Project:     "Client Work",
 				Description: "Deep work session",
 				Tags:        []string{"desk", "focus"},
@@ -40,7 +39,7 @@ func TestParseActivity(t *testing.T) {
 			line: "x 2026-03-16 2026-03-15 Review PR +Work @github",
 			want: &models.Activity{
 				StartTime:   localTime(2026, 3, 15, 0, 0, 0),
-				EndTime:     lo.ToPtr(localTime(2026, 3, 16, 23, 59, 59)),
+				EndTime:     new(localTime(2026, 3, 16, 23, 59, 59)),
 				Project:     "Work",
 				Description: "Review PR",
 				Tags:        []string{"github"},
