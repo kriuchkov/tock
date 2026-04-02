@@ -1,10 +1,9 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -14,18 +13,24 @@ import (
 	"github.com/kriuchkov/tock/internal/config"
 )
 
+const (
+	latestReleaseURL         = "https://api.github.com/repos/kriuchkov/tock/releases/latest"
+	updateCheckTimeout       = 2 * time.Second
+	updateNotificationFormat = "\nUpdate available %s -> %s\nVisit %s to update\n"
+)
+
 type githubRelease struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
 }
 
-func checkUpdate() (githubRelease, error) {
-	client := &http.Client{Timeout: 2 * time.Second}
+func fetchLatestRelease(ctx context.Context, client *http.Client) (githubRelease, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, latestReleaseURL, nil)
+	if err != nil {
+		return githubRelease{}, errors.Wrap(err, "create release request")
+	}
 
-	//nolint:noctx // No context needed for this simple request
-	resp, err := client.Get(
-		"https://api.github.com/repos/kriuchkov/tock/releases/latest",
-	)
+	resp, err := client.Do(request)
 	if err != nil {
 		return githubRelease{}, errors.Wrap(err, "fetch latest release")
 	}
@@ -39,6 +44,7 @@ func checkUpdate() (githubRelease, error) {
 	if err = json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return githubRelease{}, errors.Wrap(err, "decode release response")
 	}
+
 	return release, nil
 }
 
@@ -49,7 +55,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	if !cfg.CheckUpdates || (version == "" || version == "unknown" || version == "dev") {
+	if !cfg.CheckUpdates || needsVersionFallback(version) {
 		return
 	}
 
@@ -57,23 +63,23 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	remote, err := checkUpdate()
+	release, err := fetchLatestRelease(ctx, &http.Client{Timeout: updateCheckTimeout})
 	if err != nil {
-		fmt.Printf("Failed to check for updates: %v\n", err)
+		cmd.PrintErrln("Failed to check for updates:", err)
 		return
 	}
 
-	if v, done := ctx.Value(viperKey{}).(*viper.Viper); done {
+	if v, found := ctx.Value(viperKey{}).(*viper.Viper); found {
 		v.Set("last_update_check", time.Now())
 		if err = v.WriteConfig(); err != nil {
-			fmt.Printf("Failed to save update check time: %v\n", err)
+			cmd.PrintErrln("Failed to save update check time:", err)
 		}
 	}
 
-	remoteVersion := strings.TrimPrefix(remote.TagName, "v")
-	localVersion := strings.TrimPrefix(version, "v")
-
-	if remoteVersion != localVersion {
-		fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", version, remote.TagName, remote.HTMLURL)
+	currentVersion := currentBuildVersion()
+	latestVersion := normalizeVersion(release.TagName)
+	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
+	if isComparable && comparison < 0 {
+		cmd.Printf(updateNotificationFormat, currentVersion, release.TagName, release.HTMLURL)
 	}
 }
