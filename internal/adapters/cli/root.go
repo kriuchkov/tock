@@ -42,6 +42,10 @@ func NewRootCmd() *cobra.Command {
 		Short:   "A simple timetracker for the command line",
 		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if shouldSkipRuntimeContext(cmd) {
+				return nil
+			}
+
 			var opts []config.Option
 			if configPath != "" {
 				opts = append(opts, config.WithConfigFile(configPath))
@@ -181,6 +185,17 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 	repo, notesRepo := initRepositories(cmd.Context(), backend, filePath)
 
 	return activity.NewService(repo, notesRepo), nil
+}
+
+func shouldSkipRuntimeContext(cmd *cobra.Command) bool {
+	for current := cmd; current != nil; current = current.Parent() {
+		switch current.Name() {
+		case "version", "completion":
+			return true
+		}
+	}
+
+	return false
 }
 
 func projectRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

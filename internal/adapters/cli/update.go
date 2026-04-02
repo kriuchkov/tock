@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,18 +15,23 @@ import (
 	"github.com/kriuchkov/tock/internal/config"
 )
 
+const (
+	latestReleaseURL   = "https://api.github.com/repos/kriuchkov/tock/releases/latest"
+	updateCheckTimeout = 2 * time.Second
+)
+
 type githubRelease struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
 }
 
-func checkUpdate() (githubRelease, error) {
-	client := &http.Client{Timeout: 2 * time.Second}
+func fetchLatestRelease(ctx context.Context, client *http.Client) (githubRelease, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, latestReleaseURL, nil)
+	if err != nil {
+		return githubRelease{}, errors.Wrap(err, "create release request")
+	}
 
-	//nolint:noctx // No context needed for this simple request
-	resp, err := client.Get(
-		"https://api.github.com/repos/kriuchkov/tock/releases/latest",
-	)
+	resp, err := client.Do(request)
 	if err != nil {
 		return githubRelease{}, errors.Wrap(err, "fetch latest release")
 	}
@@ -39,6 +45,7 @@ func checkUpdate() (githubRelease, error) {
 	if err = json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return githubRelease{}, errors.Wrap(err, "decode release response")
 	}
+
 	return release, nil
 }
 
@@ -49,7 +56,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	if !cfg.CheckUpdates || (version == "" || version == "unknown" || version == "dev") {
+	if !cfg.CheckUpdates || isUnversionedBuild() {
 		return
 	}
 
@@ -57,7 +64,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	remote, err := checkUpdate()
+	release, err := fetchLatestRelease(ctx, &http.Client{Timeout: updateCheckTimeout})
 	if err != nil {
 		fmt.Printf("Failed to check for updates: %v\n", err)
 		return
@@ -70,10 +77,29 @@ func runUpdateCheck(cmd *cobra.Command) {
 		}
 	}
 
-	remoteVersion := strings.TrimPrefix(remote.TagName, "v")
-	localVersion := strings.TrimPrefix(version, "v")
-
-	if remoteVersion != localVersion {
-		fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", version, remote.TagName, remote.HTMLURL)
+	currentVersion := currentBuildVersion()
+	latestVersion := normalizeVersion(release.TagName)
+	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
+	if isComparable {
+		if comparison < 0 {
+			fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", currentVersion, release.TagName, release.HTMLURL)
+		}
+		return
 	}
+
+	if strings.TrimPrefix(currentVersion, "v") != latestVersion {
+		fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", currentVersion, release.TagName, release.HTMLURL)
+	}
+}
+
+func isUnversionedBuild() bool {
+	return version == "" || version == buildVersionUnknown || version == buildVersionDev
+}
+
+func currentBuildVersion() string {
+	current := normalizeVersion(version)
+	if current == "" {
+		return buildVersionUnknown
+	}
+	return current
 }
