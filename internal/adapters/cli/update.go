@@ -3,9 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -16,8 +14,9 @@ import (
 )
 
 const (
-	latestReleaseURL   = "https://api.github.com/repos/kriuchkov/tock/releases/latest"
-	updateCheckTimeout = 2 * time.Second
+	latestReleaseURL         = "https://api.github.com/repos/kriuchkov/tock/releases/latest"
+	updateCheckTimeout       = 2 * time.Second
+	updateNotificationFormat = "\nUpdate available %s -> %s\nVisit %s to update\n"
 )
 
 type githubRelease struct {
@@ -51,12 +50,12 @@ func fetchLatestRelease(ctx context.Context, client *http.Client) (githubRelease
 
 func runUpdateCheck(cmd *cobra.Command) {
 	ctx := cmd.Context()
-	cfg, ok := ctx.Value(configKey{}).(*config.Config)
-	if !ok {
+	cfg, cfgOK := ctx.Value(configKey{}).(*config.Config)
+	if !cfgOK {
 		return
 	}
 
-	if !cfg.CheckUpdates || isUnversionedBuild() {
+	if !cfg.CheckUpdates || needsVersionFallback(version) {
 		return
 	}
 
@@ -66,40 +65,25 @@ func runUpdateCheck(cmd *cobra.Command) {
 
 	release, err := fetchLatestRelease(ctx, &http.Client{Timeout: updateCheckTimeout})
 	if err != nil {
-		fmt.Printf("Failed to check for updates: %v\n", err)
+		cmd.PrintErrln("Failed to check for updates:", err)
 		return
 	}
 
-	if v, done := ctx.Value(viperKey{}).(*viper.Viper); done {
+	if v, ok := ctx.Value(viperKey{}).(*viper.Viper); ok {
 		v.Set("last_update_check", time.Now())
 		if err = v.WriteConfig(); err != nil {
-			fmt.Printf("Failed to save update check time: %v\n", err)
+			cmd.PrintErrln("Failed to save update check time:", err)
 		}
 	}
 
 	currentVersion := currentBuildVersion()
 	latestVersion := normalizeVersion(release.TagName)
 	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
+	needsUpdate := currentVersion != latestVersion
 	if isComparable {
-		if comparison < 0 {
-			fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", currentVersion, release.TagName, release.HTMLURL)
-		}
-		return
+		needsUpdate = comparison < 0
 	}
-
-	if strings.TrimPrefix(currentVersion, "v") != latestVersion {
-		fmt.Printf("\nUpdate available %s -> %s\nVisit %s to update\n", currentVersion, release.TagName, release.HTMLURL)
+	if needsUpdate {
+		cmd.Printf(updateNotificationFormat, currentVersion, release.TagName, release.HTMLURL)
 	}
-}
-
-func isUnversionedBuild() bool {
-	return version == "" || version == buildVersionUnknown || version == buildVersionDev
-}
-
-func currentBuildVersion() string {
-	current := normalizeVersion(version)
-	if current == "" {
-		return buildVersionUnknown
-	}
-	return current
 }

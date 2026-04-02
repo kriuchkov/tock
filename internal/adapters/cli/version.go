@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"runtime"
 	"runtime/debug"
@@ -128,6 +129,14 @@ func normalizeBuildVersion(value string, modified bool) string {
 	return value
 }
 
+func currentBuildVersion() string {
+	current := normalizeVersion(version)
+	if current == "" {
+		return buildVersionUnknown
+	}
+	return current
+}
+
 func compareReleaseVersions(currentVersion, latestVersion string) (int, bool) {
 	current, ok := parseSemanticVersion(currentVersion)
 	if !ok {
@@ -141,11 +150,11 @@ func compareReleaseVersions(currentVersion, latestVersion string) (int, bool) {
 
 	switch {
 	case current.major != latest.major:
-		return compareInts(current.major, latest.major), true
+		return cmp.Compare(current.major, latest.major), true
 	case current.minor != latest.minor:
-		return compareInts(current.minor, latest.minor), true
+		return cmp.Compare(current.minor, latest.minor), true
 	case current.patch != latest.patch:
-		return compareInts(current.patch, latest.patch), true
+		return cmp.Compare(current.patch, latest.patch), true
 	case current.prerelease == latest.prerelease:
 		return 0, true
 	case current.prerelease == "":
@@ -153,7 +162,7 @@ func compareReleaseVersions(currentVersion, latestVersion string) (int, bool) {
 	case latest.prerelease == "":
 		return -1, true
 	default:
-		return compareStrings(current.prerelease, latest.prerelease), true
+		return cmp.Compare(current.prerelease, latest.prerelease), true
 	}
 }
 
@@ -199,26 +208,4 @@ func parseSemanticVersion(value string) (semanticVersion, bool) {
 		patch:      patch,
 		prerelease: prerelease,
 	}, true
-}
-
-func compareInts(left, right int) int {
-	switch {
-	case left < right:
-		return -1
-	case left > right:
-		return 1
-	default:
-		return 0
-	}
-}
-
-func compareStrings(left, right string) int {
-	switch {
-	case left < right:
-		return -1
-	case left > right:
-		return 1
-	default:
-		return 0
-	}
 }
