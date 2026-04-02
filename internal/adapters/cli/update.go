@@ -50,8 +50,8 @@ func fetchLatestRelease(ctx context.Context, client *http.Client) (githubRelease
 
 func runUpdateCheck(cmd *cobra.Command) {
 	ctx := cmd.Context()
-	cfg, cfgOK := ctx.Value(configKey{}).(*config.Config)
-	if !cfgOK {
+	cfg, ok := ctx.Value(configKey{}).(*config.Config)
+	if !ok {
 		return
 	}
 
@@ -69,7 +69,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 		return
 	}
 
-	if v, ok := ctx.Value(viperKey{}).(*viper.Viper); ok {
+	if v, found := ctx.Value(viperKey{}).(*viper.Viper); found {
 		v.Set("last_update_check", time.Now())
 		if err = v.WriteConfig(); err != nil {
 			cmd.PrintErrln("Failed to save update check time:", err)
@@ -79,11 +79,7 @@ func runUpdateCheck(cmd *cobra.Command) {
 	currentVersion := currentBuildVersion()
 	latestVersion := normalizeVersion(release.TagName)
 	comparison, isComparable := compareReleaseVersions(currentVersion, latestVersion)
-	needsUpdate := currentVersion != latestVersion
-	if isComparable {
-		needsUpdate = comparison < 0
-	}
-	if needsUpdate {
+	if isComparable && comparison < 0 {
 		cmd.Printf(updateNotificationFormat, currentVersion, release.TagName, release.HTMLURL)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"fmt"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -14,14 +13,7 @@ import (
 const (
 	buildVersionDev     = "dev"
 	buildVersionUnknown = "unknown"
-	buildCommitNone     = "none"
 )
-
-type buildMetadata struct {
-	version string
-	commit  string
-	date    string
-}
 
 type semanticVersion struct {
 	major      int
@@ -31,17 +23,10 @@ type semanticVersion struct {
 }
 
 var (
-	version, commit, date = resolveInitialBuildMetadata()
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
-
-func resolveInitialBuildMetadata() (string, string, string) {
-	metadata := resolveBuildMetadata(buildMetadata{
-		version: buildVersionDev,
-		commit:  buildCommitNone,
-		date:    buildVersionUnknown,
-	}, readBuildInfo())
-	return metadata.version, metadata.commit, metadata.date
-}
 
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
@@ -53,79 +38,13 @@ func NewVersionCmd() *cobra.Command {
 	}
 }
 
-func readBuildInfo() *debug.BuildInfo {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return nil
-	}
-	return info
-}
-
-func resolveBuildMetadata(metadata buildMetadata, info *debug.BuildInfo) buildMetadata {
-	if info == nil {
-		return metadata
-	}
-
-	settings := buildSettings(info)
-	if needsVersionFallback(metadata.version) {
-		switch mainVersion := strings.TrimSpace(info.Main.Version); {
-		case mainVersion != "" && mainVersion != "(devel)":
-			metadata.version = normalizeBuildVersion(mainVersion, settings["vcs.modified"] == "true")
-		case settings["vcs.revision"] != "":
-			metadata.version = buildVersionDev
-		}
-	}
-
-	if needsCommitFallback(metadata.commit) && settings["vcs.revision"] != "" {
-		metadata.commit = settings["vcs.revision"]
-	}
-
-	if needsDateFallback(metadata.date) && settings["vcs.time"] != "" {
-		metadata.date = settings["vcs.time"]
-	}
-
-	return metadata
-}
-
-func buildSettings(info *debug.BuildInfo) map[string]string {
-	settings := make(map[string]string, len(info.Settings))
-	for _, setting := range info.Settings {
-		settings[setting.Key] = setting.Value
-	}
-	return settings
-}
-
 func needsVersionFallback(value string) bool {
-	value = strings.TrimSpace(value)
 	return value == "" || value == buildVersionUnknown || value == buildVersionDev
-}
-
-func needsCommitFallback(value string) bool {
-	value = strings.TrimSpace(value)
-	return value == "" || value == buildCommitNone || value == buildVersionUnknown
-}
-
-func needsDateFallback(value string) bool {
-	value = strings.TrimSpace(value)
-	return value == "" || value == buildVersionUnknown
 }
 
 func normalizeVersion(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.TrimPrefix(value, "v")
-	return value
-}
-
-func normalizeBuildVersion(value string, modified bool) string {
-	value = normalizeVersion(strings.TrimSpace(value))
-	if value == "" || value == "(devel)" {
-		return buildVersionDev
-	}
-
-	if modified && !strings.Contains(value, "+dirty") {
-		value += "+dirty"
-	}
-
 	return value
 }
 

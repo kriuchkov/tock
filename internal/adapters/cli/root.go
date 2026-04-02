@@ -188,13 +188,10 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 }
 
 func shouldSkipRuntimeContext(cmd *cobra.Command) bool {
-	for current := cmd; current != nil; current = current.Parent() {
-		switch current.Name() {
-		case "version", "completion":
-			return true
-		}
+	switch cmd.Name() {
+	case "version", "completion":
+		return true
 	}
-
 	return false
 }
 
