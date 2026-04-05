@@ -81,6 +81,7 @@ func selectTask(activities []models.Activity, project string, theme Theme) (stri
 
 	return selection, nil
 }
+
 func RunInteractiveInput(header, placeholder string, theme Theme) (string, error) {
 	m := simpleInputModel{
 		prompt:      header,

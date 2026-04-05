@@ -13,22 +13,27 @@ import (
 var (
 	bootstrapLocalizerOnce sync.Once
 	bootstrapLocalizer     *localization.Localizer
-	loadBootstrapConfig    = config.Load
 )
 
-func newBootstrapLocalizer() *localization.Localizer {
-	language := localization.LanguageEnglish
-
-	if cfg, _, err := loadBootstrapConfig(); err == nil && cfg != nil {
-		language = localization.DetectLanguage(cfg.Language)
-	}
-
+func newBootstrapLocalizerForLanguage(language string) *localization.Localizer {
 	loc, err := localization.New(language)
 	if err == nil {
 		return loc
 	}
 
 	return localization.MustNew(localization.LanguageEnglish)
+}
+
+func loadBootstrapLanguage() string {
+	if cfg, _, err := config.Load(); err == nil && cfg != nil {
+		return localization.DetectLanguage(cfg.Language)
+	}
+
+	return localization.LanguageEnglish
+}
+
+func newBootstrapLocalizer() *localization.Localizer {
+	return newBootstrapLocalizerForLanguage(loadBootstrapLanguage())
 }
 
 func getBootstrapLocalizer() *localization.Localizer {
@@ -47,18 +52,17 @@ func getLocalizer(cmd *cobra.Command) *localization.Localizer {
 	return getBootstrapLocalizer()
 }
 
-func defaultText(key string, args ...any) string {
-	loc := getBootstrapLocalizer()
+func formatText(loc *localization.Localizer, key string, args ...any) string {
 	if len(args) == 0 {
 		return loc.Text(key)
 	}
 	return loc.Format(key, args...)
 }
 
+func defaultText(key string, args ...any) string {
+	return formatText(getBootstrapLocalizer(), key, args...)
+}
+
 func text(cmd *cobra.Command, key string, args ...any) string {
-	loc := getLocalizer(cmd)
-	if len(args) == 0 {
-		return loc.Text(key)
-	}
-	return loc.Format(key, args...)
+	return formatText(getLocalizer(cmd), key, args...)
 }
