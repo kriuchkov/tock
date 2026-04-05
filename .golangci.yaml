@@ -457,7 +457,7 @@ linters:
           - gosec
           - noctx
           - wrapcheck
-      - path: 'internal/adapters/cli'
+      - path: 'internal/app/commands'
         linters:
           - forbidigo
           - gochecknoglobals

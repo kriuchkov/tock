@@ -7,7 +7,6 @@ package ports
 import (
 	"context"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,7 +39,7 @@ func (_m *MockActivityResolver) EXPECT() *MockActivityResolver_Expecter {
 }
 
 // Add provides a mock function for the type MockActivityResolver
-func (_mock *MockActivityResolver) Add(ctx context.Context, req dto.AddActivityRequest) (*models.Activity, error) {
+func (_mock *MockActivityResolver) Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error) {
 	ret := _mock.Called(ctx, req)
 
 	if len(ret) == 0 {
@@ -49,17 +48,17 @@ func (_mock *MockActivityResolver) Add(ctx context.Context, req dto.AddActivityR
 
 	var r0 *models.Activity
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.AddActivityRequest) (*models.Activity, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.AddActivityRequest) (*models.Activity, error)); ok {
 		return returnFunc(ctx, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.AddActivityRequest) *models.Activity); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.AddActivityRequest) *models.Activity); ok {
 		r0 = returnFunc(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Activity)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.AddActivityRequest) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.AddActivityRequest) error); ok {
 		r1 = returnFunc(ctx, req)
 	} else {
 		r1 = ret.Error(1)
@@ -74,20 +73,20 @@ type MockActivityResolver_Add_Call struct {
 
 // Add is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req dto.AddActivityRequest
+//   - req models.AddActivityRequest
 func (_e *MockActivityResolver_Expecter) Add(ctx interface{}, req interface{}) *MockActivityResolver_Add_Call {
 	return &MockActivityResolver_Add_Call{Call: _e.mock.On("Add", ctx, req)}
 }
 
-func (_c *MockActivityResolver_Add_Call) Run(run func(ctx context.Context, req dto.AddActivityRequest)) *MockActivityResolver_Add_Call {
+func (_c *MockActivityResolver_Add_Call) Run(run func(ctx context.Context, req models.AddActivityRequest)) *MockActivityResolver_Add_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.AddActivityRequest
+		var arg1 models.AddActivityRequest
 		if args[1] != nil {
-			arg1 = args[1].(dto.AddActivityRequest)
+			arg1 = args[1].(models.AddActivityRequest)
 		}
 		run(
 			arg0,
@@ -102,7 +101,7 @@ func (_c *MockActivityResolver_Add_Call) Return(activity *models.Activity, err e
 	return _c
 }
 
-func (_c *MockActivityResolver_Add_Call) RunAndReturn(run func(ctx context.Context, req dto.AddActivityRequest) (*models.Activity, error)) *MockActivityResolver_Add_Call {
+func (_c *MockActivityResolver_Add_Call) RunAndReturn(run func(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error)) *MockActivityResolver_Add_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -176,26 +175,26 @@ func (_c *MockActivityResolver_GetRecent_Call) RunAndReturn(run func(ctx context
 }
 
 // GetReport provides a mock function for the type MockActivityResolver
-func (_mock *MockActivityResolver) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error) {
+func (_mock *MockActivityResolver) GetReport(ctx context.Context, filter models.ActivityFilter) (*models.Report, error) {
 	ret := _mock.Called(ctx, filter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetReport")
 	}
 
-	var r0 *dto.Report
+	var r0 *models.Report
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) (*dto.Report, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) (*models.Report, error)); ok {
 		return returnFunc(ctx, filter)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) *dto.Report); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) *models.Report); ok {
 		r0 = returnFunc(ctx, filter)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*dto.Report)
+			r0 = ret.Get(0).(*models.Report)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.ActivityFilter) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.ActivityFilter) error); ok {
 		r1 = returnFunc(ctx, filter)
 	} else {
 		r1 = ret.Error(1)
@@ -210,20 +209,20 @@ type MockActivityResolver_GetReport_Call struct {
 
 // GetReport is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter dto.ActivityFilter
+//   - filter models.ActivityFilter
 func (_e *MockActivityResolver_Expecter) GetReport(ctx interface{}, filter interface{}) *MockActivityResolver_GetReport_Call {
 	return &MockActivityResolver_GetReport_Call{Call: _e.mock.On("GetReport", ctx, filter)}
 }
 
-func (_c *MockActivityResolver_GetReport_Call) Run(run func(ctx context.Context, filter dto.ActivityFilter)) *MockActivityResolver_GetReport_Call {
+func (_c *MockActivityResolver_GetReport_Call) Run(run func(ctx context.Context, filter models.ActivityFilter)) *MockActivityResolver_GetReport_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.ActivityFilter
+		var arg1 models.ActivityFilter
 		if args[1] != nil {
-			arg1 = args[1].(dto.ActivityFilter)
+			arg1 = args[1].(models.ActivityFilter)
 		}
 		run(
 			arg0,
@@ -233,18 +232,18 @@ func (_c *MockActivityResolver_GetReport_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockActivityResolver_GetReport_Call) Return(report *dto.Report, err error) *MockActivityResolver_GetReport_Call {
+func (_c *MockActivityResolver_GetReport_Call) Return(report *models.Report, err error) *MockActivityResolver_GetReport_Call {
 	_c.Call.Return(report, err)
 	return _c
 }
 
-func (_c *MockActivityResolver_GetReport_Call) RunAndReturn(run func(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error)) *MockActivityResolver_GetReport_Call {
+func (_c *MockActivityResolver_GetReport_Call) RunAndReturn(run func(ctx context.Context, filter models.ActivityFilter) (*models.Report, error)) *MockActivityResolver_GetReport_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type MockActivityResolver
-func (_mock *MockActivityResolver) List(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (_mock *MockActivityResolver) List(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	ret := _mock.Called(ctx, filter)
 
 	if len(ret) == 0 {
@@ -253,17 +252,17 @@ func (_mock *MockActivityResolver) List(ctx context.Context, filter dto.Activity
 
 	var r0 []models.Activity
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) ([]models.Activity, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) ([]models.Activity, error)); ok {
 		return returnFunc(ctx, filter)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) []models.Activity); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) []models.Activity); ok {
 		r0 = returnFunc(ctx, filter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.Activity)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.ActivityFilter) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.ActivityFilter) error); ok {
 		r1 = returnFunc(ctx, filter)
 	} else {
 		r1 = ret.Error(1)
@@ -278,20 +277,20 @@ type MockActivityResolver_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter dto.ActivityFilter
+//   - filter models.ActivityFilter
 func (_e *MockActivityResolver_Expecter) List(ctx interface{}, filter interface{}) *MockActivityResolver_List_Call {
 	return &MockActivityResolver_List_Call{Call: _e.mock.On("List", ctx, filter)}
 }
 
-func (_c *MockActivityResolver_List_Call) Run(run func(ctx context.Context, filter dto.ActivityFilter)) *MockActivityResolver_List_Call {
+func (_c *MockActivityResolver_List_Call) Run(run func(ctx context.Context, filter models.ActivityFilter)) *MockActivityResolver_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.ActivityFilter
+		var arg1 models.ActivityFilter
 		if args[1] != nil {
-			arg1 = args[1].(dto.ActivityFilter)
+			arg1 = args[1].(models.ActivityFilter)
 		}
 		run(
 			arg0,
@@ -306,13 +305,13 @@ func (_c *MockActivityResolver_List_Call) Return(activitys []models.Activity, er
 	return _c
 }
 
-func (_c *MockActivityResolver_List_Call) RunAndReturn(run func(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error)) *MockActivityResolver_List_Call {
+func (_c *MockActivityResolver_List_Call) RunAndReturn(run func(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error)) *MockActivityResolver_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Start provides a mock function for the type MockActivityResolver
-func (_mock *MockActivityResolver) Start(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error) {
+func (_mock *MockActivityResolver) Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error) {
 	ret := _mock.Called(ctx, req)
 
 	if len(ret) == 0 {
@@ -321,17 +320,17 @@ func (_mock *MockActivityResolver) Start(ctx context.Context, req dto.StartActiv
 
 	var r0 *models.Activity
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.StartActivityRequest) (*models.Activity, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.StartActivityRequest) (*models.Activity, error)); ok {
 		return returnFunc(ctx, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.StartActivityRequest) *models.Activity); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.StartActivityRequest) *models.Activity); ok {
 		r0 = returnFunc(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Activity)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.StartActivityRequest) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.StartActivityRequest) error); ok {
 		r1 = returnFunc(ctx, req)
 	} else {
 		r1 = ret.Error(1)
@@ -346,20 +345,20 @@ type MockActivityResolver_Start_Call struct {
 
 // Start is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req dto.StartActivityRequest
+//   - req models.StartActivityRequest
 func (_e *MockActivityResolver_Expecter) Start(ctx interface{}, req interface{}) *MockActivityResolver_Start_Call {
 	return &MockActivityResolver_Start_Call{Call: _e.mock.On("Start", ctx, req)}
 }
 
-func (_c *MockActivityResolver_Start_Call) Run(run func(ctx context.Context, req dto.StartActivityRequest)) *MockActivityResolver_Start_Call {
+func (_c *MockActivityResolver_Start_Call) Run(run func(ctx context.Context, req models.StartActivityRequest)) *MockActivityResolver_Start_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.StartActivityRequest
+		var arg1 models.StartActivityRequest
 		if args[1] != nil {
-			arg1 = args[1].(dto.StartActivityRequest)
+			arg1 = args[1].(models.StartActivityRequest)
 		}
 		run(
 			arg0,
@@ -374,13 +373,13 @@ func (_c *MockActivityResolver_Start_Call) Return(activity *models.Activity, err
 	return _c
 }
 
-func (_c *MockActivityResolver_Start_Call) RunAndReturn(run func(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error)) *MockActivityResolver_Start_Call {
+func (_c *MockActivityResolver_Start_Call) RunAndReturn(run func(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error)) *MockActivityResolver_Start_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Stop provides a mock function for the type MockActivityResolver
-func (_mock *MockActivityResolver) Stop(ctx context.Context, req dto.StopActivityRequest) (*models.Activity, error) {
+func (_mock *MockActivityResolver) Stop(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error) {
 	ret := _mock.Called(ctx, req)
 
 	if len(ret) == 0 {
@@ -389,17 +388,17 @@ func (_mock *MockActivityResolver) Stop(ctx context.Context, req dto.StopActivit
 
 	var r0 *models.Activity
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.StopActivityRequest) (*models.Activity, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.StopActivityRequest) (*models.Activity, error)); ok {
 		return returnFunc(ctx, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.StopActivityRequest) *models.Activity); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.StopActivityRequest) *models.Activity); ok {
 		r0 = returnFunc(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Activity)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.StopActivityRequest) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.StopActivityRequest) error); ok {
 		r1 = returnFunc(ctx, req)
 	} else {
 		r1 = ret.Error(1)
@@ -414,20 +413,20 @@ type MockActivityResolver_Stop_Call struct {
 
 // Stop is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req dto.StopActivityRequest
+//   - req models.StopActivityRequest
 func (_e *MockActivityResolver_Expecter) Stop(ctx interface{}, req interface{}) *MockActivityResolver_Stop_Call {
 	return &MockActivityResolver_Stop_Call{Call: _e.mock.On("Stop", ctx, req)}
 }
 
-func (_c *MockActivityResolver_Stop_Call) Run(run func(ctx context.Context, req dto.StopActivityRequest)) *MockActivityResolver_Stop_Call {
+func (_c *MockActivityResolver_Stop_Call) Run(run func(ctx context.Context, req models.StopActivityRequest)) *MockActivityResolver_Stop_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.StopActivityRequest
+		var arg1 models.StopActivityRequest
 		if args[1] != nil {
-			arg1 = args[1].(dto.StopActivityRequest)
+			arg1 = args[1].(models.StopActivityRequest)
 		}
 		run(
 			arg0,
@@ -442,7 +441,7 @@ func (_c *MockActivityResolver_Stop_Call) Return(activity *models.Activity, err 
 	return _c
 }
 
-func (_c *MockActivityResolver_Stop_Call) RunAndReturn(run func(ctx context.Context, req dto.StopActivityRequest) (*models.Activity, error)) *MockActivityResolver_Stop_Call {
+func (_c *MockActivityResolver_Stop_Call) RunAndReturn(run func(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error)) *MockActivityResolver_Stop_Call {
 	_c.Call.Return(run)
 	return _c
 }

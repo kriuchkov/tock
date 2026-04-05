@@ -7,7 +7,6 @@ package ports
 import (
 	"context"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,7 +39,7 @@ func (_m *MockActivityRepository) EXPECT() *MockActivityRepository_Expecter {
 }
 
 // Find provides a mock function for the type MockActivityRepository
-func (_mock *MockActivityRepository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (_mock *MockActivityRepository) Find(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	ret := _mock.Called(ctx, filter)
 
 	if len(ret) == 0 {
@@ -49,17 +48,17 @@ func (_mock *MockActivityRepository) Find(ctx context.Context, filter dto.Activi
 
 	var r0 []models.Activity
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) ([]models.Activity, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) ([]models.Activity, error)); ok {
 		return returnFunc(ctx, filter)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.ActivityFilter) []models.Activity); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ActivityFilter) []models.Activity); ok {
 		r0 = returnFunc(ctx, filter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.Activity)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, dto.ActivityFilter) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.ActivityFilter) error); ok {
 		r1 = returnFunc(ctx, filter)
 	} else {
 		r1 = ret.Error(1)
@@ -74,20 +73,20 @@ type MockActivityRepository_Find_Call struct {
 
 // Find is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter dto.ActivityFilter
+//   - filter models.ActivityFilter
 func (_e *MockActivityRepository_Expecter) Find(ctx interface{}, filter interface{}) *MockActivityRepository_Find_Call {
 	return &MockActivityRepository_Find_Call{Call: _e.mock.On("Find", ctx, filter)}
 }
 
-func (_c *MockActivityRepository_Find_Call) Run(run func(ctx context.Context, filter dto.ActivityFilter)) *MockActivityRepository_Find_Call {
+func (_c *MockActivityRepository_Find_Call) Run(run func(ctx context.Context, filter models.ActivityFilter)) *MockActivityRepository_Find_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.ActivityFilter
+		var arg1 models.ActivityFilter
 		if args[1] != nil {
-			arg1 = args[1].(dto.ActivityFilter)
+			arg1 = args[1].(models.ActivityFilter)
 		}
 		run(
 			arg0,
@@ -102,7 +101,7 @@ func (_c *MockActivityRepository_Find_Call) Return(activitys []models.Activity, 
 	return _c
 }
 
-func (_c *MockActivityRepository_Find_Call) RunAndReturn(run func(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error)) *MockActivityRepository_Find_Call {
+func (_c *MockActivityRepository_Find_Call) RunAndReturn(run func(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error)) *MockActivityRepository_Find_Call {
 	_c.Call.Return(run)
 	return _c
 }

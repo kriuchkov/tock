@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Backend         string            `mapstructure:"backend"`
+	Language        string            `mapstructure:"language"`
 	File            FileConfig        `mapstructure:"file"`
 	TodoTXT         TodoTXTConfig     `mapstructure:"todotxt"`
 	Timewarrior     TimewarriorConfig `mapstructure:"timewarrior"`
@@ -110,6 +111,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 
 	// Defaults
 	v.SetDefault("backend", "file")
+	v.SetDefault("language", "eng")
 	v.SetDefault("time_format", "24")
 	v.SetDefault("export.ical.file_name", "tock_export.ics")
 	v.SetDefault("check_updates", true)
@@ -121,6 +123,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 
 	// Explicit Bindings for all supported variables
 	_ = v.BindEnv("backend", "TOCK_BACKEND")
+	_ = v.BindEnv("language", "TOCK_LANG")
 	_ = v.BindEnv("todotxt.path", "TOCK_TODOTXT_PATH")
 	_ = v.BindEnv("timewarrior.data_path", "TOCK_TIMEWARRIOR_DATA_PATH")
 	_ = v.BindEnv("sqlite.path", "TOCK_SQLITE_PATH")

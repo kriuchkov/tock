@@ -8,7 +8,6 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
@@ -93,7 +92,7 @@ func (r *ActivityRepository) FindLast(ctx context.Context) (*models.Activity, er
 	return scanActivity(row)
 }
 
-func (r *ActivityRepository) Find(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (r *ActivityRepository) Find(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	dialect := goqu.Dialect("sqlite3")
 	dataset := dialect.From("activities").
 		Select("description", "project", "start_time", "end_time", "notes", "tags").

@@ -19,6 +19,7 @@ func TestLoadDefaults(t *testing.T) {
 
 	// Check defaults
 	assert.Equal(t, "file", cfg.Backend)
+	assert.Equal(t, "eng", cfg.Language)
 	assert.FileExists(t, configFile)
 }
 
@@ -38,6 +39,7 @@ func TestLoadFromFile(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "tock.yaml")
 
 	configContent := `backend: timewarrior
+language: eng
 file:
   path: /custom/path/tock.txt
 timewarrior:
@@ -56,6 +58,7 @@ theme:
 
 	// Check loaded values
 	assert.Equal(t, "timewarrior", cfg.Backend)
+	assert.Equal(t, "eng", cfg.Language)
 	assert.Equal(t, "/custom/path/tock.txt", cfg.File.Path)
 	assert.Equal(t, "/custom/timewarrior/data", cfg.Timewarrior.DataPath)
 	assert.Equal(t, "custom", cfg.Theme.Name)
@@ -66,6 +69,7 @@ func TestEnvironmentOverrides(t *testing.T) {
 	// Set environment variables
 	t.Setenv("TOCK_LOG_LEVEL", "warn")
 	t.Setenv("TOCK_BACKEND", "file")
+	t.Setenv("TOCK_LANG", "eng")
 	// Use the alias TOCK_FILE instead of TOCK_FILE_PATH to verify alias binding
 	t.Setenv("TOCK_FILE", "/env/path/tock.txt")
 	t.Setenv("TOCK_THEME", "light")
@@ -89,6 +93,7 @@ theme:
 	require.NoError(t, err)
 
 	assert.Equal(t, "file", cfg.Backend)
+	assert.Equal(t, "eng", cfg.Language)
 	assert.Equal(t, "/env/path/tock.txt", cfg.File.Path)
 	assert.Equal(t, "light", cfg.Theme.Name)
 }

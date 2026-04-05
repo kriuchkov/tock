@@ -805,19 +805,22 @@ shell = ["bash", "--noprofile", "--norc"]
 
 - **CLI Framework**: [Cobra](https://github.com/spf13/cobra)
 - **TUI Components**: [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Bubbles](https://github.com/charmbracelet/bubbles), [Lipgloss](https://github.com/charmbracelet/lipgloss)
-- **Go Version**: 1.25+
+- **Go Version**: 1.26+
 
 ### Project Structure
 
-- `cmd/tock/main.go` - Entry point with DI setup
-- `internal/core/` - Domain layer (models, interfaces, DTOs)
+- `cmd/tock/main.go` - Entry point and runtime bootstrap
+- `internal/core/` - Domain layer (models, ports, and domain errors)
 - `internal/services/` - Business logic
-- `internal/adapters/repositories/file/` - File storage implementation
-- `internal/adapters/repositories/timewarrior/` - TimeWarrior storage implementation
-- `internal/adapters/repositories/sqlite/` - SQLite storage implementation
-- `internal/adapters/cli/` - CLI commands and TUI
+- `internal/adapters/repositories/` - File, TodoTXT, TimeWarrior, SQLite, and notes storage adapters
+- `internal/app/commands/` - Cobra commands and Bubble Tea TUIs
+- `internal/app/export/` - Text, CSV, JSON, and iCal export generation
+- `internal/app/insights/` - Productivity analysis and calendar aggregations
+- `internal/app/localization/` - Embedded locale catalogs and localized formatting
+- `internal/app/runtime/` - Shared command runtime/bootstrap wiring
+- `internal/app/updatecheck/` - Release update checks
+- `internal/app/watching/` - Watch mode and stopwatch helpers
 - `internal/config/` - Configuration loading and management
-- `internal/extras/` - Extra utilities (e.g., iCal export)
 
 ## Inspiration
 

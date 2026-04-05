@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/todotxt"
-	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
@@ -43,7 +42,7 @@ func TestRepository_SaveAndFind(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, activity1))
 	require.NoError(t, repo.Save(ctx, activity2))
 
-	got, err := repo.Find(ctx, dto.ActivityFilter{})
+	got, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, activity1.Description, got[0].Description)
@@ -77,7 +76,7 @@ func TestRepository_SaveUpdatesExistingActivity(t *testing.T) {
 	activity.EndTime = &end
 	require.NoError(t, repo.Save(ctx, activity))
 
-	got, err := repo.Find(ctx, dto.ActivityFilter{})
+	got, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.NotNil(t, got[0].EndTime)
@@ -103,7 +102,7 @@ func TestRepository_Find_DateRangeIncludesOverlappingActivity(t *testing.T) {
 
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
 	_, to := timeutil.LocalDayBounds(from)
-	got, err := repo.Find(ctx, dto.ActivityFilter{FromDate: &from, ToDate: &to})
+	got, err := repo.Find(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "Cross-day activity", got[0].Description)
@@ -126,7 +125,7 @@ func TestRepository_Remove(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, activity))
 	require.NoError(t, repo.Remove(ctx, activity))
 
-	got, err := repo.Find(ctx, dto.ActivityFilter{})
+	got, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }

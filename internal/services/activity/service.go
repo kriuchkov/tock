@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -21,9 +20,9 @@ func NewService(repo ports.ActivityRepository, notesRepo ports.NotesRepository) 
 	return &service{repo: repo, notesRepo: notesRepo}
 }
 
-func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*models.Activity, error) {
+func (s *service) Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error) {
 	isRunning := true
-	running, err := s.repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
+	running, err := s.repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
 	if err != nil {
 		return nil, errors.Wrap(err, "find running activities")
 	}
@@ -65,9 +64,9 @@ func (s *service) Start(ctx context.Context, req dto.StartActivityRequest) (*mod
 	return &newActivity, nil
 }
 
-func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*models.Activity, error) {
+func (s *service) Stop(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error) {
 	isRunning := true
-	running, err := s.repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
+	running, err := s.repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
 	if err != nil {
 		return nil, errors.Wrap(err, "find running activities")
 	}
@@ -111,11 +110,10 @@ func (s *service) Stop(ctx context.Context, req dto.StopActivityRequest) (*model
 			return nil, errors.Wrap(err, "save notes")
 		}
 	}
-
 	return last, nil
 }
 
-func (s *service) Add(ctx context.Context, req dto.AddActivityRequest) (*models.Activity, error) {
+func (s *service) Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error) {
 	newActivity := models.Activity{
 		Description: req.Description,
 		Project:     req.Project,
@@ -138,7 +136,7 @@ func (s *service) Add(ctx context.Context, req dto.AddActivityRequest) (*models.
 	return &newActivity, nil
 }
 
-func (s *service) List(ctx context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (s *service) List(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	activites, err := s.repo.Find(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -146,7 +144,7 @@ func (s *service) List(ctx context.Context, filter dto.ActivityFilter) ([]models
 	return s.enrichActivities(ctx, activites)
 }
 
-func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dto.Report, error) {
+func (s *service) GetReport(ctx context.Context, filter models.ActivityFilter) (*models.Report, error) {
 	activities, err := s.repo.Find(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "find activities")
@@ -156,9 +154,9 @@ func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dt
 		activities, _ = s.enrichActivities(ctx, activities)
 	}
 
-	report := &dto.Report{
+	report := &models.Report{
 		Activities: []models.Activity{},
-		ByProject:  make(map[string]dto.ProjectReport),
+		ByProject:  make(map[string]models.ProjectReport),
 	}
 
 	now := time.Now()
@@ -174,7 +172,7 @@ func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dt
 
 		projectReport, exists := report.ByProject[clipped.Project]
 		if !exists {
-			projectReport = dto.ProjectReport{
+			projectReport = models.ProjectReport{
 				ProjectName: clipped.Project,
 				Duration:    0,
 				Activities:  []models.Activity{},
@@ -190,7 +188,7 @@ func (s *service) GetReport(ctx context.Context, filter dto.ActivityFilter) (*dt
 
 func clipActivityByRange(
 	activity models.Activity,
-	filter dto.ActivityFilter,
+	filter models.ActivityFilter,
 	now time.Time,
 ) (models.Activity, bool) {
 	start := activity.StartTime
@@ -222,7 +220,7 @@ func clipActivityByRange(
 }
 
 func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, error) {
-	all, err := s.repo.Find(ctx, dto.ActivityFilter{})
+	all, err := s.repo.Find(ctx, models.ActivityFilter{})
 	if err != nil {
 		return nil, err
 	}

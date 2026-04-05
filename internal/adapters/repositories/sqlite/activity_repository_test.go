@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
@@ -187,18 +186,18 @@ func TestSQLiteRepository_Find(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		filter        dto.ActivityFilter
+		filter        models.ActivityFilter
 		expectedCount int
 		verify        func(t *testing.T, acts []models.Activity)
 	}{
 		{
 			name:          "no filter, returns all",
-			filter:        dto.ActivityFilter{},
+			filter:        models.ActivityFilter{},
 			expectedCount: 3,
 		},
 		{
 			name: "filter by project Tock",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Project: new("Tock"),
 			},
 			expectedCount: 2,
@@ -210,7 +209,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter by partial description (Like clause)",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Description: new("DB"),
 			},
 			expectedCount: 1,
@@ -220,7 +219,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter by IsRunning (true)",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: new(true),
 			},
 			expectedCount: 1,
@@ -231,7 +230,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter by IsRunning (false)",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: new(false),
 			},
 			expectedCount: 2,
@@ -243,14 +242,14 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter by FromDate",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				FromDate: new(now.Add(-3 * time.Hour)),
 			},
 			expectedCount: 2, // skips the one from 24h ago
 		},
 		{
 			name: "filter by ToDate",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				ToDate: new(now.Add(-10 * time.Hour)),
 			},
 			expectedCount: 1, // only the one from 24h ago
@@ -260,7 +259,7 @@ func TestSQLiteRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter by combination (Project + IsRunning)",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Project:   new("Tock"),
 				IsRunning: new(false),
 			},
@@ -324,7 +323,7 @@ func TestSQLiteRepository_Remove(t *testing.T) {
 			err := repo.Remove(ctx, tt.toRemove)
 			require.NoError(t, err)
 
-			acts, err := repo.Find(ctx, dto.ActivityFilter{})
+			acts, err := repo.Find(ctx, models.ActivityFilter{})
 			require.NoError(t, err)
 			assert.Len(t, acts, tt.finalCount)
 		})

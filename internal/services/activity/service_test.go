@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	portsmocks "github.com/kriuchkov/tock/internal/core/ports/mocks"
@@ -24,7 +23,7 @@ func TestService_Stop(t *testing.T) {
 	tests := []struct {
 		name      string
 		setup     func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository)
-		req       dto.StopActivityRequest
+		req       models.StopActivityRequest
 		assert    func(t *testing.T, act *models.Activity)
 		assertErr func(t *testing.T, err error)
 	}{
@@ -37,7 +36,7 @@ func TestService_Stop(t *testing.T) {
 					StartTime:   now.Add(-1 * time.Hour),
 					EndTime:     nil,
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{runningAct}, nil)
 
@@ -45,7 +44,7 @@ func TestService_Stop(t *testing.T) {
 					return a.Project == runningAct.Project && a.EndTime != nil
 				})).Return(nil)
 			},
-			req: dto.StopActivityRequest{EndTime: now},
+			req: models.StopActivityRequest{EndTime: now},
 			assert: func(t *testing.T, act *models.Activity) {
 				assert.NotNil(t, act.EndTime)
 			},
@@ -66,7 +65,7 @@ func TestService_Stop(t *testing.T) {
 					StartTime: now.Add(-1 * time.Hour),
 					EndTime:   nil,
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{act1, act2}, nil)
 
@@ -74,7 +73,7 @@ func TestService_Stop(t *testing.T) {
 					return a.Project == "new" && a.EndTime != nil
 				})).Return(nil)
 			},
-			req: dto.StopActivityRequest{EndTime: now},
+			req: models.StopActivityRequest{EndTime: now},
 			assert: func(t *testing.T, act *models.Activity) {
 				assert.Equal(t, "new", act.Project)
 			},
@@ -85,11 +84,11 @@ func TestService_Stop(t *testing.T) {
 		{
 			name: "no running activity",
 			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{}, nil)
 			},
-			req:    dto.StopActivityRequest{EndTime: now},
+			req:    models.StopActivityRequest{EndTime: now},
 			assert: func(_ *testing.T, _ *models.Activity) {},
 			assertErr: func(t *testing.T, err error) {
 				assert.ErrorIs(t, err, coreErrors.ErrNoActiveActivity)
@@ -103,7 +102,7 @@ func TestService_Stop(t *testing.T) {
 					Description: "running",
 					StartTime:   now.Add(-1 * time.Hour),
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{runningAct}, nil)
 
@@ -117,7 +116,7 @@ func TestService_Stop(t *testing.T) {
 				notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), "closing note", []string{"done", "success"}).
 					Return(nil)
 			},
-			req: dto.StopActivityRequest{
+			req: models.StopActivityRequest{
 				EndTime: now,
 				Notes:   "closing note",
 				Tags:    []string{"done", "success"},
@@ -152,7 +151,7 @@ func TestService_Start(t *testing.T) {
 	tests := []struct {
 		name      string
 		setup     func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository)
-		req       dto.StartActivityRequest
+		req       models.StartActivityRequest
 		assert    func(t *testing.T, act *models.Activity)
 		assertErr func(t *testing.T, err error)
 	}{
@@ -163,7 +162,7 @@ func TestService_Start(t *testing.T) {
 					Project:   "prev",
 					StartTime: now.Add(-1 * time.Hour),
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{runningAct}, nil)
 
@@ -175,7 +174,7 @@ func TestService_Start(t *testing.T) {
 					return a.Project == "new" && a.EndTime == nil
 				})).Return(nil)
 			},
-			req: dto.StartActivityRequest{Project: "new", Description: "task"},
+			req: models.StartActivityRequest{Project: "new", Description: "task"},
 			assert: func(t *testing.T, act *models.Activity) {
 				assert.Equal(t, "new", act.Project)
 			},
@@ -191,7 +190,7 @@ func TestService_Start(t *testing.T) {
 					Project:   "prev",
 					StartTime: now.Add(-1 * time.Hour),
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{runningAct}, nil)
 
@@ -209,7 +208,7 @@ func TestService_Start(t *testing.T) {
 					return a.Project == "new" && a.StartTime.Equal(newStartTime)
 				})).Return(nil)
 			},
-			req: dto.StartActivityRequest{
+			req: models.StartActivityRequest{
 				Project:     "new",
 				Description: "task",
 				StartTime:   now.Add(-10 * time.Minute),
@@ -230,7 +229,7 @@ func TestService_Start(t *testing.T) {
 					Project:   "prev",
 					StartTime: now.Add(-1 * time.Hour), // Started 1 hour ago
 				}
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{runningAct}, nil)
 
@@ -248,7 +247,7 @@ func TestService_Start(t *testing.T) {
 					return a.Project == "new" && a.StartTime.Equal(newStartTime)
 				})).Return(nil)
 			},
-			req: dto.StartActivityRequest{
+			req: models.StartActivityRequest{
 				Project:     "new",
 				Description: "task",
 				StartTime:   now.Add(-2 * time.Hour),
@@ -263,7 +262,7 @@ func TestService_Start(t *testing.T) {
 		{
 			name: "start with notes and tags",
 			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
-				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 					return f.IsRunning != nil && *f.IsRunning
 				})).Return([]models.Activity{}, nil)
 
@@ -274,7 +273,7 @@ func TestService_Start(t *testing.T) {
 				notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), "note", []string{"tag1", "tag2"}).
 					Return(nil)
 			},
-			req: dto.StartActivityRequest{
+			req: models.StartActivityRequest{
 				Project:     "project",
 				Description: "desc",
 				StartTime:   now,
@@ -314,7 +313,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayEnd(t *testing.T) {
 	from := time.Date(2026, 3, 4, 0, 0, 0, 0, time.Local)
 	_, to := timeutil.LocalDayBounds(from)
 
-	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 		return f.FromDate != nil && f.ToDate != nil &&
 			f.FromDate.Equal(from) && f.ToDate.Equal(to)
 	})).Return([]models.Activity{
@@ -326,7 +325,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayEnd(t *testing.T) {
 		},
 	}, nil)
 
-	report, err := svc.GetReport(context.Background(), dto.ActivityFilter{
+	report, err := svc.GetReport(context.Background(), models.ActivityFilter{
 		FromDate: &from,
 		ToDate:   &to,
 	})
@@ -353,7 +352,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayStart(t *testing.T) {
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
 	_, to := timeutil.LocalDayBounds(from)
 
-	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 		return f.FromDate != nil && f.ToDate != nil &&
 			f.FromDate.Equal(from) && f.ToDate.Equal(to)
 	})).Return([]models.Activity{
@@ -365,7 +364,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayStart(t *testing.T) {
 		},
 	}, nil)
 
-	report, err := svc.GetReport(context.Background(), dto.ActivityFilter{
+	report, err := svc.GetReport(context.Background(), models.ActivityFilter{
 		FromDate: &from,
 		ToDate:   &to,
 	})
@@ -390,7 +389,7 @@ func TestService_GetReport_WithoutDateRangeKeepsFullDuration(t *testing.T) {
 	start := time.Date(2026, 3, 4, 22, 25, 0, 0, time.Local)
 	end := time.Date(2026, 3, 5, 1, 21, 0, 0, time.Local)
 
-	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f dto.ActivityFilter) bool {
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 		return f.FromDate == nil && f.ToDate == nil
 	})).Return([]models.Activity{
 		{
@@ -401,7 +400,7 @@ func TestService_GetReport_WithoutDateRangeKeepsFullDuration(t *testing.T) {
 		},
 	}, nil)
 
-	report, err := svc.GetReport(context.Background(), dto.ActivityFilter{})
+	report, err := svc.GetReport(context.Background(), models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, report.Activities, 1)
 
@@ -474,7 +473,7 @@ func TestService_List_PreservesExistingTagsWhenNotesRepoHasNoData(t *testing.T) 
 
 	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).Return("", []string(nil), nil)
 
-	activities, err := svc.List(context.Background(), dto.ActivityFilter{})
+	activities, err := svc.List(context.Background(), models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 1)
 	assert.Equal(t, []string{"github"}, activities[0].Tags)
@@ -498,7 +497,7 @@ func TestService_List_OverridesWithNotesRepositoryDataWhenPresent(t *testing.T) 
 
 	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).Return("note from repo", []string{"desk", "focus"}, nil)
 
-	activities, err := svc.List(context.Background(), dto.ActivityFilter{})
+	activities, err := svc.List(context.Background(), models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 1)
 	assert.Equal(t, "note from repo", activities[0].Notes)
