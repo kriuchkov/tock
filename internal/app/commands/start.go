@@ -22,7 +22,6 @@ type startOptions struct {
 	JSONOutput  bool
 }
 
-//nolint:gocognit,funlen // Include all logic in one function
 func NewStartCmd() *cobra.Command {
 	var opts startOptions
 

@@ -21,8 +21,8 @@ func TestRunICalCmdRequiresPathForBulkExport(t *testing.T) {
 
 func TestHandleFullExportWritesEmptyNotice(t *testing.T) {
 	service := &stubActivityResolver{
-		listFn: func(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
-			return nil, nil
+		listFn: func(_ context.Context, _ models.ActivityFilter) ([]models.Activity, error) {
+			return []models.Activity{}, nil
 		},
 	}
 	cmd := newTestCLICommand(service)

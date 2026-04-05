@@ -21,6 +21,8 @@ func localizedWeekdayShortNames(loc *localization.Localizer) []string {
 
 func localizedWeekdayShort(loc *localization.Localizer, weekday time.Weekday) string {
 	switch weekday {
+	case time.Sunday:
+		return loc.Text("date.weekday_short.sun")
 	case time.Monday:
 		return loc.Text("date.weekday_short.mon")
 	case time.Tuesday:
@@ -33,13 +35,15 @@ func localizedWeekdayShort(loc *localization.Localizer, weekday time.Weekday) st
 		return loc.Text("date.weekday_short.fri")
 	case time.Saturday:
 		return loc.Text("date.weekday_short.sat")
-	default:
-		return loc.Text("date.weekday_short.sun")
 	}
+
+	return loc.Text("date.weekday_short.sun")
 }
 
 func localizedWeekdayLong(loc *localization.Localizer, weekday time.Weekday) string {
 	switch weekday {
+	case time.Sunday:
+		return loc.Text("date.weekday_long.sunday")
 	case time.Monday:
 		return loc.Text("date.weekday_long.monday")
 	case time.Tuesday:
@@ -52,9 +56,9 @@ func localizedWeekdayLong(loc *localization.Localizer, weekday time.Weekday) str
 		return loc.Text("date.weekday_long.friday")
 	case time.Saturday:
 		return loc.Text("date.weekday_long.saturday")
-	default:
-		return loc.Text("date.weekday_long.sunday")
 	}
+
+	return loc.Text("date.weekday_long.sunday")
 }
 
 func localizedMonthName(loc *localization.Localizer, month time.Month) string {
@@ -81,9 +85,11 @@ func localizedMonthName(loc *localization.Localizer, month time.Month) string {
 		return loc.Text("date.month.october")
 	case time.November:
 		return loc.Text("date.month.november")
-	default:
+	case time.December:
 		return loc.Text("date.month.december")
 	}
+
+	return loc.Text("date.month.december")
 }
 
 func localizedMonthShortName(loc *localization.Localizer, month time.Month) string {
@@ -110,9 +116,11 @@ func localizedMonthShortName(loc *localization.Localizer, month time.Month) stri
 		return loc.Text("date.month_short.october")
 	case time.November:
 		return loc.Text("date.month_short.november")
-	default:
+	case time.December:
 		return loc.Text("date.month_short.december")
 	}
+
+	return loc.Text("date.month_short.december")
 }
 
 func formatLocalizedMonthYear(loc *localization.Localizer, date time.Time) string {
@@ -120,9 +128,21 @@ func formatLocalizedMonthYear(loc *localization.Localizer, date time.Time) strin
 }
 
 func formatLocalizedLongDate(loc *localization.Localizer, date time.Time) string {
-	return fmt.Sprintf("%s, %02d %s %d", localizedWeekdayLong(loc, date.Weekday()), date.Day(), localizedMonthName(loc, date.Month()), date.Year())
+	return fmt.Sprintf(
+		"%s, %02d %s %d",
+		localizedWeekdayLong(loc, date.Weekday()),
+		date.Day(),
+		localizedMonthName(loc, date.Month()),
+		date.Year(),
+	)
 }
 
 func formatLocalizedLongDateShortMonth(loc *localization.Localizer, date time.Time) string {
-	return fmt.Sprintf("%s, %02d %s %d", localizedWeekdayLong(loc, date.Weekday()), date.Day(), localizedMonthShortName(loc, date.Month()), date.Year())
+	return fmt.Sprintf(
+		"%s, %02d %s %d",
+		localizedWeekdayLong(loc, date.Weekday()),
+		date.Day(),
+		localizedMonthShortName(loc, date.Month()),
+		date.Year(),
+	)
 }

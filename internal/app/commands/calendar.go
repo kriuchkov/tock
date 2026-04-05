@@ -70,7 +70,12 @@ type calendarModel struct {
 	loc          *localization.Localizer
 }
 
-func initialCalendarModel(service ports.ActivityResolver, cfg *config.Config, tf *timeutil.Formatter, loc *localization.Localizer) calendarModel {
+func initialCalendarModel(
+	service ports.ActivityResolver,
+	cfg *config.Config,
+	tf *timeutil.Formatter,
+	loc *localization.Localizer,
+) calendarModel {
 	now := time.Now()
 	theme := GetTheme(cfg.Theme)
 	return calendarModel{

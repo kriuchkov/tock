@@ -31,7 +31,7 @@ func TestAnalyzeActivities(t *testing.T) {
 	assert.Equal(t, 210*time.Minute, stats.DeepWorkDuration)
 	assert.InDelta(t, 84.0, stats.DeepWorkScore, 0.1)
 	assert.Equal(t, 1, stats.ContextSwitches)
-	assert.Equal(t, 1.0, stats.AvgSwitchesPerDay)
+	assert.InDelta(t, 1.0, stats.AvgSwitchesPerDay, 0.0001)
 	assert.Equal(t, "Morning Lark 🐦", stats.Chronotype)
 	assert.Equal(t, 9, stats.PeakHour)
 	assert.Equal(t, "Monday", stats.MostProductiveDay)

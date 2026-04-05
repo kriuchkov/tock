@@ -42,7 +42,6 @@ func ParseActivityReference(value string) (ActivityReference, error) {
 	if err != nil {
 		return ActivityReference{}, errors.Wrap(err, "invalid date format")
 	}
-
 	return ActivityReference{Date: date, Sequence: seq, HasSequence: true}, nil
 }
 
@@ -51,6 +50,7 @@ func ParseActivityKey(value string) (time.Time, int, error) {
 	if err != nil {
 		return time.Time{}, 0, err
 	}
+
 	if !ref.HasSequence {
 		return time.Time{}, 0, errors.New("invalid format: expected YYYY-MM-DD-NN")
 	}
@@ -60,9 +60,8 @@ func ParseActivityKey(value string) (time.Time, int, error) {
 func SortActivitiesByStart(activities []Activity) []Activity {
 	sorted := make([]Activity, len(activities))
 	copy(sorted, activities)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].StartTime.Before(sorted[j].StartTime)
-	})
+
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].StartTime.Before(sorted[j].StartTime) })
 	return sorted
 }
 
@@ -84,6 +83,5 @@ func ActivitySequenceIDs(activities []Activity) map[int64]string {
 		dayCounts[day]++
 		ids[activity.StartTime.UnixNano()] = fmt.Sprintf("%s-%02d", day, dayCounts[day])
 	}
-
 	return ids
 }

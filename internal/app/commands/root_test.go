@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ func TestRootPersistentPreRunLoadsRuntimeDependencies(t *testing.T) {
 	loc := localization.MustNew(localization.LanguageEnglish)
 	var gotReq appruntime.Request
 
-	loadRuntime = func(ctx context.Context, req appruntime.Request) (*appruntime.Runtime, error) {
+	loadRuntime = func(_ context.Context, req appruntime.Request) (*appruntime.Runtime, error) {
 		gotReq = req
 		return &appruntime.Runtime{
 			ActivityService: svc,
@@ -58,7 +59,7 @@ func TestRootPersistentPreRunSkipsVersion(t *testing.T) {
 	called := false
 	loadRuntime = func(context.Context, appruntime.Request) (*appruntime.Runtime, error) {
 		called = true
-		return nil, nil
+		return nil, errors.New("unexpected runtime load")
 	}
 
 	root := NewRootCmd()

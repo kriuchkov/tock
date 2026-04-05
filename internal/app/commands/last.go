@@ -52,7 +52,7 @@ func runLastCmd(cmd *cobra.Command, opt *lastOptions) error {
 	}
 
 	if len(activities) == 0 {
-		_, err = fmt.Fprintln(out, text(cmd, "common.no_activities"))
+		fmt.Fprintln(out, text(cmd, "common.no_activities"))
 		return nil
 	}
 

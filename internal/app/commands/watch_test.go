@@ -22,7 +22,7 @@ func TestRunWatchCmdWritesEmptyNotice(t *testing.T) {
 		currentActivityTime = timeNow
 	})
 
-	runWatchProgram = func(model watchModel) error {
+	runWatchProgram = func(_ watchModel) error {
 		t.Fatalf("program should not run when no activity exists")
 		return nil
 	}
@@ -31,7 +31,7 @@ func TestRunWatchCmdWritesEmptyNotice(t *testing.T) {
 		listFn: func(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 			require.NotNil(t, filter.IsRunning)
 			assert.True(t, *filter.IsRunning)
-			return nil, nil
+			return []models.Activity{}, nil
 		},
 	}
 	cmd := newTestCLICommand(service)
@@ -51,14 +51,14 @@ func TestRunWatchCmdStopOnExitUsesWriter(t *testing.T) {
 		currentActivityTime = timeNow
 	})
 
-	runWatchProgram = func(model watchModel) error {
+	runWatchProgram = func(_ watchModel) error {
 		return nil
 	}
 	stopTime := time.Date(2026, time.March, 14, 18, 0, 0, 0, time.Local)
 	currentActivityTime = func() time.Time { return stopTime }
 
 	service := &stubActivityResolver{
-		listFn: func(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
+		listFn: func(_ context.Context, _ models.ActivityFilter) ([]models.Activity, error) {
 			return []models.Activity{{Project: "tock", Description: "watching", StartTime: stopTime.Add(-time.Hour)}}, nil
 		},
 		stopFn: func(_ context.Context, req models.StopActivityRequest) (*models.Activity, error) {

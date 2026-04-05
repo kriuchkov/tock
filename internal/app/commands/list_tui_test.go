@@ -34,7 +34,7 @@ func TestRunListCmdInvokesProgram(t *testing.T) {
 func TestListModelViewLocalizesHeaderAndHelp(t *testing.T) {
 	service := &stubActivityResolver{
 		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
-			return nil, nil
+			return []models.Activity{}, nil
 		},
 	}
 	model := initialListModel(service, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
@@ -54,7 +54,7 @@ func TestListModelViewLocalizesHeaderAndHelp(t *testing.T) {
 
 func TestListModelNavigateUsesNextAvailableDate(t *testing.T) {
 	service := &stubActivityResolver{
-		listFn: func(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
+		listFn: func(_ context.Context, _ models.ActivityFilter) ([]models.Activity, error) {
 			return []models.Activity{
 				{Project: "core", StartTime: time.Date(2026, time.April, 4, 9, 0, 0, 0, time.Local)},
 				{Project: "ops", StartTime: time.Date(2026, time.April, 6, 9, 0, 0, 0, time.Local)},

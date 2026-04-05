@@ -86,7 +86,7 @@ func handleFullExport(cmd *cobra.Command, out io.Writer, outputDir string, openA
 	}
 
 	if len(activities) == 0 {
-		_, err = fmt.Fprintln(out, text(cmd, "common.no_activities"))
+		fmt.Fprintln(out, text(cmd, "common.no_activities"))
 		return nil
 	}
 
@@ -134,9 +134,7 @@ func handleFullExport(cmd *cobra.Command, out io.Writer, outputDir string, openA
 			return err
 		}
 
-		if _, err = fmt.Fprintln(out, text(cmd, "ical.opened.all")); err != nil {
-			return errors.Wrap(err, "write open message")
-		}
+		fmt.Fprintln(out, text(cmd, "ical.opened.all"))
 	}
 	return nil
 }
@@ -192,23 +190,16 @@ func handleSingleExport(out io.Writer, activity models.Activity, key string, out
 			return err
 		}
 
-		if _, err = fmt.Fprintln(out, defaultText("ical.opened.single")); err != nil {
-			return errors.Wrap(err, "write open message")
-		}
+		fmt.Fprintln(out, defaultText("ical.opened.single"))
 	} else {
-		if _, err := fmt.Fprintln(out, content); err != nil {
-			return errors.Wrap(err, "write calendar content")
-		}
+		fmt.Fprintln(out, content)
 	}
 	return nil
 }
 
 func handleBulkExport(out io.Writer, activities []models.Activity, dateKey string, outputDir string, openApp bool) error {
 	if len(activities) == 0 {
-		_, err := fmt.Fprintln(out, defaultText("ical.empty_date"))
-		if err != nil {
-			return errors.Wrap(err, "write empty result")
-		}
+		fmt.Fprintln(out, defaultText("ical.empty_date"))
 		return nil
 	}
 
@@ -230,9 +221,7 @@ func handleBulkExport(out io.Writer, activities []models.Activity, dateKey strin
 			return err
 		}
 
-		if _, err = fmt.Fprintln(out, defaultText("ical.opened.all")); err != nil {
-			return errors.Wrap(err, "write open message")
-		}
+		fmt.Fprintln(out, defaultText("ical.opened.all"))
 	}
 
 	if outputDir != "" {
@@ -246,9 +235,7 @@ func handleBulkExport(out io.Writer, activities []models.Activity, dateKey strin
 			return errors.Wrapf(err, "write %s", filename)
 		}
 
-		if _, err := fmt.Fprintf(out, defaultText("ical.export.date"), dateKey, filename); err != nil {
-			return errors.Wrap(err, "write export message")
-		}
+		fmt.Fprintf(out, defaultText("ical.export.date"), dateKey, filename)
 	}
 	return nil
 }

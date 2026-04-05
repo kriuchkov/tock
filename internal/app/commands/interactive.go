@@ -42,7 +42,11 @@ func selectProject(activities []models.Activity, theme Theme) (string, error) {
 
 	if selection == newOption {
 		var project string
-		project, err = RunInteractiveInput(defaultText("interactive.new_project_name"), defaultText("interactive.project_placeholder"), theme)
+		project, err = RunInteractiveInput(
+			defaultText("interactive.new_project_name"),
+			defaultText("interactive.project_placeholder"),
+			theme,
+		)
 		if err != nil {
 			return "", errors.Wrap(err, "input project name")
 		}
@@ -64,7 +68,11 @@ func selectTask(activities []models.Activity, project string, theme Theme) (stri
 
 	if selection == newOption {
 		var description string
-		description, err = RunInteractiveInput(defaultText("interactive.new_task_description"), defaultText("interactive.task_placeholder"), theme)
+		description, err = RunInteractiveInput(
+			defaultText("interactive.new_task_description"),
+			defaultText("interactive.task_placeholder"),
+			theme,
+		)
 		if err != nil {
 			return "", errors.Wrap(err, "input task description")
 		}

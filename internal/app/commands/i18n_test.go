@@ -12,7 +12,7 @@ import (
 
 func TestNewBootstrapLocalizerFallsBackToEnglishForUnsupportedLanguage(t *testing.T) {
 	originalLoadBootstrapConfig := loadBootstrapConfig
-	loadBootstrapConfig = func(opts ...config.Option) (*config.Config, *viper.Viper, error) {
+	loadBootstrapConfig = func(_ ...config.Option) (*config.Config, *viper.Viper, error) {
 		return &config.Config{Language: "de"}, viper.New(), nil
 	}
 	t.Cleanup(func() {

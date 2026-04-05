@@ -1,6 +1,7 @@
 package updatecheck
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -62,7 +63,7 @@ func TestCheckSkipsWhenDisabled(t *testing.T) {
 	called := false
 	client := testClient(func(*http.Request) (*http.Response, error) {
 		called = true
-		return nil, nil
+		return nil, errors.New("unexpected request")
 	})
 
 	result, err := Check(t.Context(), client, time.Now(), State{CurrentVersion: "1.0.0"})
@@ -81,7 +82,7 @@ func TestCheckSkipsFallbackVersion(t *testing.T) {
 	called := false
 	client := testClient(func(*http.Request) (*http.Response, error) {
 		called = true
-		return nil, nil
+		return nil, errors.New("unexpected request")
 	})
 
 	result, err := Check(t.Context(), client, time.Now(), State{
@@ -104,7 +105,7 @@ func TestCheckSkipsRecentCheck(t *testing.T) {
 	called := false
 	client := testClient(func(*http.Request) (*http.Response, error) {
 		called = true
-		return nil, nil
+		return nil, errors.New("unexpected request")
 	})
 
 	result, err := Check(t.Context(), client, now, State{
@@ -131,7 +132,7 @@ func TestCheckReportsAvailableUpdate(t *testing.T) {
 		}
 		return &http.Response{
 			StatusCode: http.StatusOK,
-			Body: io.NopCloser(strings.NewReader(`{"tag_name":"v1.8.0","html_url":"https://example.com/release"}`)),
+			Body:       io.NopCloser(strings.NewReader(`{"tag_name":"v1.8.0","html_url":"https://example.com/release"}`)),
 			Header:     make(http.Header),
 		}, nil
 	})

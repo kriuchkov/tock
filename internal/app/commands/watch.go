@@ -23,9 +23,7 @@ type watchOptions struct {
 	StopOnExit bool
 }
 
-var currentActivityTime = func() time.Time {
-	return time.Now()
-}
+var currentActivityTime = time.Now
 
 var runWatchProgram = func(model watchModel) error {
 	program := tea.NewProgram(&model, tea.WithAltScreen())
@@ -60,8 +58,8 @@ func runWatchCmd(cmd *cobra.Command, opts *watchOptions) error {
 	activity, err := watching.FindCurrentActivity(cmd.Context(), service)
 	if err != nil {
 		if errors.Is(err, coreErrors.ErrNoActiveActivity) {
-			_, err = fmt.Fprintln(out, text(cmd, "current.empty"))
-			return err
+			fmt.Fprintln(out, text(cmd, "current.empty"))
+			return nil
 		}
 		return errors.Wrap(err, "load current activity")
 	}

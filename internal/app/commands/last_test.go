@@ -38,7 +38,7 @@ func TestRunLastCmdJSONUsesCommandWriter(t *testing.T) {
 
 func TestRunLastCmdTableUsesCommandWriter(t *testing.T) {
 	service := &stubActivityResolver{
-		getRecentFn: func(_ context.Context, limit int) ([]models.Activity, error) {
+		getRecentFn: func(_ context.Context, _ int) ([]models.Activity, error) {
 			return []models.Activity{{Project: "core", Description: "a"}, {Project: "ops", Description: "b"}}, nil
 		},
 	}

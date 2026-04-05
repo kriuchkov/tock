@@ -213,6 +213,10 @@ linters:
       # Such cases aren't reported by default.
       # Default: false
       check-type-assertions: true
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
 
     exhaustive:
       # Program elements to check for exhaustiveness.

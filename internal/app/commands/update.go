@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	updateCheckFailedMessage = "Failed to check for updates:"
+	updateCheckFailedMessage   = "Failed to check for updates:"
 	updatePersistFailedMessage = "Failed to save update check time:"
 )
 
@@ -67,6 +67,11 @@ func runUpdateCheck(cmd *cobra.Command) {
 	}
 
 	if result.UpdateAvailable {
-		cmd.Printf(text(cmd, "update.available_notification"), result.CurrentVersion, result.LatestRelease.TagName, result.LatestRelease.HTMLURL)
+		cmd.Printf(
+			text(cmd, "update.available_notification"),
+			result.CurrentVersion,
+			result.LatestRelease.TagName,
+			result.LatestRelease.HTMLURL,
+		)
 	}
 }

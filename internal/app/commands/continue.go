@@ -24,7 +24,6 @@ type continueOptions struct {
 	JSONOutput  bool
 }
 
-//nolint:funlen // Include all logic in one function
 func NewContinueCmd() *cobra.Command {
 	var opts continueOptions
 

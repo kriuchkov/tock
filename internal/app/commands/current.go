@@ -75,20 +75,20 @@ func runCurrentCmd(cmd *cobra.Command, opt *currentOptions) error {
 
 	if len(activities) == 0 {
 		if opt.Format == "" {
-			_, err = fmt.Fprintln(out, text(cmd, "current.empty"))
-			return err
+			fmt.Fprintln(out, text(cmd, "current.empty"))
+			return nil
 		}
 		return nil
 	}
 
 	if opt.Format != "" {
-		tmpl, err := template.New("current").Parse(opt.Format + "\n")
-		if err != nil {
-			return errors.Wrap(err, "parse format template")
+		parsedTemplate, parseErr := template.New("current").Parse(opt.Format + "\n")
+		if parseErr != nil {
+			return errors.Wrap(parseErr, "parse format template")
 		}
 
 		for _, activity := range activities {
-			if err = tmpl.Execute(out, currentCmdActivity{Activity: activity}); err != nil {
+			if err = parsedTemplate.Execute(out, currentCmdActivity{Activity: activity}); err != nil {
 				return errors.Wrap(err, "execute format template")
 			}
 		}

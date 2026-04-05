@@ -6,16 +6,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 const (
 	LanguageEnglish = "eng"
-)
-
-var (
-	defaultOnce sync.Once
-	defaultLoc  *Localizer
 )
 
 //go:embed langs/*.json
@@ -38,10 +32,7 @@ func DetectLanguage(values ...string) string {
 }
 
 func Default() *Localizer {
-	defaultOnce.Do(func() {
-		defaultLoc = MustNew(LanguageEnglish)
-	})
-	return defaultLoc
+	return MustNew(LanguageEnglish)
 }
 
 func MustNew(language string) *Localizer {

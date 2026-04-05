@@ -12,9 +12,7 @@ import (
 
 const (
 	defaultRecentActivitiesForCompletion = 1000
-	backendTodoTXT                       = "todotxt"
 	backendTimewarrior                   = "timewarrior"
-	backendSqlite                        = "sqlite"
 )
 
 var loadRuntime = appruntime.Load

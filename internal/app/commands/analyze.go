@@ -54,8 +54,8 @@ func runAnalyzeCmd(cmd *cobra.Command, days int) error {
 	}
 
 	if len(report.Activities) == 0 {
-		_, err = fmt.Fprintln(out, text(cmd, "analyze.empty"))
-		return err
+		fmt.Fprintln(out, text(cmd, "analyze.empty"))
+		return nil
 	}
 
 	stats := insights.AnalyzeActivities(report.Activities)
@@ -63,7 +63,13 @@ func runAnalyzeCmd(cmd *cobra.Command, days int) error {
 }
 
 //nolint:funlen // render function is inherently long for output formatting
-func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf *timeutil.Formatter, loc interface{ Format(string, ...any) string }) error {
+func renderAnalysis(
+	out io.Writer,
+	stats insights.Stats,
+	cfg *config.Config,
+	tf *timeutil.Formatter,
+	loc interface{ Format(string, ...any) string },
+) error {
 	theme := GetTheme(cfg.Theme)
 
 	// Custom styles for analysis
@@ -89,14 +95,10 @@ func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf 
 		Foreground(theme.SubText).
 		Width(25)
 
-	if _, err := fmt.Fprintln(out, titleStyle.Render(loc.Format("analyze.title"))); err != nil {
-		return errors.Wrap(err, "write analysis title")
-	}
+	fmt.Fprintln(out, titleStyle.Render(loc.Format("analyze.title")))
 
 	// 1. Deep Work Score
-	if _, err := fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.focus"))); err != nil {
-		return errors.Wrap(err, "write focus section")
-	}
+	fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.focus")))
 
 	scoreColor := theme.Secondary // Red (bad)
 	if stats.DeepWorkScore > 70 {
@@ -115,22 +117,26 @@ func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf 
 		lipgloss.NewStyle().Foreground(scoreColor).Render(fmt.Sprintf("%.1f%%", stats.DeepWorkScore))); err != nil {
 		return errors.Wrap(err, "write deep work score")
 	}
-	if _, err := fmt.Fprintln(out, lipgloss.NewStyle().Foreground(scoreColor).Render(scoreBar)); err != nil {
-		return errors.Wrap(err, "write deep work bar")
-	}
+	fmt.Fprintln(out, lipgloss.NewStyle().Foreground(scoreColor).Render(scoreBar))
 
-	if _, err := fmt.Fprintf(out, "%s %s\n", labelStyle.Render(loc.Format("analyze.label.avg_session")), valueStyle.Render(stats.AvgSessionDuration.Round(time.Minute).String())); err != nil {
+	if _, err := fmt.Fprintf(
+		out,
+		"%s %s\n",
+		labelStyle.Render(loc.Format("analyze.label.avg_session")),
+		valueStyle.Render(stats.AvgSessionDuration.Round(time.Minute).String()),
+	); err != nil {
 		return errors.Wrap(err, "write average session")
 	}
-	if _, err := fmt.Fprintln(out); err != nil {
-		return errors.Wrap(err, "write spacer")
-	}
+	fmt.Fprintln(out)
 
 	// 2. Chronotype
-	if _, err := fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.chronotype"))); err != nil {
-		return errors.Wrap(err, "write chronotype section")
-	}
-	if _, err := fmt.Fprintf(out, "%s %s\n", labelStyle.Render(loc.Format("analyze.label.type")), valueStyle.Render(stats.Chronotype)); err != nil {
+	fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.chronotype")))
+	if _, err := fmt.Fprintf(
+		out,
+		"%s %s\n",
+		labelStyle.Render(loc.Format("analyze.label.type")),
+		valueStyle.Render(stats.Chronotype),
+	); err != nil {
 		return errors.Wrap(err, "write chronotype")
 	}
 
@@ -145,18 +151,24 @@ func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf 
 		return errors.Wrap(err, "write peak hour")
 	}
 
-	if _, err := fmt.Fprintf(out, "%s %s\n", labelStyle.Render(loc.Format("analyze.label.best_day")), valueStyle.Render(stats.MostProductiveDay)); err != nil {
+	if _, err := fmt.Fprintf(
+		out,
+		"%s %s\n",
+		labelStyle.Render(loc.Format("analyze.label.best_day")),
+		valueStyle.Render(stats.MostProductiveDay),
+	); err != nil {
 		return errors.Wrap(err, "write best day")
 	}
-	if _, err := fmt.Fprintln(out); err != nil {
-		return errors.Wrap(err, "write spacer")
-	}
+	fmt.Fprintln(out)
 
 	// 3. Context Switching
-	if _, err := fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.switching"))); err != nil {
-		return errors.Wrap(err, "write context section")
-	}
-	if _, err := fmt.Fprintf(out, "%s %s\n", labelStyle.Render(loc.Format("analyze.label.avg_switches")), valueStyle.Render(fmt.Sprintf("%.1f", stats.AvgSwitchesPerDay))); err != nil {
+	fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.switching")))
+	if _, err := fmt.Fprintf(
+		out,
+		"%s %s\n",
+		labelStyle.Render(loc.Format("analyze.label.avg_switches")),
+		valueStyle.Render(fmt.Sprintf("%.1f", stats.AvgSwitchesPerDay)),
+	); err != nil {
 		return errors.Wrap(err, "write context switches")
 	}
 
@@ -166,17 +178,18 @@ func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf 
 	} else if stats.AvgSwitchesPerDay > 5 {
 		switchMsg = loc.Format("analyze.verdict.moderate")
 	}
-	if _, err := fmt.Fprintf(out, "%s %s\n", labelStyle.Render(loc.Format("analyze.label.verdict")), lipgloss.NewStyle().Foreground(theme.SubText).Render(switchMsg)); err != nil {
+	if _, err := fmt.Fprintf(
+		out,
+		"%s %s\n",
+		labelStyle.Render(loc.Format("analyze.label.verdict")),
+		lipgloss.NewStyle().Foreground(theme.SubText).Render(switchMsg),
+	); err != nil {
 		return errors.Wrap(err, "write verdict")
 	}
-	if _, err := fmt.Fprintln(out); err != nil {
-		return errors.Wrap(err, "write spacer")
-	}
+	fmt.Fprintln(out)
 
 	// 4. Session Distribution
-	if _, err := fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.distribution"))); err != nil {
-		return errors.Wrap(err, "write distribution section")
-	}
+	fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.distribution")))
 
 	// Find max for scaling
 	maxCount := 0
@@ -213,8 +226,8 @@ func renderAnalysis(out io.Writer, stats insights.Stats, cfg *config.Config, tf 
 			return errors.Wrap(err, "write distribution line")
 		}
 	}
-	_, err := fmt.Fprintln(out)
-	return err
+	fmt.Fprintln(out)
+	return nil
 }
 
 func localizeFocusDistributionLabel(loc interface{ Format(string, ...any) string }, key string) string {

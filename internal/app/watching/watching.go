@@ -47,7 +47,7 @@ func TogglePause(
 
 	stopped, err := resolver.Stop(ctx, models.StopActivityRequest{EndTime: at})
 	if err != nil {
-		return activity, true, nil
+		return activity, true, errors.Wrap(err, "pause activity")
 	}
 	if stopped == nil {
 		return activity, true, nil

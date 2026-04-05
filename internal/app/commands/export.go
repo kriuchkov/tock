@@ -89,9 +89,7 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 			return errors.Wrap(err, "write stdout")
 		}
 		if len(output) == 0 || output[len(output)-1] != '\n' {
-			if _, err = fmt.Fprintln(out); err != nil {
-				return errors.Wrap(err, "write stdout newline")
-			}
+			fmt.Fprintln(out)
 		}
 		return nil
 	}
@@ -109,9 +107,7 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 		return err
 	}
 
-	if _, err = fmt.Fprintln(out, writtenPath); err != nil {
-		return errors.Wrap(err, "write export path")
-	}
+	fmt.Fprintln(out, writtenPath)
 	return nil
 }
 

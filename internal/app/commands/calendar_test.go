@@ -58,7 +58,12 @@ func TestReportModelFetchMonthDataBuildsReportWindow(t *testing.T) {
 			return &models.Report{}, nil
 		},
 	}
-	model := initialCalendarModel(service, &config.Config{}, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
+	model := initialCalendarModel(
+		service,
+		&config.Config{},
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+	)
 	model.viewDate = time.Date(2026, time.April, 4, 0, 0, 0, 0, time.Local)
 
 	msg := model.fetchMonthData()
@@ -87,7 +92,12 @@ func TestReportModelRenderCalendarLocalizedLabels(t *testing.T) {
 }
 
 func TestReportModelHandleKeyMsgChangesMonth(t *testing.T) {
-	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
+	model := initialCalendarModel(
+		&stubActivityResolver{},
+		&config.Config{},
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+	)
 	model.currentDate = time.Date(2026, time.March, 31, 0, 0, 0, 0, time.Local)
 	model.viewDate = model.currentDate
 
@@ -99,12 +109,17 @@ func TestReportModelHandleKeyMsgChangesMonth(t *testing.T) {
 }
 
 func TestReportModelHandleKeyMsgScrollsViewport(t *testing.T) {
-	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
+	model := initialCalendarModel(
+		&stubActivityResolver{},
+		&config.Config{},
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+	)
 	model.ready = true
 	model.viewport = viewport.New(20, 3)
 	model.viewport.SetContent("1\n2\n3\n4\n5\n6")
 
 	_, handled := model.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	require.True(t, handled)
-	assert.Greater(t, model.viewport.YOffset, 0)
+	assert.Positive(t, model.viewport.YOffset)
 }

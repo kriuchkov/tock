@@ -21,45 +21,49 @@ type stubResolver struct {
 	stopFn  func(context.Context, models.StopActivityRequest) (*models.Activity, error)
 }
 
+func unconfiguredResolverCall() error {
+	return errors.New("resolver method not configured")
+}
+
 func (s stubResolver) Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error) {
 	if s.startFn == nil {
-		return nil, nil
+		return nil, unconfiguredResolverCall()
 	}
 	return s.startFn(ctx, req)
 }
 
 func (s stubResolver) Stop(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error) {
 	if s.stopFn == nil {
-		return nil, nil
+		return nil, unconfiguredResolverCall()
 	}
 	return s.stopFn(ctx, req)
 }
 
 func (s stubResolver) Add(context.Context, models.AddActivityRequest) (*models.Activity, error) {
-	return nil, nil
+	return nil, unconfiguredResolverCall()
 }
 
 func (s stubResolver) List(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	if s.listFn == nil {
-		return nil, nil
+		return nil, unconfiguredResolverCall()
 	}
 	return s.listFn(ctx, filter)
 }
 
 func (s stubResolver) GetReport(context.Context, models.ActivityFilter) (*models.Report, error) {
-	return nil, nil
+	return nil, unconfiguredResolverCall()
 }
 
 func (s stubResolver) GetRecent(context.Context, int) ([]models.Activity, error) {
-	return nil, nil
+	return nil, unconfiguredResolverCall()
 }
 
 func (s stubResolver) GetLast(context.Context) (*models.Activity, error) {
-	return nil, nil
+	return nil, unconfiguredResolverCall()
 }
 
 func (s stubResolver) Remove(context.Context, models.Activity) error {
-	return nil
+	return unconfiguredResolverCall()
 }
 
 var _ ports.ActivityResolver = stubResolver{}
@@ -84,7 +88,9 @@ func TestFindCurrentActivity(t *testing.T) {
 	})
 
 	t.Run("returns no active activity", func(t *testing.T) {
-		resolver := stubResolver{listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) { return nil, nil }}
+		resolver := stubResolver{listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
+			return []models.Activity{}, nil
+		}}
 		activity, err := watching.FindCurrentActivity(context.Background(), resolver)
 		require.ErrorIs(t, err, coreErrors.ErrNoActiveActivity)
 		assert.Nil(t, activity)
@@ -136,7 +142,8 @@ func TestTogglePause(t *testing.T) {
 		}}
 
 		updated, paused, err := watching.TogglePause(context.Background(), resolver, activity, false, at)
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "pause activity")
 		assert.True(t, paused)
 		assert.Equal(t, activity, updated)
 	})

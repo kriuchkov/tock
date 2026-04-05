@@ -31,7 +31,7 @@ func TestRunUpdateCheckPersistsAndWritesNotification(t *testing.T) {
 	persisted := false
 	updateCheckNow = func() time.Time { return checkedAt }
 	updateCheckClient = func() *http.Client { return &http.Client{} }
-	performUpdateCheck = func(ctx context.Context, client *http.Client, now time.Time, state updatecheck.State) (updatecheck.Result, error) {
+	performUpdateCheck = func(_ context.Context, client *http.Client, now time.Time, state updatecheck.State) (updatecheck.Result, error) {
 		require.NotNil(t, client)
 		assert.Equal(t, checkedAt, now)
 		assert.True(t, state.CheckUpdates)
@@ -44,7 +44,7 @@ func TestRunUpdateCheckPersistsAndWritesNotification(t *testing.T) {
 			UpdateAvailable: true,
 		}, nil
 	}
-	persistUpdateCheckTime = func(ctx context.Context, got time.Time) error {
+	persistUpdateCheckTime = func(_ context.Context, got time.Time) error {
 		persisted = true
 		assert.Equal(t, checkedAt, got)
 		return nil

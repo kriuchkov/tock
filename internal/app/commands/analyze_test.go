@@ -33,7 +33,6 @@ func TestRunAnalyzeCmdUsesCommandWriter(t *testing.T) {
 	err := runAnalyzeCmd(cmd, 7)
 	require.NoError(t, err)
 	assert.Equal(t, "No activities found for analysis.\n", out.String())
-	assert.WithinDuration(t, time.Now(), time.Now(), time.Second)
 }
 
 func TestRenderAnalysisLocalizesCanonicalDistributionKeys(t *testing.T) {

@@ -27,110 +27,158 @@ const (
 )
 
 func AnalyzeActivities(activities []models.Activity) Stats {
-	stats := Stats{
-		FocusDistribution: make(map[string]int),
+	accumulator := newStatsAccumulator()
+	for _, activity := range sortActivitiesByStart(activities) {
+		accumulator.observe(activity)
 	}
+	accumulator.finalize(len(activities))
+	return accumulator.stats
+}
 
-	hourlyDistribution := make(map[int]time.Duration)
-	dailyDuration := make(map[string]time.Duration)
-	switchesPerDay := make(map[string]int)
+type statsAccumulator struct {
+	stats              Stats
+	hourlyDistribution map[int]time.Duration
+	dailyDuration      map[string]time.Duration
+	switchesPerDay     map[string]int
+	lastProject        string
+	lastDate           string
+}
 
+func newStatsAccumulator() *statsAccumulator {
+	return &statsAccumulator{
+		stats:              Stats{FocusDistribution: make(map[string]int)},
+		hourlyDistribution: make(map[int]time.Duration),
+		dailyDuration:      make(map[string]time.Duration),
+		switchesPerDay:     make(map[string]int),
+	}
+}
+
+func sortActivitiesByStart(activities []models.Activity) []models.Activity {
 	sorted := make([]models.Activity, len(activities))
 	copy(sorted, activities)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].StartTime.Before(sorted[j].StartTime)
 	})
+	return sorted
+}
 
-	var lastProject string
-	var lastDate string
+func (acc *statsAccumulator) observe(activity models.Activity) {
+	duration := activity.Duration()
+	acc.stats.TotalDuration += duration
+	acc.observeFocus(duration)
+	acc.hourlyDistribution[activity.StartTime.Hour()] += duration
+	acc.observeContextSwitch(activity)
+	acc.dailyDuration[activity.StartTime.Weekday().String()] += duration
+}
 
-	for _, act := range sorted {
-		dur := act.Duration()
-		stats.TotalDuration += dur
+func (acc *statsAccumulator) observeFocus(duration time.Duration) {
+	switch {
+	case duration >= time.Hour:
+		acc.stats.DeepWorkDuration += duration
+		acc.stats.FocusDistribution[FocusDistributionDeep]++
+	case duration >= 15*time.Minute:
+		acc.stats.FocusDistribution[FocusDistributionFlow]++
+	default:
+		acc.stats.FocusDistribution[FocusDistributionFragmented]++
+	}
+}
 
-		switch {
-		case dur.Minutes() >= 60:
-			stats.DeepWorkDuration += dur
-			stats.FocusDistribution[FocusDistributionDeep]++
-		case dur.Minutes() >= 15:
-			stats.FocusDistribution[FocusDistributionFlow]++
-		default:
-			stats.FocusDistribution[FocusDistributionFragmented]++
-		}
-
-		startHour := act.StartTime.Hour()
-		hourlyDistribution[startHour] += dur
-
-		dateStr := act.StartTime.Format(time.DateOnly)
-		if dateStr != lastDate {
-			lastProject = ""
-			lastDate = dateStr
-		}
-
-		if lastProject != "" && act.Project != lastProject {
-			stats.ContextSwitches++
-			switchesPerDay[dateStr]++
-		}
-		lastProject = act.Project
-
-		weekday := act.StartTime.Weekday().String()
-		dailyDuration[weekday] += dur
+func (acc *statsAccumulator) observeContextSwitch(activity models.Activity) {
+	dateKey := activity.StartTime.Format(time.DateOnly)
+	if dateKey != acc.lastDate {
+		acc.lastProject = ""
+		acc.lastDate = dateKey
 	}
 
-	if stats.TotalDuration > 0 {
-		stats.DeepWorkScore = (float64(stats.DeepWorkDuration) / float64(stats.TotalDuration)) * 100
-		stats.AvgSessionDuration = stats.TotalDuration / time.Duration(len(sorted))
+	if acc.lastProject != "" && activity.Project != acc.lastProject {
+		acc.stats.ContextSwitches++
+		acc.switchesPerDay[dateKey]++
 	}
 
-	activeDays := len(switchesPerDay)
+	acc.lastProject = activity.Project
+}
+
+func (acc *statsAccumulator) finalize(activityCount int) {
+	acc.finalizeDurations(activityCount)
+	acc.stats.PeakHour = peakHour(acc.hourlyDistribution)
+	acc.stats.Chronotype = determineChronotype(acc.hourlyDistribution)
+	acc.stats.MostProductiveDay = mostProductiveDay(acc.dailyDuration)
+}
+
+func (acc *statsAccumulator) finalizeDurations(activityCount int) {
+	if acc.stats.TotalDuration > 0 && activityCount > 0 {
+		acc.stats.DeepWorkScore = float64(acc.stats.DeepWorkDuration) / float64(acc.stats.TotalDuration) * 100
+		acc.stats.AvgSessionDuration = acc.stats.TotalDuration / time.Duration(activityCount)
+	}
+
+	activeDays := len(acc.switchesPerDay)
 	if activeDays == 0 {
 		activeDays = 1
 	}
-	stats.AvgSwitchesPerDay = float64(stats.ContextSwitches) / float64(activeDays)
+	acc.stats.AvgSwitchesPerDay = float64(acc.stats.ContextSwitches) / float64(activeDays)
+}
 
-	var maxHourDur time.Duration
-	for hour, dur := range hourlyDistribution {
-		if dur > maxHourDur {
-			maxHourDur = dur
-			stats.PeakHour = hour
+func peakHour(hourlyDistribution map[int]time.Duration) int {
+	var (
+		peak       int
+		maxHourDur time.Duration
+	)
+
+	for hour, duration := range hourlyDistribution {
+		if duration > maxHourDur {
+			maxHourDur = duration
+			peak = hour
 		}
 	}
 
-	var morning, afternoon, evening, night time.Duration
-	for hour, dur := range hourlyDistribution {
+	return peak
+}
+
+func determineChronotype(hourlyDistribution map[int]time.Duration) string {
+	periods := map[string]time.Duration{
+		"Morning Lark 🐦":     0,
+		"Afternoon Power 🔋":  0,
+		"Evening Sprinter 🏃": 0,
+		"Night Owl 🦉":        0,
+	}
+
+	for hour, duration := range hourlyDistribution {
 		switch {
 		case hour >= 5 && hour < 12:
-			morning += dur
+			periods["Morning Lark 🐦"] += duration
 		case hour >= 12 && hour < 18:
-			afternoon += dur
+			periods["Afternoon Power 🔋"] += duration
 		case hour >= 18 && hour < 23:
-			evening += dur
+			periods["Evening Sprinter 🏃"] += duration
 		default:
-			night += dur
+			periods["Night Owl 🦉"] += duration
 		}
 	}
 
-	maxPeriod := morning
-	stats.Chronotype = "Morning Lark 🐦"
-	if afternoon > maxPeriod {
-		maxPeriod = afternoon
-		stats.Chronotype = "Afternoon Power 🔋"
-	}
-	if evening > maxPeriod {
-		maxPeriod = evening
-		stats.Chronotype = "Evening Sprinter 🏃"
-	}
-	if night > maxPeriod {
-		stats.Chronotype = "Night Owl 🦉"
-	}
-
-	var maxDayDur time.Duration
-	for day, dur := range dailyDuration {
-		if dur > maxDayDur {
-			maxDayDur = dur
-			stats.MostProductiveDay = day
+	chronotype := "Morning Lark 🐦"
+	maxDuration := periods[chronotype]
+	for _, candidate := range []string{"Afternoon Power 🔋", "Evening Sprinter 🏃", "Night Owl 🦉"} {
+		if periods[candidate] > maxDuration {
+			chronotype = candidate
+			maxDuration = periods[candidate]
 		}
 	}
 
-	return stats
+	return chronotype
+}
+
+func mostProductiveDay(dailyDuration map[string]time.Duration) string {
+	var (
+		bestDay     string
+		maxDuration time.Duration
+	)
+
+	for day, duration := range dailyDuration {
+		if duration > maxDuration {
+			bestDay = day
+			maxDuration = duration
+		}
+	}
+
+	return bestDay
 }

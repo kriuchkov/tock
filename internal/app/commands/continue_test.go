@@ -40,7 +40,7 @@ func TestRunContinueCmdUsesRecentActivityAndOverrides(t *testing.T) {
 
 func TestRunContinueCmdJSONUsesCommandWriter(t *testing.T) {
 	service := &stubActivityResolver{
-		getRecentFn: func(_ context.Context, limit int) ([]models.Activity, error) {
+		getRecentFn: func(_ context.Context, _ int) ([]models.Activity, error) {
 			return []models.Activity{{Project: "core", Description: "first"}}, nil
 		},
 		startFn: func(_ context.Context, req models.StartActivityRequest) (*models.Activity, error) {

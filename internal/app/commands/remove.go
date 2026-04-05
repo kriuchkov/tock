@@ -79,14 +79,12 @@ func runRemoveCmd(cmd *cobra.Command, args []string, opts *removeOptions) error 
 		return writeJSONTo(out, activity)
 	}
 
-	_, err := fmt.Fprintln(out, defaultText("remove.done"))
-	return err
+	fmt.Fprintln(out, defaultText("remove.done"))
+	return nil
 }
 
 func confirmRemoval(out io.Writer, in io.Reader, activity models.Activity) (bool, error) {
-	if _, err := fmt.Fprintln(out, defaultText("remove.confirm.title")); err != nil {
-		return false, errors.Wrap(err, "write confirmation")
-	}
+	fmt.Fprintln(out, defaultText("remove.confirm.title"))
 	if _, err := fmt.Fprintf(out, defaultText("remove.confirm.project"), activity.Project); err != nil {
 		return false, errors.Wrap(err, "write confirmation")
 	}
@@ -113,9 +111,7 @@ func confirmRemoval(out io.Writer, in io.Reader, activity models.Activity) (bool
 
 	response = strings.ToLower(strings.TrimSpace(response))
 	if response != "y" && response != "yes" {
-		if _, err = fmt.Fprintln(out, defaultText("remove.aborted")); err != nil {
-			return false, errors.Wrap(err, "write abort message")
-		}
+		fmt.Fprintln(out, defaultText("remove.aborted"))
 		return false, nil
 	}
 
