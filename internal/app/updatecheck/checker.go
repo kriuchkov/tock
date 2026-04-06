@@ -70,6 +70,11 @@ func FetchLatestRelease(ctx context.Context, client *http.Client) (Release, erro
 	return release, nil
 }
 
+func CheckNow(ctx context.Context, now time.Time, state State) (Result, error) {
+	client := &http.Client{Timeout: CheckTimeout}
+	return Check(ctx, client, now, state)
+}
+
 func Check(ctx context.Context, client *http.Client, now time.Time, state State) (Result, error) {
 	if !state.CheckUpdates || NeedsVersionFallback(state.CurrentVersion) {
 		return Result{}, nil

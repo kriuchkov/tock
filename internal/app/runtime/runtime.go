@@ -38,6 +38,8 @@ type contextKey struct{}
 
 type Runtime struct {
 	ActivityService ports.ActivityResolver
+	Backend         string
+	DataPath        string
 	Config          *config.Config
 	Viper           *viper.Viper
 	TimeFormatter   *timeutil.Formatter
@@ -82,11 +84,29 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 
 	return &Runtime{
 		ActivityService: activity.NewService(repo, notesRepo),
+		Backend:         backend,
+		DataPath:        filePath,
 		Config:          cfg,
 		Viper:           loadedViper,
 		TimeFormatter:   timeutil.NewFormatter(cfg.TimeFormat),
 		Localizer:       loc,
 	}, nil
+}
+
+func (rt *Runtime) DefaultExportDir() (string, error) {
+	dataPath := strings.TrimSpace(rt.DataPath)
+
+	if dataPath == "" {
+		if rt.Backend == backendTimewarrior {
+			return "", errors.New("timewarrior data path is empty")
+		}
+		return "", errors.New("activity file path is empty")
+	}
+
+	if rt.Backend == backendTimewarrior {
+		return dataPath, nil
+	}
+	return filepath.Dir(dataPath), nil
 }
 
 func LoadCompletionService(ctx context.Context, req Request) (ports.ActivityResolver, error) {

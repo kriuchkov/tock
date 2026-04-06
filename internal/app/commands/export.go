@@ -1,7 +1,6 @@
 package commands
 
 import (
-	stdErrors "errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,9 +33,7 @@ func NewExportCmd() *cobra.Command {
 		Aliases: []string{"e"},
 		Short:   "Export report data to file",
 		Long:    defaultText("export.long"),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runExportCmd(cmd, &opt)
-		},
+		RunE:    func(cmd *cobra.Command, _ []string) error { return runExportCmd(cmd, &opt) },
 	}
 
 	cmd.Flags().BoolVar(&opt.Today, "today", false, defaultText("export.flag.today"))
@@ -56,8 +53,6 @@ func NewExportCmd() *cobra.Command {
 
 func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 	rt := getRuntime(cmd)
-	service := rt.ActivityService
-	tf := rt.TimeFormatter
 	out := cmd.OutOrStdout()
 
 	filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{
@@ -69,18 +64,18 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 		Description: opt.Description,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "build activity filter")
 	}
 
-	report, err := service.GetReport(cmd.Context(), filter)
+	report, err := rt.ActivityService.GetReport(cmd.Context(), filter)
 	if err != nil {
 		return errors.Wrap(err, "generate report")
 	}
 
 	format := strings.ToLower(strings.TrimSpace(opt.Format))
-	output, err := exportapp.RenderOutput(format, report, tf)
+	output, err := exportapp.RenderOutput(format, report, rt.TimeFormatter)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "render output")
 	}
 
 	if opt.Stdout {
@@ -98,13 +93,13 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 	if outputDir == "" {
 		outputDir, err = getDefaultExportDir(cmd)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "get default export directory")
 		}
 	}
 
 	writtenPath, err := writeExportFile(outputDir, format, output)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "write export file")
 	}
 
 	fmt.Fprintln(out, writtenPath)
@@ -130,7 +125,7 @@ func writeExportFile(outputDir, format string, content []byte) (string, error) {
 		fullPath := filepath.Join(outputDir, filename)
 		file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if err != nil {
-			if stdErrors.Is(err, os.ErrExist) {
+			if errors.Is(err, os.ErrExist) {
 				continue
 			}
 			return "", errors.Wrap(err, "create output file")
@@ -150,38 +145,5 @@ func writeExportFile(outputDir, format string, content []byte) (string, error) {
 }
 
 func getDefaultExportDir(cmd *cobra.Command) (string, error) {
-	cfg := getRuntime(cmd).Config
-
-	backend, err := cmd.Root().PersistentFlags().GetString("backend")
-	if err != nil {
-		return "", errors.Wrap(err, "read backend flag")
-	}
-	if backend == "" {
-		backend = cfg.Backend
-	}
-
-	filePath, err := cmd.Root().PersistentFlags().GetString("file")
-	if err != nil {
-		return "", errors.Wrap(err, "read file flag")
-	}
-	if filePath == "" {
-		if backend == backendTimewarrior {
-			filePath = cfg.Timewarrior.DataPath
-		} else {
-			filePath = cfg.File.Path
-		}
-	}
-
-	if backend == backendTimewarrior {
-		if filePath == "" {
-			return "", errors.New("timewarrior data path is empty")
-		}
-		return filePath, nil
-	}
-
-	if filePath == "" {
-		return "", errors.New("activity file path is empty")
-	}
-
-	return filepath.Dir(filePath), nil
+	return getRuntime(cmd).DefaultExportDir()
 }

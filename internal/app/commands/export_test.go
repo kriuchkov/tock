@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -47,4 +48,34 @@ func TestRunExportCmdStdoutUsesCommandWriter(t *testing.T) {
 	assert.Equal(t, "tock", payload[0]["project"])
 	assert.Equal(t, "export", payload[0]["description"])
 	assert.Equal(t, time.Date(2026, time.March, 14, 10, 0, 0, 0, time.Local).Format(time.RFC3339), payload[0]["start_time"])
+}
+
+func TestGetDefaultExportDirUsesRuntimeDataPathForSQLite(t *testing.T) {
+	cmd := newTestCLICommand(&stubActivityResolver{})
+	rt := getRuntime(cmd)
+	rt.Backend = "sqlite"
+	rt.DataPath = "/tmp/tock/data/tock.db"
+	cmd.SetContext(rt.WithContext(context.Background()))
+
+	dir, err := getDefaultExportDir(cmd)
+	require.NoError(t, err)
+	assert.Equal(t, "/tmp/tock/data", dir)
+}
+
+func TestGetDefaultExportDirUsesRuntimeDataPathForTimewarrior(t *testing.T) {
+	cmd := newTestCLICommand(&stubActivityResolver{})
+	rt := getRuntime(cmd)
+	rt.Backend = "timewarrior"
+	rt.DataPath = "/tmp/timewarrior"
+	cmd.SetContext(rt.WithContext(context.Background()))
+
+	dir, err := getDefaultExportDir(cmd)
+	require.NoError(t, err)
+	assert.Equal(t, "/tmp/timewarrior", dir)
+}
+
+func TestRuntimeDefaultExportDirUsesTimewarriorErrorForEmptyPath(t *testing.T) {
+	dir, err := (&appruntime.Runtime{Backend: "timewarrior"}).DefaultExportDir()
+	assert.Empty(t, dir)
+	require.EqualError(t, err, "timewarrior data path is empty")
 }

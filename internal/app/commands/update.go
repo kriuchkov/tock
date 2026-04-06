@@ -2,33 +2,21 @@ package commands
 
 import (
 	"context"
-	"net/http"
 	"time"
 
+	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 
 	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
 	"github.com/kriuchkov/tock/internal/app/updatecheck"
 )
 
-const (
-	updateCheckFailedMessage   = "Failed to check for updates:"
-	updatePersistFailedMessage = "Failed to save update check time:"
-)
-
-var updateCheckNow = time.Now
-
-var updateCheckClient = func() *http.Client {
-	return &http.Client{Timeout: updatecheck.CheckTimeout}
-}
-
-var performUpdateCheck = updatecheck.Check
-
-var persistUpdateCheckTime = func(ctx context.Context, checkedAt time.Time) error {
+func persistUpdateCheckTime(ctx context.Context, checkedAt time.Time) error {
 	rt, ok := appruntime.FromContext(ctx)
 	if !ok || rt.Viper == nil {
 		return nil
 	}
+
 	rt.Viper.Set("last_update_check", checkedAt)
 	return rt.Viper.WriteConfig()
 }
@@ -47,23 +35,33 @@ func buildUpdateCheckState(ctx context.Context) (updatecheck.State, bool) {
 }
 
 func runUpdateCheck(cmd *cobra.Command) {
+	runUpdateCheckWith(cmd, time.Now, updatecheck.CheckNow, persistUpdateCheckTime)
+}
+
+func runUpdateCheckWith(
+	cmd *cobra.Command,
+	now func() time.Time,
+	check func(context.Context, time.Time, updatecheck.State) (updatecheck.Result, error),
+	persist func(context.Context, time.Time) error,
+) {
 	ctx := cmd.Context()
 	state, ok := buildUpdateCheckState(ctx)
 	if !ok {
 		return
 	}
 
-	result, err := performUpdateCheck(ctx, updateCheckClient(), updateCheckNow(), state)
+	result, err := check(ctx, now(), state)
 	if err != nil {
-		cmd.PrintErrln(updateCheckFailedMessage, err)
+		cmd.PrintErrln(errors.Wrap(err, "check for updates"))
 		return
 	}
+
 	if !result.Checked {
 		return
 	}
 
-	if err = persistUpdateCheckTime(ctx, result.CheckedAt); err != nil {
-		cmd.PrintErrln(updatePersistFailedMessage, err)
+	if err = persist(ctx, result.CheckedAt); err != nil {
+		cmd.PrintErrln(errors.Wrap(err, "save update check time"))
 	}
 
 	if result.UpdateAvailable {
