@@ -57,6 +57,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(NewStopCmd())
 	cmd.AddCommand(NewAddCmd())
 	cmd.AddCommand(NewNoteCmd())
+	cmd.AddCommand(NewTagCmd())
 	cmd.AddCommand(NewListCmd())
 	cmd.AddCommand(NewReportCmd())
 	cmd.AddCommand(NewExportCmd())
