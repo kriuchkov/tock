@@ -446,6 +446,7 @@ Available Commands:
   ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.
   last        List recent unique activities
   list        List activities (Calendar View)
+  note        Append a note to an existing activity
   remove      Remove an activity
   report      Generate time tracking report
   start       Start a new activity
@@ -536,6 +537,20 @@ tock remove 2025-12-10-01        # Remove a specific activity by ID
 **Flags:**
 
 - `-y, --yes`: Skip confirmation
+
+### Add note later
+
+Append a note to an already logged activity. If no key is provided, Tock updates the last activity.
+
+```bash
+tock note "Added retro summary"
+tock note 2026-01-07-01 "Confirmed follow-up with design"
+tock note 2026-01-07-01 "Confirmed follow-up with design" --json
+```
+
+**Flags:**
+
+- `--json`: Output the updated activity as JSON
 
 ### Continue activity
 

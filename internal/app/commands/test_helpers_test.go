@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -10,6 +11,7 @@ import (
 	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
@@ -84,12 +86,42 @@ func (s stubActivityResolver) Remove(ctx context.Context, activity models.Activi
 	return s.removeFn(ctx, activity)
 }
 
+type stubNotesRepository struct {
+	saveFn func(context.Context, string, time.Time, string, []string) error
+	getFn  func(context.Context, string, time.Time) (string, []string, error)
+}
+
+func (s stubNotesRepository) Save(
+	ctx context.Context,
+	activityID string,
+	date time.Time,
+	notes string,
+	tags []string,
+) error {
+	if s.saveFn == nil {
+		return nil
+	}
+	return s.saveFn(ctx, activityID, date, notes, tags)
+}
+
+func (s stubNotesRepository) Get(ctx context.Context, activityID string, date time.Time) (string, []string, error) {
+	if s.getFn == nil {
+		return "", nil, nil
+	}
+	return s.getFn(ctx, activityID, date)
+}
+
 func newTestCLICommand(service *stubActivityResolver) *cobra.Command {
+	return newTestCLICommandWithNotes(service, nil)
+}
+
+func newTestCLICommandWithNotes(service *stubActivityResolver, notesRepo ports.NotesRepository) *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
 	cmd.SetContext(context.Background())
 
 	ctx := (&appruntime.Runtime{
 		ActivityService: service,
+		NotesRepository: notesRepo,
 		Config:          &config.Config{},
 		TimeFormatter:   timeutil.NewFormatter("24"),
 		Localizer:       localization.MustNew(localization.LanguageEnglish),
