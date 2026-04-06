@@ -12,7 +12,6 @@ import (
 
 const (
 	defaultRecentActivitiesForCompletion = 1000
-	backendTimewarrior                   = "timewarrior"
 )
 
 var loadRuntime = appruntime.Load
