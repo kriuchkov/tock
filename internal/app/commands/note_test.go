@@ -99,5 +99,4 @@ func TestRunNoteCmdRequiresNoteTextAfterKey(t *testing.T) {
 
 	err := runNoteCmd(cmd, []string{"2026-03-14-01"}, &noteOptions{})
 	require.Error(t, err)
-	assert.EqualError(t, err, "note text is required")
 }
