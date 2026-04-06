@@ -7,6 +7,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`stop`](#stop-alias-s)
   - [`add`](#add)
   - [`note`](#note-alias-annotate)
+  - [`tag`](#tag-alias-tags)
   - [`remove`](#remove-alias-rm)
   - [`continue`](#continue-alias-c)
   - [`watch`](#watch)
@@ -138,6 +139,30 @@ tock note [date-index] note [flags]
 tock note "Added follow-up summary"                  # Append note to the last activity
 tock note 2026-03-14-01 "Confirmed decisions"       # Append note to a specific activity
 tock note 2026-03-14-01 "Confirmed decisions" --json # Output updated activity as JSON
+```
+
+**Flags:**
+
+- `--json`: Output the updated activity as JSON
+
+---
+
+### `tag` (alias: `tags`)
+
+Append tags to an existing activity.
+
+**Usage:**
+
+```bash
+tock tag [date-index] tag [tag...] [flags]
+```
+
+**Examples:**
+
+```bash
+tock tag review urgent                         # Append tags to the last activity
+tock tag 2026-03-14-01 review urgent          # Append tags to a specific activity
+tock tag 2026-03-14-01 review urgent --json   # Output updated activity as JSON
 ```
 
 **Flags:**

@@ -447,6 +447,7 @@ Available Commands:
   last        List recent unique activities
   list        List activities (Calendar View)
   note        Append a note to an existing activity
+  tag         Append tags to an existing activity
   remove      Remove an activity
   report      Generate time tracking report
   start       Start a new activity
@@ -546,6 +547,20 @@ Append a note to an already logged activity. If no key is provided, Tock updates
 tock note "Added retro summary"
 tock note 2026-01-07-01 "Confirmed follow-up with design"
 tock note 2026-01-07-01 "Confirmed follow-up with design" --json
+```
+
+**Flags:**
+
+- `--json`: Output the updated activity as JSON
+
+### Add tags later
+
+Append tags to an already logged activity. If no key is provided, Tock updates the last activity. Existing tags are preserved, and duplicates are skipped.
+
+```bash
+tock tag review urgent
+tock tag 2026-01-07-01 review urgent
+tock tag 2026-01-07-01 review urgent --json
 ```
 
 **Flags:**
