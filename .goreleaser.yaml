@@ -17,9 +17,9 @@ builds:
     main: ./cmd/tock
     ldflags:
       - -s -w
-      - -X github.com/kriuchkov/tock/internal/adapters/cli.version={{.Version}}
-      - -X github.com/kriuchkov/tock/internal/adapters/cli.commit={{.Commit}}
-      - -X github.com/kriuchkov/tock/internal/adapters/cli.date={{.Date}}
+      - -X github.com/kriuchkov/tock/internal/app/commands.version={{.Version}}
+      - -X github.com/kriuchkov/tock/internal/app/commands.commit={{.Commit}}
+      - -X github.com/kriuchkov/tock/internal/app/commands.date={{.Date}}
 
 archives:
   - format: tar.gz

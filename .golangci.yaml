@@ -213,6 +213,10 @@ linters:
       # Such cases aren't reported by default.
       # Default: false
       check-type-assertions: true
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
 
     exhaustive:
       # Program elements to check for exhaustiveness.
@@ -457,7 +461,7 @@ linters:
           - gosec
           - noctx
           - wrapcheck
-      - path: 'internal/adapters/cli'
+      - path: 'internal/app/commands'
         linters:
           - forbidigo
           - gochecknoglobals

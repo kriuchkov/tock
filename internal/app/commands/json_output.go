@@ -1,0 +1,17 @@
+package commands
+
+import (
+	"encoding/json"
+	"io"
+
+	"github.com/go-faster/errors"
+)
+
+func writeJSONTo(w io.Writer, value any) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(value); err != nil {
+		return errors.Wrap(err, "encode json")
+	}
+	return nil
+}

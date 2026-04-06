@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-faster/errors"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -25,7 +24,7 @@ func NewRepository(filePath string) ports.ActivityRepository {
 	return &repository{filePath: filePath}
 }
 
-func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (r *repository) Find(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	f, err := os.Open(r.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {

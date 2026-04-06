@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
-	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
@@ -42,25 +41,25 @@ func TestRepository_Find(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		filter  dto.ActivityFilter
+		filter  models.ActivityFilter
 		wantLen int
 		want    []models.Activity
 	}{
 		{
 			name:    "All",
-			filter:  dto.ActivityFilter{},
+			filter:  models.ActivityFilter{},
 			wantLen: 3,
 		},
 		{
 			name: "Filter by Project",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Project: &projectA,
 			},
 			wantLen: 2,
 		},
 		{
 			name: "Filter IsRunning",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: &isRunning,
 			},
 			wantLen: 1,
@@ -70,14 +69,14 @@ func TestRepository_Find(t *testing.T) {
 		},
 		{
 			name: "Filter IsNotRunning",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: &isNotRunning,
 			},
 			wantLen: 2,
 		},
 		{
 			name: "Filter FromDate",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				FromDate: &t3, // 12:00
 			},
 			wantLen: 1, // Only the last one (starts next day)
@@ -121,7 +120,7 @@ func TestRepository_Find_DateRangeIncludesOverlappingActivity(t *testing.T) {
 
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
 	_, to := timeutil.LocalDayBounds(from)
-	got, err := repo.Find(ctx, dto.ActivityFilter{
+	got, err := repo.Find(ctx, models.ActivityFilter{
 		FromDate: &from,
 		ToDate:   &to,
 	})
@@ -209,7 +208,7 @@ func TestRepository_Save(t *testing.T) {
 	err = repo.Save(context.Background(), act2)
 	require.NoError(t, err)
 
-	activities, err := repo.Find(context.Background(), dto.ActivityFilter{})
+	activities, err := repo.Find(context.Background(), models.ActivityFilter{})
 	require.NoError(t, err)
 	assert.Len(t, activities, 2)
 }
@@ -299,7 +298,7 @@ func TestRepository_Save_UpdateMiddle(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, actA))
 
 	// Verify A is updated
-	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	activities, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 2)
 
@@ -343,7 +342,7 @@ func TestRepository_Remove(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, actB))
 
 	// Verify both exist
-	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	activities, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 2)
 
@@ -351,7 +350,7 @@ func TestRepository_Remove(t *testing.T) {
 	require.NoError(t, repo.Remove(ctx, actA))
 
 	// Verify only B remains
-	activities, err = repo.Find(ctx, dto.ActivityFilter{})
+	activities, err = repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 1)
 	assert.Equal(t, "B", activities[0].Project)
@@ -392,7 +391,7 @@ func TestRepository_Remove_WhitespaceHandling(t *testing.T) {
 	require.NoError(t, repo.Remove(ctx, actA))
 
 	// Verify Task 2 remains
-	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	activities, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 1)
 	assert.Equal(t, "Task 2", activities[0].Description)

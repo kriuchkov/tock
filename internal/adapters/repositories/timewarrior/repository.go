@@ -15,7 +15,6 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/samber/lo"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -40,7 +39,7 @@ func NewRepository(dataDir string) ports.ActivityRepository {
 	return &repository{dataDir: dataDir}
 }
 
-func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]models.Activity, error) {
+func (r *repository) Find(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	start, end := determineDateRange(filter)
 	var activities []models.Activity
 
@@ -64,7 +63,7 @@ func (r *repository) Find(_ context.Context, filter dto.ActivityFilter) ([]model
 	return activities, nil
 }
 
-func determineDateRange(filter dto.ActivityFilter) (time.Time, time.Time) {
+func determineDateRange(filter models.ActivityFilter) (time.Time, time.Time) {
 	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	if filter.FromDate != nil {
 		start = filter.FromDate.AddDate(0, 0, -1)
@@ -76,7 +75,7 @@ func determineDateRange(filter dto.ActivityFilter) (time.Time, time.Time) {
 	return start, end
 }
 
-func matchesFilter(act models.Activity, filter dto.ActivityFilter) bool {
+func matchesFilter(act models.Activity, filter models.ActivityFilter) bool {
 	if filter.Project != nil && act.Project != *filter.Project {
 		return false
 	}

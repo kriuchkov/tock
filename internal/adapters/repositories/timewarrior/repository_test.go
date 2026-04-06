@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/kriuchkov/tock/internal/core/dto"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -111,24 +110,24 @@ func TestRepository_Find(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		filter    dto.ActivityFilter
+		filter    models.ActivityFilter
 		wantCount int
 	}{
 		{
 			name:      "all activities",
-			filter:    dto.ActivityFilter{},
+			filter:    models.ActivityFilter{},
 			wantCount: 3,
 		},
 		{
 			name: "filter by project Work",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Project: new("Work"),
 			},
 			wantCount: 2,
 		},
 		{
 			name: "filter by date range (Oct 15 only)",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				FromDate: new(time.Date(2023, 10, 15, 0, 0, 0, 0, time.UTC)),
 				ToDate:   new(time.Date(2023, 10, 15, 23, 59, 59, 0, time.UTC)),
 			},
@@ -136,21 +135,21 @@ func TestRepository_Find(t *testing.T) {
 		},
 		{
 			name: "filter running",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: new(true),
 			},
 			wantCount: 1,
 		},
 		{
 			name: "filter stopped",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				IsRunning: new(false),
 			},
 			wantCount: 2,
 		},
 		{
 			name: "filter by description",
-			filter: dto.ActivityFilter{
+			filter: models.ActivityFilter{
 				Description: new("Meeting"),
 			},
 			wantCount: 1,
@@ -190,7 +189,7 @@ func TestRepository_Find_DateRangeIncludesCrossMonthOverlap(t *testing.T) {
 
 	from := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	to := from.AddDate(0, 0, 1)
-	got, err := repo.Find(ctx, dto.ActivityFilter{
+	got, err := repo.Find(ctx, models.ActivityFilter{
 		FromDate: &from,
 		ToDate:   &to,
 	})
@@ -312,7 +311,7 @@ func TestRepository_Find_IsRunning_WithHistoricalData(t *testing.T) {
 
 	// 3. Find running
 	isRunning := true
-	results, err := repo.Find(ctx, dto.ActivityFilter{IsRunning: &isRunning})
+	results, err := repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
 	require.NoError(t, err)
 
 	require.Len(t, results, 1)
@@ -339,7 +338,7 @@ inc 20230101T120000Z # ProjectB # Task 2
 	start := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2023, 1, 1, 23, 59, 59, 0, time.UTC)
 
-	acts, err := repo.Find(ctx, dto.ActivityFilter{
+	acts, err := repo.Find(ctx, models.ActivityFilter{
 		FromDate: &start,
 		ToDate:   &end,
 	})
@@ -382,7 +381,7 @@ func TestRepository_Find_CrossMonth(t *testing.T) {
 	start := time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2023, 11, 30, 23, 59, 59, 0, time.UTC)
 
-	acts, err := repo.Find(ctx, dto.ActivityFilter{
+	acts, err := repo.Find(ctx, models.ActivityFilter{
 		FromDate: &start,
 		ToDate:   &end,
 	})
@@ -412,7 +411,7 @@ func TestRepository_Remove(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, actB))
 
 	// Verify both exist
-	activities, err := repo.Find(ctx, dto.ActivityFilter{})
+	activities, err := repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 2)
 
@@ -420,7 +419,7 @@ func TestRepository_Remove(t *testing.T) {
 	require.NoError(t, repo.Remove(ctx, actA))
 
 	// Verify only B remains
-	activities, err = repo.Find(ctx, dto.ActivityFilter{})
+	activities, err = repo.Find(ctx, models.ActivityFilter{})
 	require.NoError(t, err)
 	require.Len(t, activities, 1)
 	assert.Equal(t, "B", activities[0].Project)
