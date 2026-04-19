@@ -187,6 +187,10 @@ theme:
     text: '#FFFFFF'
 timewarrior:
     data_path: /Users/user/.timewarrior/data
+working_hours:
+  enabled: true
+  stop_at: "17:30"
+  weekdays: "mon,tue,wed,thu,fri"
 calendar:
     time_spent_format: "15:04"
     time_start_format: "15:04"
@@ -197,6 +201,8 @@ export:
 weekly_target: "40h"
 check_updates: true
 ```
+
+When `working_hours.enabled` is `true`, tock will automatically stop the latest running activity at `working_hours.stop_at` the next time you run a command after that cutoff. The feature is disabled by default.
 
 You can specify a custom config file path with the `--config` flag:
 

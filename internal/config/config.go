@@ -10,19 +10,20 @@ import (
 )
 
 type Config struct {
-	Backend         string            `mapstructure:"backend"`
-	Language        string            `mapstructure:"language"`
-	File            FileConfig        `mapstructure:"file"`
-	TodoTXT         TodoTXTConfig     `mapstructure:"todotxt"`
-	Timewarrior     TimewarriorConfig `mapstructure:"timewarrior"`
-	Sqlite          SqliteConfig      `mapstructure:"sqlite"`
-	Theme           ThemeConfig       `mapstructure:"theme"`
-	Calendar        CalendarConfig    `mapstructure:"calendar"`
-	TimeFormat      string            `mapstructure:"time_format"`
-	Export          ExportConfig      `mapstructure:"export"`
-	WeeklyTarget    time.Duration     `mapstructure:"weekly_target"`
-	CheckUpdates    bool              `mapstructure:"check_updates"`
-	LastUpdateCheck time.Time         `mapstructure:"last_update_check"`
+	Backend         string             `mapstructure:"backend"`
+	Language        string             `mapstructure:"language"`
+	File            FileConfig         `mapstructure:"file"`
+	TodoTXT         TodoTXTConfig      `mapstructure:"todotxt"`
+	Timewarrior     TimewarriorConfig  `mapstructure:"timewarrior"`
+	Sqlite          SqliteConfig       `mapstructure:"sqlite"`
+	WorkingHours    WorkingHoursConfig `mapstructure:"working_hours"`
+	Theme           ThemeConfig        `mapstructure:"theme"`
+	Calendar        CalendarConfig     `mapstructure:"calendar"`
+	TimeFormat      string             `mapstructure:"time_format"`
+	Export          ExportConfig       `mapstructure:"export"`
+	WeeklyTarget    time.Duration      `mapstructure:"weekly_target"`
+	CheckUpdates    bool               `mapstructure:"check_updates"`
+	LastUpdateCheck time.Time          `mapstructure:"last_update_check"`
 }
 
 type CalendarConfig struct {
@@ -55,6 +56,12 @@ type TimewarriorConfig struct {
 
 type SqliteConfig struct {
 	Path string `mapstructure:"path"`
+}
+
+type WorkingHoursConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	StopAt   string `mapstructure:"stop_at"`
+	Weekdays string `mapstructure:"weekdays"`
 }
 
 type ThemeConfig struct {
@@ -115,6 +122,9 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("time_format", "24")
 	v.SetDefault("export.ical.file_name", "tock_export.ics")
 	v.SetDefault("check_updates", true)
+	v.SetDefault("working_hours.enabled", false)
+	v.SetDefault("working_hours.stop_at", "")
+	v.SetDefault("working_hours.weekdays", "mon,tue,wed,thu,fri")
 
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
@@ -137,6 +147,9 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("theme.sub_text", "TOCK_COLOR_SUBTEXT")
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
+	_ = v.BindEnv("working_hours.enabled", "TOCK_WORKING_HOURS_ENABLED")
+	_ = v.BindEnv("working_hours.stop_at", "TOCK_WORKING_HOURS_STOP_AT")
+	_ = v.BindEnv("working_hours.weekdays", "TOCK_WORKING_HOURS_WEEKDAYS")
 	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 	_ = v.BindEnv("check_updates", "TOCK_CHECK_UPDATES")
 

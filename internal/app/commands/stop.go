@@ -2,10 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/go-faster/errors"
 
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 
 	"github.com/spf13/cobra"
@@ -59,17 +61,37 @@ func runStopCmd(cmd *cobra.Command, opts *stopOptions) error {
 
 	activity, err := service.Stop(cmd.Context(), req)
 	if err != nil {
+		if errors.Is(err, coreErrors.ErrNoActiveActivity) {
+			if autoStopped, ok := autoStoppedActivityFromContext(cmd.Context()); ok {
+				return writeStoppedActivity(cmd, out, tf, autoStopped, opts.JSONOutput)
+			}
+		}
 		return errors.Wrap(err, "stop activity")
 	}
 
-	if opts.JSONOutput {
+	return writeStoppedActivity(cmd, out, tf, activity, opts.JSONOutput)
+}
+
+func writeStoppedActivity(
+	cmd *cobra.Command,
+	out io.Writer,
+	tf interface{ GetDisplayFormat() string },
+	activity *models.Activity,
+	jsonOutput bool,
+) error {
+	if jsonOutput {
 		return writeJSONTo(out, activity)
 	}
 
-	_, err = fmt.Fprintf(out, text(cmd, "message.activity_stopped"),
+	endTime := time.Time{}
+	if activity != nil && activity.EndTime != nil {
+		endTime = *activity.EndTime
+	}
+
+	_, err := fmt.Fprintf(out, text(cmd, "message.activity_stopped"),
 		activity.Project,
 		activity.Description,
-		activity.EndTime.Format(tf.GetDisplayFormat()),
+		endTime.Format(tf.GetDisplayFormat()),
 	)
 	return err
 }

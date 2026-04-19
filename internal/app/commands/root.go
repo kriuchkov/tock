@@ -43,7 +43,17 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			ctx := deps.WithContext(cmd.Context())
+			if shouldSkipWorkingHoursAutoStop(cmd) {
+				cmd.SetContext(ctx)
+				return nil
+			}
+
+			ctx, err = reconcileWorkingHours(ctx, currentWorkingHoursTime())
+			if err != nil {
+				return fmt.Errorf("reconcile working hours: %w", err)
+			}
 			cmd.SetContext(ctx)
+			printWorkingHoursAutoStopNotice(cmd)
 			return nil
 		},
 	}
@@ -107,6 +117,28 @@ func shouldSkipRuntimeContext(cmd *cobra.Command) bool {
 		return true
 	}
 	return false
+}
+
+func shouldSkipWorkingHoursAutoStop(cmd *cobra.Command) bool {
+	if cmd.Name() != "stop" {
+		return false
+	}
+	return cmd.Flags().Changed("time")
+}
+
+func printWorkingHoursAutoStopNotice(cmd *cobra.Command) {
+	autoStopped, ok := autoStoppedActivityFromContext(cmd.Context())
+	if !ok || autoStopped == nil || autoStopped.EndTime == nil {
+		return
+	}
+
+	tf := getRuntime(cmd).TimeFormatter
+	cmd.PrintErrf(
+		text(cmd, "message.activity_auto_stopped"),
+		autoStopped.Project,
+		autoStopped.Description,
+		autoStopped.EndTime.Format(tf.GetDisplayFormat()),
+	)
 }
 
 func projectRegisterFlagCompletion(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

@@ -11,4 +11,5 @@ test_data/
 vendor/
 bin/
 .dev/
+.claude/
 .DS_Store

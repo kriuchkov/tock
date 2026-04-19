@@ -8,6 +8,9 @@
 # TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
 # TOCK_TIME_FORMAT=12
 # TOCK_CHECK_UPDATES=false
+# TOCK_WORKING_HOURS_ENABLED=true
+# TOCK_WORKING_HOURS_STOP_AT=17:30
+# TOCK_WORKING_HOURS_WEEKDAYS=mon,tue,wed,thu,fri
 
 # Storage backend: file, todotxt, timewarrior, or sqlite
 backend: file
@@ -40,6 +43,22 @@ timewarrior:
 # Check for updates
 # Default: true
 check_updates: true
+
+# Working hours auto-stop
+# When enabled, tock stops the latest running activity at stop_at
+# the next time you run a command after that cutoff.
+working_hours:
+  # Enable or disable working-hours auto-stop
+  # Default: false
+  enabled: false
+
+  # Local cutoff time for automatic stop
+  # Default: empty (disabled until set)
+  # stop_at: "17:30"
+
+  # Comma-separated weekdays when auto-stop is active
+  # Default: mon,tue,wed,thu,fri
+  weekdays: "mon,tue,wed,thu,fri"
 
 # Export settings
 export:

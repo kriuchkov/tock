@@ -123,3 +123,47 @@ func TestInitialCreationFromEnv(t *testing.T) {
 	assert.Contains(t, sContent, "backend: timewarrior")
 	assert.Contains(t, sContent, "name: matrix")
 }
+
+func TestLoadWorkingHoursFromFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "tock.yaml")
+
+	configContent := `working_hours:
+  enabled: true
+  stop_at: "17:30"
+  weekdays: "mon,tue,wed,thu,fri"
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	cfg, _, err := Load(WithConfigFile(configPath))
+	require.NoError(t, err)
+
+	assert.True(t, cfg.WorkingHours.Enabled)
+	assert.Equal(t, "17:30", cfg.WorkingHours.StopAt)
+	assert.Equal(t, "mon,tue,wed,thu,fri", cfg.WorkingHours.Weekdays)
+}
+
+func TestWorkingHoursEnvironmentOverrides(t *testing.T) {
+	t.Setenv("TOCK_WORKING_HOURS_ENABLED", "true")
+	t.Setenv("TOCK_WORKING_HOURS_STOP_AT", "18:15")
+	t.Setenv("TOCK_WORKING_HOURS_WEEKDAYS", "mon,wed,fri")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "tock.yaml")
+
+	configContent := `working_hours:
+  enabled: false
+  stop_at: "17:30"
+  weekdays: "mon,tue,wed,thu,fri"
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	cfg, _, err := Load(WithConfigFile(configPath))
+	require.NoError(t, err)
+
+	assert.True(t, cfg.WorkingHours.Enabled)
+	assert.Equal(t, "18:15", cfg.WorkingHours.StopAt)
+	assert.Equal(t, "mon,wed,fri", cfg.WorkingHours.Weekdays)
+}
