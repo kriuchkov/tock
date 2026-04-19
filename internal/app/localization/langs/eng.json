@@ -14,6 +14,7 @@
   "stop.flag.note": "Activity notes",
   "stop.flag.tag": "Activity tags",
   "stop.flag.json": "Output the stopped activity in JSON format",
+  "message.activity_auto_stopped": "Automatically stopped activity: %s | %s at %s\n",
   "message.activity_stopped": "Stopped activity: %s | %s at %s\n",
   "message.activity_stopped_short": "Stopped activity: %s | %s\n",
   "add.flag.description": "Activity description",

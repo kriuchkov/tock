@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -50,4 +51,28 @@ func TestRunStopCmdJSONUsesCommandWriter(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "\"project\": \"tock\"")
 	assert.Contains(t, out.String(), "\"description\": \"cleanup\"")
+}
+
+func TestRunStopCmdUsesAutoStoppedActivityFromContext(t *testing.T) {
+	service := &stubActivityResolver{
+		stopFn: func(_ context.Context, _ models.StopActivityRequest) (*models.Activity, error) {
+			return nil, coreErrors.ErrNoActiveActivity
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	stoppedAt := time.Date(2026, time.April, 21, 17, 30, 0, 0, time.Local)
+	cmd.SetContext(withAutoStoppedActivity(cmd.Context(), &models.Activity{
+		Project:     "tock",
+		Description: "cleanup",
+		StartTime:   stoppedAt.Add(-time.Hour),
+		EndTime:     &stoppedAt,
+	}))
+
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	err := runStopCmd(cmd, &stopOptions{})
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Stopped activity: tock | cleanup at 17:30")
 }
