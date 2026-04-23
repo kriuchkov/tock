@@ -4,10 +4,63 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
+
+func TestNormalizeAddDateTimeInput(t *testing.T) {
+	tf := timeutil.NewFormatter("24")
+
+	tests := []struct {
+		name    string
+		dayStr  string
+		input   string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "time only uses provided day",
+			dayStr: "2026-04-21",
+			input:  "09:30",
+			want:   "2026-04-21 09:30",
+		},
+		{
+			name:   "datetime input is preserved",
+			dayStr: "2026-04-21",
+			input:  "2026-04-20 09:30",
+			want:   "2026-04-20 09:30",
+		},
+		{
+			name:   "empty input stays empty",
+			dayStr: "2026-04-21",
+			input:  "",
+			want:   "",
+		},
+		{
+			name:    "invalid day returns error",
+			dayStr:  "2026-99-99",
+			input:   "09:30",
+			wantErr: "parse day",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeAddDateTimeInput(tf, tt.dayStr, tt.input)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
 func TestCalculateEndTime(t *testing.T) {
 	baseTime := time.Date(2026, 1, 29, 10, 0, 0, 0, time.Local)

@@ -15,6 +15,7 @@ import (
 type addOptions struct {
 	Description string
 	Project     string
+	DayStr      string
 	StartStr    string
 	EndStr      string
 	DurationStr string
@@ -50,6 +51,7 @@ func NewAddCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.Description, "description", "d", "", defaultText("add.flag.description"))
 	cmd.Flags().StringVarP(&opts.Project, "project", "p", "", defaultText("add.flag.project"))
+	cmd.Flags().StringVar(&opts.DayStr, "day", "", defaultText("add.flag.day"))
 	cmd.Flags().StringVarP(&opts.StartStr, "start", "s", "", defaultText("add.flag.start"))
 	cmd.Flags().StringVarP(&opts.EndStr, "end", "e", "", defaultText("add.flag.end"))
 	cmd.Flags().StringVar(&opts.DurationStr, "duration", "", defaultText("add.flag.duration"))
@@ -69,6 +71,7 @@ func runAdd(cmd *cobra.Command, opts *addOptions) error {
 	service := rt.ActivityService
 	theme := GetTheme(rt.Config.Theme)
 	out := cmd.OutOrStdout()
+	tf := rt.TimeFormatter
 
 	if opts.Project == "" || opts.Description == "" {
 		activities, _ := service.List(cmd.Context(), models.ActivityFilter{})
@@ -84,13 +87,20 @@ func runAdd(cmd *cobra.Command, opts *addOptions) error {
 	if err != nil {
 		return err
 	}
+	startStr, err = normalizeAddDateTimeInput(tf, opts.DayStr, startStr)
+	if err != nil {
+		return err
+	}
 
 	endStr, durationStr, err := resolveEndTimeOrDuration(opts.EndStr, opts.DurationStr, theme)
 	if err != nil {
 		return err
 	}
+	endStr, err = normalizeAddDateTimeInput(tf, opts.DayStr, endStr)
+	if err != nil {
+		return err
+	}
 
-	tf := rt.TimeFormatter
 	startTime, err := tf.ParseTimeWithDate(startStr)
 	if err != nil {
 		return errors.Wrap(err, "parse start time")
