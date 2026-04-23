@@ -517,7 +517,9 @@ Add a completed activity manually. You can use flags or the interactive wizard.
 ```bash
 tock add                                         # Interactive wizard
 tock add -p "Project" -d "Task" -s 10:00 -e 11:00
+tock add -p "Project" -d "Task" --day 2026-04-21 -s 10:00 -e 11:00
 tock add -p "Project" -d "Task" -s 14:00 --duration 1h30m
+tock add -p "Project" -d "Task" -s "2026-04-21 10:00" -e "2026-04-21 11:00"
 tock add -p "Project" -d "Task" -s 10:00 -e 11:00 --note "Fixed bug #123" --tag "bugfix"
 ```
 
@@ -525,6 +527,7 @@ tock add -p "Project" -d "Task" -s 10:00 -e 11:00 --note "Fixed bug #123" --tag 
 
 - `-d, --description`: Activity description
 - `-p, --project`: Project name
+- `--day`: Day for time-only `--start` / `--end` values (`YYYY-MM-DD`)
 - `-s, --start`: Start time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `-e, --end`: End time (format depends on TOCK_TIME_FORMAT: HH:MM/YYYY-MM-DD HH:MM or "h:mm AM/PM"/"YYYY-MM-DD h:mm AM/PM")
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.

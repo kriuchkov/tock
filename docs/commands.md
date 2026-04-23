@@ -104,6 +104,7 @@ tock add [flags]
 ```bash
 tock add                                                                                                                           # Interactive mode
 tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15                                                                         # Add with start and end times
+tock add -p "Meeting" -d "Daily Standup" --day 2026-04-21 -s 10:00 -e 10:15                                                       # Add time-only values for a specific day
 tock add -p "Study" -d "Go Context" -s 14:00 --duration 1h30m                                                                      # Add using start time and duration
 tock add -p "Work" -d "Report" -s "2023-10-01 09:00" -e "2023-10-01 12:00"                                                         # Add for a specific past date
 tock add -p "Research" -d "Tock Features" -s 13:00 --duration 1h --note "New features" --tag "planning" --tag "tock"               # Add with notes and tags
@@ -114,6 +115,7 @@ tock add -p "Meeting" -d "Daily Standup" -s 10:00 -e 10:15 --json               
 
 - `-p, --project string`: Project name
 - `-d, --description string`: Activity description
+- `--day string`: Day for time-only `--start` / `--end` values (`YYYY-MM-DD`)
 - `-s, --start string`: Start time (HH:MM or YYYY-MM-DD HH:MM)
 - `-e, --end string`: End time (HH:MM or YYYY-MM-DD HH:MM)
 - `--duration string`: Duration (e.g., "1h30m", "10m"). Used if end time is omitted.
