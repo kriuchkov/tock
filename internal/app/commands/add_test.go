@@ -53,7 +53,7 @@ func TestRunAddCmdRejectsInvalidDay(t *testing.T) {
 	service := &stubActivityResolver{
 		addFn: func(_ context.Context, _ models.AddActivityRequest) (*models.Activity, error) {
 			t.Fatal("add should not be called when day is invalid")
-			return nil, nil
+			return nil, nil //nolint:nilnil // this line is unreachable but required to satisfy the function signature
 		},
 	}
 
