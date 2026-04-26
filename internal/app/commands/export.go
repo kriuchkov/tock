@@ -15,14 +15,16 @@ import (
 )
 
 type exportOptions struct {
-	Today       bool
-	Yesterday   bool
-	Date        string
-	Project     string
-	Description string
-	Format      string
-	Path        string
-	Stdout      bool
+        Today       bool
+        Yesterday   bool
+        Date        string
+        Project     string
+        Description string
+        Format      string
+        Path        string
+        Stdout      bool
+        From        string
+        To          string
 }
 
 func NewExportCmd() *cobra.Command {
@@ -45,10 +47,46 @@ func NewExportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.Format, "fmt", "txt", defaultText("export.flag.format"))
 	cmd.Flags().StringVarP(&opt.Path, "path", "o", "", defaultText("export.flag.path"))
 	cmd.Flags().BoolVar(&opt.Stdout, "stdout", false, defaultText("export.flag.stdout"))
+        cmd.Flags().StringVar(&opt.From, "from", "", "Start date for export range (YYYY-MM-DD)")
+        cmd.Flags().StringVar(&opt.To, "to", "", "End date for export range (YYYY-MM-DD)")
 
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
 	return cmd
+}
+
+func validateExportFlags(opt *exportOptions) error {
+        dateFlags := 0
+        if opt.Today {
+                dateFlags++
+        }
+        if opt.Yesterday {
+                dateFlags++
+        }
+        if opt.Date != "" {
+                dateFlags++
+        }
+        if opt.From != "" || opt.To != "" {
+                dateFlags++
+        }
+
+        if dateFlags > 1 {
+                return errors.New("cannot specify multiple date filters (--today, --yesterday, --date, --from/--to are mutually exclusive)")
+        }
+
+        if opt.From != "" {
+                if _, err := time.Parse("2006-01-02", opt.From); err != nil {
+                        return errors.Wrap(err, "invalid --from date format, use YYYY-MM-DD")
+                }
+        }
+
+        if opt.To != "" {
+                if _, err := time.Parse("2006-01-02", opt.To); err != nil {
+                        return errors.Wrap(err, "invalid --to date format, use YYYY-MM-DD")
+                }
+        }
+
+        return nil
 }
 
 func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
