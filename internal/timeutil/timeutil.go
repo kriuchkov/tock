@@ -1,6 +1,7 @@
 package timeutil
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -152,7 +153,14 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 }
 
 // FormatDuration formats a duration using Go's time layout constants.
+// The special format "decimal" returns decimal hours, e.g. 2h15m → "2.25".
 func FormatDuration(d time.Duration, format string) string {
+	if format == "decimal" {
+		totalMinutes := d.Round(time.Minute).Minutes()
+		hours := totalMinutes / 60
+		return strconv.FormatFloat(hours, 'f', -1, 64)
+	}
+
 	if format == "" {
 		return d.Round(time.Minute).String()
 	}

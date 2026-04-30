@@ -324,3 +324,33 @@ func TestParseTimeWithDate_12HourMode(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		name   string
+		d      time.Duration
+		format string
+		want   string
+	}{
+		// decimal format
+		{"decimal whole hours", 2*time.Hour + 0*time.Minute, "decimal", "2"},
+		{"decimal quarter hour", 2*time.Hour + 15*time.Minute, "decimal", "2.25"},
+		{"decimal half hour", 5*time.Hour + 45*time.Minute, "decimal", "5.75"},
+		{"decimal third hour", 1*time.Hour + 30*time.Minute, "decimal", "1.5"},
+		{"decimal sub-hour", 45 * time.Minute, "decimal", "0.75"},
+		{"decimal zero", 0, "decimal", "0"},
+		// empty format falls back to Go's Duration.String()
+		{"empty format", 2*time.Hour + 15*time.Minute, "", "2h15m0s"},
+		// Go time layout format
+		{"HH:MM layout", 2*time.Hour + 15*time.Minute, "15:04", "02:15"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatDuration(tt.d, tt.format)
+			if got != tt.want {
+				t.Errorf("FormatDuration(%v, %q) = %q, want %q", tt.d, tt.format, got, tt.want)
+			}
+		})
+	}
+}
