@@ -96,14 +96,29 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 	if err := validateExportFlags(opt); err != nil {
 		return err
 	}
-	filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{
-		Now:         time.Now(),
-		Today:       opt.Today,
-		Yesterday:   opt.Yesterday,
-		Date:        opt.Date,
-		Project:     opt.Project,
-		Description: opt.Description,
-	})
+
+	var fromDate, toDate *time.Time
+    if opt.From != "" {
+        t, _ := time.ParseInLocation("2006-01-02", opt.From, time.Local)
+        fromDate = &t
+    }
+    if opt.To != "" {
+        t, _ := time.ParseInLocation("2006-01-02", opt.To, time.Local)
+        _, end := timeutil.LocalDayBounds(t)
+        toDate = &end
+    }
+
+    filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{
+        Now:         time.Now(),
+        Today:       opt.Today,
+        Yesterday:   opt.Yesterday,
+        Date:        opt.Date,
+        FromDate:    fromDate,
+        ToDate:      toDate,
+        Project:     opt.Project,
+        Description: opt.Description,
+    })
+
 	if err != nil {
 		return errors.Wrap(err, "build activity filter")
 	}
