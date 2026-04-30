@@ -70,7 +70,7 @@ export:
 # Calendar view configuration
 calendar:
   # Format for duration display (time spent)
-  # Uses Go's standard time formatting syntax.
+  # Uses Go's standard time formatting syntax, or the special keyword "decimal".
   # https://github.com/golang/go/blob/go1.25.0/src/time/format.go#L132
   # Reference time key: Mon Jan 2 15:04:05 -0700 MST 2006
   # Common placeholders:
@@ -82,6 +82,9 @@ calendar:
   # Example: time_spent_format: "15:04:05" results in "01:16:00"
   # Note: Since this uses standard time formatting, durations >= 24 hours 
   # will wrap around (e.g. 25h becomes 01:00).
+  #
+  # Special value: "decimal" — displays duration as decimal hours.
+  # Example: time_spent_format: "decimal" results in "1.25" (for 1h15m)
   # time_spent_format: "15:04"
 
   # Format for start time display.
@@ -98,6 +101,7 @@ calendar:
 
   # Format for total daily duration.
   # Defaults to time_spent_format.
+  # Also supports the special "decimal" keyword (see time_spent_format above).
   # time_total_format: "15:04"
 
   # Align duration to the left side

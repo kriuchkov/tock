@@ -303,8 +303,9 @@ Customize the time format in the calendar view (`tock calendar`).
 
 ```yaml
 calendar:
-  # Format for duration display (Go time syntax)
+  # Format for duration display (Go time syntax, or "decimal" for decimal hours)
   time_spent_format: "15:04" # Default
+  # time_spent_format: "decimal" # Decimal hours: 2h15m → "2.25", 5h45m → "5.75"
 
   # Format for start time (Go time syntax)
   # Default: uses global time_format
@@ -316,7 +317,7 @@ calendar:
   # Example: " 🏁 15:04"
   time_end_format: " • 15:04"
 
-  # Format for total daily duration.
+  # Format for total daily duration (Go time syntax, or "decimal").
   # Defaults to time_spent_format.
   time_total_format: "15:04"
 

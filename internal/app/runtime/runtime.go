@@ -144,19 +144,35 @@ func initRepositories(ctx context.Context, backend, filePath string) (ports.Acti
 
 func resolveFilePath(backend, filePath string, cfg *config.Config) string {
 	if filePath != "" {
-		return filePath
+		return expandTilde(filePath)
 	}
 
 	switch backend {
 	case backendTodoTXT:
-		return cfg.TodoTXT.Path
+		return expandTilde(cfg.TodoTXT.Path)
 	case backendTimewarrior:
-		return cfg.Timewarrior.DataPath
+		return expandTilde(cfg.Timewarrior.DataPath)
 	case backendSqlite:
-		return cfg.Sqlite.Path
+		return expandTilde(cfg.Sqlite.Path)
 	default:
-		return cfg.File.Path
+		return expandTilde(cfg.File.Path)
 	}
+}
+
+// expandTilde replaces a leading "~" with the current user's home directory.
+func expandTilde(path string) string {
+	if path == "~" {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home
+		}
+		return path
+	}
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, path[2:])
+		}
+	}
+	return path
 }
 
 func firstNonEmpty(values ...string) string {
