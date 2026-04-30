@@ -37,7 +37,7 @@ func TestRunCalendarCmdInvokesProgram(t *testing.T) {
 
 func TestReportModelUpdateViewportContentLocalizedEmptyState(t *testing.T) {
 	loc := localization.MustNew(localization.LanguageEnglish)
-	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), loc)
+	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), loc, nil)
 	model.width = 100
 	model.height = 30
 	model.ready = true
@@ -63,6 +63,7 @@ func TestReportModelFetchMonthDataBuildsReportWindow(t *testing.T) {
 		&config.Config{},
 		timeutil.NewFormatter("24"),
 		localization.MustNew(localization.LanguageEnglish),
+		nil,
 	)
 	model.viewDate = time.Date(2026, time.April, 4, 0, 0, 0, 0, time.Local)
 
@@ -79,7 +80,7 @@ func TestReportModelFetchMonthDataBuildsReportWindow(t *testing.T) {
 
 func TestReportModelRenderCalendarLocalizedLabels(t *testing.T) {
 	loc := localization.MustNew(localization.LanguageEnglish)
-	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), loc)
+	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), loc, nil)
 	model.currentDate = time.Date(2026, time.April, 4, 0, 0, 0, 0, time.Local)
 	model.viewDate = model.currentDate
 	model.monthReports[4] = &models.Report{TotalDuration: time.Hour}
@@ -97,6 +98,7 @@ func TestReportModelHandleKeyMsgChangesMonth(t *testing.T) {
 		&config.Config{},
 		timeutil.NewFormatter("24"),
 		localization.MustNew(localization.LanguageEnglish),
+		nil,
 	)
 	model.currentDate = time.Date(2026, time.March, 31, 0, 0, 0, 0, time.Local)
 	model.viewDate = model.currentDate
@@ -114,6 +116,7 @@ func TestReportModelHandleKeyMsgScrollsViewport(t *testing.T) {
 		&config.Config{},
 		timeutil.NewFormatter("24"),
 		localization.MustNew(localization.LanguageEnglish),
+		nil,
 	)
 	model.ready = true
 	model.viewport = viewport.New(20, 3)

@@ -16,6 +16,7 @@ type Theme struct {
 	Faint     lipgloss.Color
 	Highlight lipgloss.Color
 	Tag       lipgloss.Color
+	TagColors map[string]lipgloss.Color
 }
 
 // Styles holds all the lipgloss styles used in the UI.
@@ -114,7 +115,12 @@ func CustomTheme(cfg config.ThemeConfig) Theme {
 	if cfg.Tag != "" {
 		t.Tag = lipgloss.Color(cfg.Tag)
 	}
-
+	if len(cfg.TagColors) > 0 {
+		t.TagColors = make(map[string]lipgloss.Color, len(cfg.TagColors))
+		for tag, color := range cfg.TagColors {
+			t.TagColors[tag] = lipgloss.Color(color)
+		}
+	}
 	return t
 }
 

@@ -131,3 +131,12 @@ theme:
   # faint: "240"
   # highlight: "214"
   # tag: "34"
+
+  # Per-tag foreground colors (all backends).
+  # Keys are tag names; values are hex codes or ANSI color numbers.
+  # When using the TimeWarrior backend, colors from timewarrior.cfg
+  # (color.tag.*) are merged on top of these values automatically.
+  # tag_colors:
+  #   work: "2"
+  #   personal: "196"
+  #   urgent: "#FF5F00"

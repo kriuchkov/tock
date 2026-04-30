@@ -345,7 +345,9 @@ func toTWInterval(a models.Activity) twInterval {
 		iv.End = a.EndTime.UTC().Format(timeLayout)
 	}
 	if a.Project != "" {
-		iv.Tags = []string{a.Project}
+		iv.Tags = append([]string{a.Project}, a.Tags...)
+	} else if len(a.Tags) > 0 {
+		iv.Tags = append([]string(nil), a.Tags...)
 	}
 	return iv
 }
@@ -367,8 +369,12 @@ func fromTWInterval(iv twInterval) (models.Activity, error) {
 	}
 
 	project := ""
+	var tags []string
 	if len(iv.Tags) > 0 {
 		project = iv.Tags[0]
+		if len(iv.Tags) > 1 {
+			tags = append([]string(nil), iv.Tags[1:]...)
+		}
 	}
 
 	return models.Activity{
@@ -376,6 +382,7 @@ func fromTWInterval(iv twInterval) (models.Activity, error) {
 		Description: iv.Annotation,
 		StartTime:   start.Local(),
 		EndTime:     end,
+		Tags:        tags,
 	}, nil
 }
 
