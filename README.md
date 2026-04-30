@@ -372,6 +372,20 @@ export TOCK_COLOR_SUBTEXT="248"  # Light Grey
 export TOCK_COLOR_TAG="34"       # Green
 ```
 
+### Per-Tag Colors
+
+You can assign individual foreground colors to specific tags. This works with all backends.
+
+```yaml
+theme:
+  tag_colors:
+    work: "2"        # ANSI green
+    personal: "196"  # ANSI red
+    urgent: "#FF5F00"
+```
+
+When using the **TimeWarrior** backend, colors defined in `timewarrior.cfg` via `color.tag.*` entries are automatically merged on top of the `tag_colors` values — so TimeWarrior's own palette takes precedence for tags that appear in both sources.
+
 ### Example: Cyberpunk / Fuchsia Theme
 
 <img src="assets/demo_2.png" width="820px" />

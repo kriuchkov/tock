@@ -45,11 +45,7 @@ func NewCalendarCmd() *cobra.Command {
 
 func runCalendarCmd(cmd *cobra.Command) error {
 	rt := getRuntime(cmd)
-	service := rt.ActivityService
-	cfg := rt.Config
-	tf := rt.TimeFormatter
-	model := initialCalendarModel(service, cfg, tf, getLocalizer(cmd))
-	return runCalendarProgram(model)
+	return runCalendarProgram(initialCalendarModel(rt.ActivityService, rt.Config, rt.TimeFormatter, getLocalizer(cmd), rt.TagColors))
 }
 
 type calendarModel struct {
@@ -75,9 +71,16 @@ func initialCalendarModel(
 	cfg *config.Config,
 	tf *timeutil.Formatter,
 	loc *localization.Localizer,
+	tagColors map[string]string,
 ) calendarModel {
 	now := time.Now()
 	theme := GetTheme(cfg.Theme)
+	for tag, color := range tagColors {
+		if theme.TagColors == nil {
+			theme.TagColors = make(map[string]lipgloss.Color, len(tagColors))
+		}
+		theme.TagColors[tag] = lipgloss.Color(color)
+	}
 	return calendarModel{
 		service:      service,
 		config:       cfg,
@@ -323,8 +326,17 @@ func (m *calendarModel) updateViewportContent() {
 		// Row 1: Time | Dot | Project [Tags]
 		projectLine := m.styles.Project.Render(act.Project)
 		if len(act.Tags) > 0 {
-			tagsStr := fmt.Sprintf("[%s]", strings.Join(act.Tags, ", "))
-			projectLine += " " + lipgloss.NewStyle().Foreground(m.theme.Tag).Render(tagsStr)
+			tagParts := make([]string, 0, len(act.Tags))
+			for _, tag := range act.Tags {
+				color := m.theme.Tag
+
+				var c lipgloss.Color
+				if c, ok = m.theme.TagColors[tag]; ok {
+					color = c
+				}
+				tagParts = append(tagParts, lipgloss.NewStyle().Foreground(color).Render(tag))
+			}
+			projectLine += " [" + strings.Join(tagParts, ", ") + "]"
 		}
 
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
