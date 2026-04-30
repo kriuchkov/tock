@@ -75,13 +75,13 @@ func validateExportFlags(opt *exportOptions) error {
 	}
 
 	if opt.From != "" {
-		if _, err := time.Parse("2006-01-02", opt.From); err != nil {
+		if _, err := time.ParseInLocation("2006-01-02", opt.From, time.Local); err != nil {
 			return errors.Wrap(err, "invalid --from date format, use YYYY-MM-DD")
 		}
 	}
 
 	if opt.To != "" {
-		if _, err := time.Parse("2006-01-02", opt.To); err != nil {
+		if _, err := time.ParseInLocation("2006-01-02", opt.To, time.Local); err != nil {
 			return errors.Wrap(err, "invalid --to date format, use YYYY-MM-DD")
 		}
 	}
