@@ -81,47 +81,47 @@ func TestRuntimeDefaultExportDirUsesTimewarriorErrorForEmptyPath(t *testing.T) {
 }
 
 func TestValidateExportFlags(t *testing.T) {
-    tests := []struct {
-        name    string
-        opt     exportOptions
-        wantErr string
-    }{
-        {
-            name:    "from and today are mutually exclusive",
-            opt:     exportOptions{From: "2026-04-01", Today: true},
-            wantErr: "cannot specify multiple date filters",
-        },
-        {
-            name:    "invalid from date",
-            opt:     exportOptions{From: "not-a-date"},
-            wantErr: "invalid --from date format",
-        },
-        {
-            name:    "invalid to date",
-            opt:     exportOptions{To: "2026-13-01"},
-            wantErr: "invalid --to date format",
-        },
-        {
-            name: "from only is valid",
-            opt:  exportOptions{From: "2026-04-01"},
-        },
-        {
-            name: "to only is valid",
-            opt:  exportOptions{To: "2026-04-15"},
-        },
-        {
-            name: "from and to together are valid",
-            opt:  exportOptions{From: "2026-04-01", To: "2026-04-15"},
-        },
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            err := validateExportFlags(&tt.opt)
-            if tt.wantErr != "" {
-                require.ErrorContains(t, err, tt.wantErr)
-            } else {
-                require.NoError(t, err)
-            }
-        })
-    }
+	tests := []struct {
+		name    string
+		opt     exportOptions
+		wantErr string
+	}{
+		{
+			name:    "from and today are mutually exclusive",
+			opt:     exportOptions{From: "2026-04-01", Today: true},
+			wantErr: "cannot specify multiple date filters",
+		},
+		{
+			name:    "invalid from date",
+			opt:     exportOptions{From: "not-a-date"},
+			wantErr: "invalid --from date format",
+		},
+		{
+			name:    "invalid to date",
+			opt:     exportOptions{To: "2026-13-01"},
+			wantErr: "invalid --to date format",
+		},
+		{
+			name: "from only is valid",
+			opt:  exportOptions{From: "2026-04-01"},
+		},
+		{
+			name: "to only is valid",
+			opt:  exportOptions{To: "2026-04-15"},
+		},
+		{
+			name: "from and to together are valid",
+			opt:  exportOptions{From: "2026-04-01", To: "2026-04-15"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateExportFlags(&tt.opt)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
