@@ -683,6 +683,9 @@ Export report data as text, CSV, or JSON.
 tock export --today                             # Export today's report as a text file
 tock export --yesterday --format csv           # Export yesterday's report as CSV
 tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
+tock export --from 2026-04-01 --to 2026-04-15  # Export date range
+tock export --from 2026-04-01                  # Export from date to present
+tock export --to 2026-04-15                    # Export all activities up to date
 tock export -p "Work" -d "meeting" -m csv      # Export filtered activities as CSV
 tock export --today --stdout                   # Print the export to stdout
 tock export --today -o ./exports               # Write the export file to a specific directory
@@ -693,6 +696,8 @@ tock export --today -o ./exports               # Write the export file to a spec
 - `--today`: Export data for today
 - `--yesterday`: Export data for yesterday
 - `--date`: Export data for a specific date (YYYY-MM-DD)
+- `--from`: Start date for export range (YYYY-MM-DD)
+- `--to`: End date for export range (YYYY-MM-DD)
 - `-p, --project`: Filter by project
 - `-d, --description`: Filter by description
 - `-m, --format`: Export format: `txt`, `csv`, or `json` (default `txt`)

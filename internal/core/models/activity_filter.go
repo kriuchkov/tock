@@ -13,6 +13,8 @@ type ActivityFilterOptions struct {
 	Today       bool
 	Yesterday   bool
 	Date        string
+	FromDate    *time.Time
+	ToDate      *time.Time
 	Project     string
 	Description string
 }
@@ -26,6 +28,13 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 	filter := ActivityFilter{}
 
 	switch {
+	case opts.FromDate != nil || opts.ToDate != nil:
+		if opts.FromDate != nil {
+			filter.FromDate = opts.FromDate
+		}
+		if opts.ToDate != nil {
+			filter.ToDate = opts.ToDate
+		}
 	case opts.Today:
 		start, end := timeutil.LocalDayBounds(now)
 		filter.FromDate = &start
