@@ -389,6 +389,57 @@ func TestRepository_Find_CrossMonth(t *testing.T) {
 	require.Len(t, acts, 2)
 }
 
+func TestRepository_MultiTagRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	activity := models.Activity{
+		Project:     "work",
+		Description: "planning",
+		Tags:        []string{"my-project", "sprint1"},
+		StartTime:   time.Date(2024, 5, 1, 9, 0, 0, 0, time.UTC),
+		EndTime:     func() *time.Time { t := time.Date(2024, 5, 1, 10, 0, 0, 0, time.UTC); return &t }(),
+	}
+
+	require.NoError(t, repo.Save(ctx, activity))
+
+	// Verify raw file content contains all three tags
+	content, err := os.ReadFile(filepath.Join(tmpDir, "2024-05.data"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "work")
+	assert.Contains(t, string(content), "my-project")
+	assert.Contains(t, string(content), "sprint1")
+
+	// Verify round-trip read
+	from := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 5, 2, 0, 0, 0, 0, time.UTC)
+	got, err := repo.Find(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "work", got[0].Project)
+	assert.Equal(t, []string{"my-project", "sprint1"}, got[0].Tags)
+}
+
+func TestRepository_MultiTagFromExistingIncLine(t *testing.T) {
+	// Simulate reading a TimeWarrior file with pre-existing multi-tag entries
+	tmpDir := t.TempDir()
+	incLine := `inc 20240601T080000Z - 20240601T090000Z # project my-project sprint1 # "task description"`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "2024-06.data"), []byte(incLine+"\n"), 0600))
+
+	repo := NewRepository(tmpDir)
+	ctx := context.Background()
+
+	from := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 6, 2, 0, 0, 0, 0, time.UTC)
+	got, err := repo.Find(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "project", got[0].Project)
+	assert.Equal(t, []string{"my-project", "sprint1"}, got[0].Tags)
+	assert.Equal(t, "task description", got[0].Description)
+}
+
 func TestRepository_Remove(t *testing.T) {
 	tmpDir := t.TempDir()
 	repo := NewRepository(tmpDir)

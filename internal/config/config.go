@@ -65,14 +65,15 @@ type WorkingHoursConfig struct {
 }
 
 type ThemeConfig struct {
-	Name      string `mapstructure:"name"`
-	Primary   string `mapstructure:"primary"`
-	Secondary string `mapstructure:"secondary"`
-	Text      string `mapstructure:"text"`
-	SubText   string `mapstructure:"sub_text"`
-	Faint     string `mapstructure:"faint"`
-	Highlight string `mapstructure:"highlight"`
-	Tag       string `mapstructure:"tag"`
+	Name      string            `mapstructure:"name"`
+	Primary   string            `mapstructure:"primary"`
+	Secondary string            `mapstructure:"secondary"`
+	Text      string            `mapstructure:"text"`
+	SubText   string            `mapstructure:"sub_text"`
+	Faint     string            `mapstructure:"faint"`
+	Highlight string            `mapstructure:"highlight"`
+	Tag       string            `mapstructure:"tag"`
+	TagColors map[string]string `mapstructure:"tag_colors"`
 }
 
 type Option func(*viper.Viper)

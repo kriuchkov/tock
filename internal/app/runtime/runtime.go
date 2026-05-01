@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,7 @@ type Runtime struct {
 	Viper           *viper.Viper
 	TimeFormatter   *timeutil.Formatter
 	Localizer       *localization.Localizer
+	TagColors       map[string]string
 }
 
 func (rt *Runtime) WithContext(ctx context.Context) context.Context {
@@ -83,7 +85,7 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 		return nil, err
 	}
 
-	return &Runtime{
+	rt := &Runtime{
 		ActivityService: activity.NewService(repo, notesRepo),
 		NotesRepository: notesRepo,
 		Backend:         backend,
@@ -92,7 +94,36 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 		Viper:           loadedViper,
 		TimeFormatter:   timeutil.NewFormatter(cfg.TimeFormat),
 		Localizer:       loc,
-	}, nil
+		TagColors:       buildTagColors(cfg.Theme.TagColors, backend, filePath),
+	}
+	return rt, nil
+}
+
+// buildTagColors merges per-tag colors from two sources. Config-defined colors
+// are the base; backend-specific colors (e.g. TimeWarrior color.tag.*) are
+// overlaid on top so that the backend's own palette takes precedence.
+func buildTagColors(cfgColors map[string]string, backend, dataPath string) map[string]string {
+	var result map[string]string
+
+	if len(cfgColors) > 0 {
+		result = make(map[string]string, len(cfgColors))
+		for tag, color := range cfgColors {
+			if color != "" {
+				result[tag] = color
+			}
+		}
+	}
+
+	if backend == backendTimewarrior {
+		twColors := timewarrior.ParseTagColors(dataPath)
+		if len(twColors) > 0 {
+			if result == nil {
+				result = make(map[string]string, len(twColors))
+			}
+			maps.Copy(result, twColors)
+		}
+	}
+	return result
 }
 
 func (rt *Runtime) DefaultExportDir() (string, error) {
