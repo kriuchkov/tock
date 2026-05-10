@@ -324,7 +324,11 @@ func (m *calendarModel) updateViewportContent() {
 		}
 
 		// Row 1: Time | Dot | Project [Tags]
-		projectLine := m.styles.Project.Render(act.Project)
+		projectStyle := m.styles.Project
+		if c, ok := m.theme.TagColors[act.Project]; ok {
+			projectStyle = projectStyle.Foreground(c)
+		}
+		projectLine := projectStyle.Render(act.Project)
 		if len(act.Tags) > 0 {
 			tagParts := make([]string, 0, len(act.Tags))
 			for _, tag := range act.Tags {

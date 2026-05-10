@@ -110,6 +110,100 @@ func TestReportModelHandleKeyMsgChangesMonth(t *testing.T) {
 	assert.Equal(t, model.currentDate, model.viewDate)
 }
 
+// makeModelWithActivity returns a ready calendarModel with a single activity
+// on 2026-05-10 and the given tagColors wired in.
+func makeModelWithActivity(t *testing.T, act models.Activity, tagColors map[string]string) calendarModel {
+	t.Helper()
+	date := time.Date(2026, time.May, 10, 0, 0, 0, 0, time.Local)
+	end := date.Add(time.Hour)
+	act.StartTime = date
+	act.EndTime = &end
+
+	loc := localization.MustNew(localization.LanguageEnglish)
+	model := initialCalendarModel(&stubActivityResolver{}, &config.Config{}, timeutil.NewFormatter("24"), loc, tagColors)
+	model.ready = true
+	model.viewport = viewport.New(80, 20)
+	model.currentDate = date
+
+	key := date.Format("2006-01-02")
+	model.dailyReports = map[string]*models.Report{
+		key: {
+			Activities:    []models.Activity{act},
+			TotalDuration: time.Hour,
+			ByProject:     map[string]models.ProjectReport{act.Project: {Duration: time.Hour}},
+		},
+	}
+	model.updateViewportContent()
+	return model
+}
+
+func TestTagColors(t *testing.T) {
+	tests := []struct {
+		name              string
+		activity          models.Activity
+		tagColors         map[string]string
+		wantThemeColors   map[string]string // tag → expected lipgloss.Color string
+		wantAbsentInTheme []string          // tags that must NOT be in TagColors
+		wantInContent     []string          // substrings that must appear in viewport
+	}{
+		{
+			name:            "tagColors populated in theme",
+			activity:        models.Activity{Project: "Projekt"},
+			tagColors:       map[string]string{"Projekt": "2", "test": "5"},
+			wantThemeColors: map[string]string{"Projekt": "2", "test": "5"},
+		},
+		{
+			name:          "project and tags rendered without tagColors",
+			activity:      models.Activity{Project: "Projekt", Tags: []string{"test"}},
+			tagColors:     nil,
+			wantInContent: []string{"Projekt", "test"},
+		},
+		{
+			name:            "project color taken from tagColors",
+			activity:        models.Activity{Project: "Projekt"},
+			tagColors:       map[string]string{"Projekt": "2"},
+			wantThemeColors: map[string]string{"Projekt": "2"},
+			wantInContent:   []string{"Projekt"},
+		},
+		{
+			name:              "tag colors taken from tagColors; uncolored tag absent from theme",
+			activity:          models.Activity{Project: "Projekt", Tags: []string{"test", "test2", "uncolored"}},
+			tagColors:         map[string]string{"test": "5", "test2": "3"},
+			wantThemeColors:   map[string]string{"test": "5", "test2": "3"},
+			wantAbsentInTheme: []string{"uncolored"},
+			wantInContent:     []string{"test", "test2", "uncolored"},
+		},
+		{
+			name:          "no tagColors leaves theme empty and content still renders",
+			activity:      models.Activity{Project: "Projekt", Tags: []string{"test"}},
+			tagColors:     nil,
+			wantInContent: []string{"Projekt", "test"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			model := makeModelWithActivity(t, tt.activity, tt.tagColors)
+
+			if tt.tagColors == nil {
+				assert.Empty(t, model.theme.TagColors)
+			}
+			for tag, want := range tt.wantThemeColors {
+				assert.Equal(t, want, string(model.theme.TagColors[tag]), "TagColors[%q]", tag)
+			}
+			for _, tag := range tt.wantAbsentInTheme {
+				_, present := model.theme.TagColors[tag]
+				assert.False(t, present, "TagColors must not contain %q", tag)
+			}
+
+			content := model.viewport.View()
+			for _, sub := range tt.wantInContent {
+				assert.Contains(t, content, sub)
+			}
+		})
+	}
+}
+
 func TestReportModelHandleKeyMsgScrollsViewport(t *testing.T) {
 	model := initialCalendarModel(
 		&stubActivityResolver{},
