@@ -153,12 +153,19 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 }
 
 // FormatDuration formats a duration using Go's time layout constants.
-// The special format "decimal" returns decimal hours, e.g. 2h15m → "2.25".
+// The special format "decimal" returns decimal hours rounded to 2 decimal places,
+// e.g. 2h15m → "2.25", 7h20m → "7.33". Use "decimal:N" for N decimal places,
+// e.g. "decimal:0" → "7", "decimal:4" → "7.3333".
 func FormatDuration(d time.Duration, format string) string {
-	if format == "decimal" {
-		totalMinutes := d.Round(time.Minute).Minutes()
-		hours := totalMinutes / 60
-		return strconv.FormatFloat(hours, 'f', -1, 64)
+	if format == "decimal" || strings.HasPrefix(format, "decimal:") {
+		prec := 2
+		if strings.HasPrefix(format, "decimal:") {
+			if n, err := strconv.Atoi(strings.TrimPrefix(format, "decimal:")); err == nil && n >= 0 {
+				prec = n
+			}
+		}
+		hours := d.Round(time.Minute).Minutes() / 60
+		return strconv.FormatFloat(hours, 'f', prec, 64)
 	}
 
 	if format == "" {

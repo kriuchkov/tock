@@ -332,13 +332,19 @@ func TestFormatDuration(t *testing.T) {
 		format string
 		want   string
 	}{
-		// decimal format
-		{"decimal whole hours", 2*time.Hour + 0*time.Minute, "decimal", "2"},
+		// decimal format — defaults to 2 decimal places
+		{"decimal whole hours", 2*time.Hour + 0*time.Minute, "decimal", "2.00"},
 		{"decimal quarter hour", 2*time.Hour + 15*time.Minute, "decimal", "2.25"},
 		{"decimal half hour", 5*time.Hour + 45*time.Minute, "decimal", "5.75"},
-		{"decimal third hour", 1*time.Hour + 30*time.Minute, "decimal", "1.5"},
+		{"decimal third hour", 1*time.Hour + 30*time.Minute, "decimal", "1.50"},
 		{"decimal sub-hour", 45 * time.Minute, "decimal", "0.75"},
-		{"decimal zero", 0, "decimal", "0"},
+		{"decimal repeating", 1*time.Hour + 20*time.Minute, "decimal", "1.33"},
+		{"decimal zero", 0, "decimal", "0.00"},
+		// decimal:N — configurable precision
+		{"decimal:0 rounds down", 7*time.Hour + 20*time.Minute, "decimal:0", "7"},
+		{"decimal:1", 7*time.Hour + 20*time.Minute, "decimal:1", "7.3"},
+		{"decimal:4", 7*time.Hour + 20*time.Minute, "decimal:4", "7.3333"},
+		{"decimal:2 explicit", 2*time.Hour + 0*time.Minute, "decimal:2", "2.00"},
 		// empty format falls back to Go's Duration.String()
 		{"empty format", 2*time.Hour + 15*time.Minute, "", "2h15m0s"},
 		// Go time layout format
