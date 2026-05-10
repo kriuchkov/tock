@@ -441,14 +441,18 @@ func (m *calendarModel) updateViewportContent() {
 
 func (m *calendarModel) formatProjectStat(name string, duration time.Duration) string {
 	dur := timeutil.FormatDuration(duration, m.config.Calendar.TimeSpentFormat)
+	projectStyle := m.styles.Project
+	if c, ok := m.theme.TagColors[name]; ok {
+		projectStyle = projectStyle.Foreground(c)
+	}
 	if m.config.Calendar.AlignDurationLeft {
 		return fmt.Sprintf("%s %s\n",
 			m.styles.Duration.Render(dur),
-			m.styles.Project.Render(name),
+			projectStyle.Render(name),
 		)
 	}
 	return fmt.Sprintf("- %s: %s\n",
-		m.styles.Project.Render(name),
+		projectStyle.Render(name),
 		m.styles.Duration.Render(dur),
 	)
 }

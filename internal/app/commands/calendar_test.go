@@ -179,6 +179,13 @@ func TestTagColors(t *testing.T) {
 			tagColors:     nil,
 			wantInContent: []string{"Projekt", "test"},
 		},
+		{
+			name:            "project color applied in breakdown total section",
+			activity:        models.Activity{Project: "Projekt"},
+			tagColors:       map[string]string{"Projekt": "2"},
+			wantThemeColors: map[string]string{"Projekt": "2"},
+			wantInContent:   []string{"Projekt", "Total"},
+		},
 	}
 
 	for _, tt := range tests {
