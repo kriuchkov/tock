@@ -337,9 +337,9 @@ func (m *calendarModel) updateViewportContent() {
 			for _, tag := range act.Tags {
 				color := m.theme.Tag
 
-				var c lipgloss.Color
-				if c, ok = m.theme.TagColors[tag]; ok {
-					color = c
+				var changedColor lipgloss.Color
+				if changedColor, ok = m.theme.TagColors[tag]; ok {
+					color = changedColor
 				}
 				tagParts = append(tagParts, lipgloss.NewStyle().Foreground(color).Render(tag))
 			}
