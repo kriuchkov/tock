@@ -159,8 +159,8 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 func FormatDuration(d time.Duration, format string) string {
 	if format == "decimal" || strings.HasPrefix(format, "decimal:") {
 		prec := 2
-		if strings.HasPrefix(format, "decimal:") {
-			if n, err := strconv.Atoi(strings.TrimPrefix(format, "decimal:")); err == nil && n >= 0 {
+		if after, ok := strings.CutPrefix(format, "decimal:"); ok {
+			if n, err := strconv.Atoi(after); err == nil && n >= 0 {
 				prec = n
 			}
 		}
