@@ -7,6 +7,12 @@ import (
 	"github.com/kriuchkov/tock/internal/config"
 )
 
+// TagColorStyle holds the lipgloss foreground and optional background colors for a tag.
+type TagColorStyle struct {
+	FG lipgloss.Color
+	BG lipgloss.Color
+}
+
 // Theme defines the color palette for the application.
 type Theme struct {
 	Primary   lipgloss.Color
@@ -16,7 +22,7 @@ type Theme struct {
 	Faint     lipgloss.Color
 	Highlight lipgloss.Color
 	Tag       lipgloss.Color
-	TagColors map[string]lipgloss.Color
+	TagColors map[string]TagColorStyle
 }
 
 // Styles holds all the lipgloss styles used in the UI.
@@ -116,9 +122,9 @@ func CustomTheme(cfg config.ThemeConfig) Theme {
 		t.Tag = lipgloss.Color(cfg.Tag)
 	}
 	if len(cfg.TagColors) > 0 {
-		t.TagColors = make(map[string]lipgloss.Color, len(cfg.TagColors))
+		t.TagColors = make(map[string]TagColorStyle, len(cfg.TagColors))
 		for tag, color := range cfg.TagColors {
-			t.TagColors[tag] = lipgloss.Color(color)
+			t.TagColors[tag] = TagColorStyle{FG: lipgloss.Color(color)}
 		}
 	}
 	return t

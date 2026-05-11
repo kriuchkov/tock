@@ -71,15 +71,22 @@ func initialCalendarModel(
 	cfg *config.Config,
 	tf *timeutil.Formatter,
 	loc *localization.Localizer,
-	tagColors map[string]string,
+	tagColors map[string]models.TagColor,
 ) calendarModel {
 	now := time.Now()
 	theme := GetTheme(cfg.Theme)
-	for tag, color := range tagColors {
+	for tag, tc := range tagColors {
 		if theme.TagColors == nil {
-			theme.TagColors = make(map[string]lipgloss.Color, len(tagColors))
+			theme.TagColors = make(map[string]TagColorStyle, len(tagColors))
 		}
-		theme.TagColors[tag] = lipgloss.Color(color)
+		ts := TagColorStyle{}
+		if tc.FG != "" {
+			ts.FG = lipgloss.Color(tc.FG)
+		}
+		if tc.BG != "" {
+			ts.BG = lipgloss.Color(tc.BG)
+		}
+		theme.TagColors[tag] = ts
 	}
 	return calendarModel{
 		service:      service,
@@ -271,138 +278,28 @@ func (m *calendarModel) renderDetails() string {
 		Render(m.viewport.View())
 }
 
-//nolint:funlen //it's more readable to keep the content generation in one place for now
 func (m *calendarModel) updateViewportContent() {
 	report, ok := m.reportForDate(m.currentDate)
 
 	var b strings.Builder
 
-	// Header
 	dateStr := formatLocalizedLongDate(m.loc, m.currentDate)
 	b.WriteString(m.styles.DetailsHeader.Render(dateStr) + "\n\n")
 
-	hasEvents := ok && report != nil && report.TotalDuration > 0
-
-	if !hasEvents {
+	if !ok || report == nil || report.TotalDuration == 0 {
 		b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(m.loc.Text("calendar.no_events")))
 		m.viewport.SetContent(b.String())
 		return
 	}
-	// Flatten and sort activities
+
 	activities := make([]models.Activity, len(report.Activities))
 	copy(activities, report.Activities)
-
 	sort.Slice(activities, func(i, j int) bool {
 		return activities[i].StartTime.Before(activities[j].StartTime)
 	})
 
 	for i, act := range activities {
-		isLast := i == len(activities)-1
-
-		startFormat := m.config.Calendar.TimeStartFormat
-		if startFormat == "" {
-			startFormat = m.timeFormat.GetDisplayFormat()
-		}
-		start := act.StartTime.Format(startFormat)
-
-		// Timeline styles
-		dot := "●"
-		line := "│"
-
-		// Colors
-		dotStyle := m.styles.Dot
-		lineStyle := m.styles.Line
-
-		// Content
-		durStr := timeutil.FormatDuration(act.Duration(), m.config.Calendar.TimeSpentFormat)
-		if act.EndTime != nil {
-			if m.config.Calendar.TimeEndFormat != "" {
-				durStr += act.EndTime.Format(m.config.Calendar.TimeEndFormat)
-			} else {
-				durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
-			}
-		}
-
-		// Row 1: Time | Dot | Project [Tags]
-		projectStyle := m.styles.Project
-
-		var c lipgloss.Color
-		if c, ok = m.theme.TagColors[act.Project]; ok {
-			projectStyle = projectStyle.Foreground(c)
-		}
-
-		projectLine := projectStyle.Render(act.Project)
-		if len(act.Tags) > 0 {
-			tagParts := make([]string, 0, len(act.Tags))
-			for _, tag := range act.Tags {
-				color := m.theme.Tag
-
-				var changedColor lipgloss.Color
-				if changedColor, ok = m.theme.TagColors[tag]; ok {
-					color = changedColor
-				}
-				tagParts = append(tagParts, lipgloss.NewStyle().Foreground(color).Render(tag))
-			}
-			projectLine += " [" + strings.Join(tagParts, ", ") + "]"
-		}
-
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
-			"  ",
-			dotStyle.Render(dot),
-			"  ",
-			projectLine,
-		) + "\n")
-
-		// Row 2:      | Line | Description (word-wrapped, continuation lines stay aligned)
-		if act.Description != "" {
-			// prefix: 9 (time) + 2 + 1 (│) + 2 = 14 chars; viewport padding = 2
-			availWidth := m.viewport.Width - 14 - 2
-			for _, dl := range wrapText(act.Description, availWidth) {
-				b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-					lipgloss.NewStyle().Width(9).Render(""),
-					"  ",
-					lineStyle.Render(line),
-					"  ",
-					m.styles.Desc.Render(dl),
-				) + "\n")
-			}
-		}
-
-		// Row 3:      | Line | Duration
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.NewStyle().Width(9).Render(""),
-			"  ",
-			lineStyle.Render(line),
-			"  ",
-			m.styles.Duration.Render(durStr),
-		) + "\n")
-
-		// Row 4:      | Line | Notes (word-wrapped, same alignment as description)
-		if act.Notes != "" {
-			notes := strings.ReplaceAll(act.Notes, "\n", " ") // flatten notes for list view
-			availWidth := m.viewport.Width - 14 - 2
-			for _, nl := range wrapText(notes, availWidth) {
-				b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-					lipgloss.NewStyle().Width(9).Render(""),
-					"  ",
-					lineStyle.Render(line),
-					"  ",
-					lipgloss.NewStyle().Faint(true).Render(nl),
-				) + "\n")
-			}
-		}
-
-		// Spacer
-		if !isLast {
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(9).Render(""),
-				"  ",
-				lineStyle.Render(line),
-			) + "\n")
-		} else {
-			b.WriteString("\n")
-		}
+		m.renderActivityEntry(&b, act, i == len(activities)-1)
 	}
 
 	totalFormat := m.config.Calendar.TimeTotalFormat
@@ -439,12 +336,116 @@ func (m *calendarModel) updateViewportContent() {
 	m.viewport.SetContent(b.String())
 }
 
+// tagColorStyle returns a lipgloss style with fg/bg applied from TagColors when present.
+func (m *calendarModel) tagColorStyle(base lipgloss.Style, name string) lipgloss.Style {
+	ts, ok := m.theme.TagColors[name]
+	if !ok {
+		return base
+	}
+	if ts.FG != "" {
+		base = base.Foreground(ts.FG)
+	}
+	if ts.BG != "" {
+		base = base.Background(ts.BG)
+	}
+	return base
+}
+
+// renderTagLine renders the project name followed by an optional bracketed tag list.
+func (m *calendarModel) renderTagLine(act models.Activity) string {
+	projectLine := m.tagColorStyle(m.styles.Project, act.Project).Render(act.Project)
+	if len(act.Tags) == 0 {
+		return projectLine
+	}
+	tagParts := make([]string, 0, len(act.Tags))
+	for _, tag := range act.Tags {
+		tagParts = append(tagParts, m.tagColorStyle(lipgloss.NewStyle().Foreground(m.theme.Tag), tag).Render(tag))
+	}
+	return projectLine + " [" + strings.Join(tagParts, ", ") + "]"
+}
+
+// renderActivityEntry writes one activity block (rows 1–4 + spacer) into b.
+func (m *calendarModel) renderActivityEntry(b *strings.Builder, act models.Activity, isLast bool) {
+	startFormat := m.config.Calendar.TimeStartFormat
+	if startFormat == "" {
+		startFormat = m.timeFormat.GetDisplayFormat()
+	}
+	start := act.StartTime.Format(startFormat)
+
+	line := "│"
+	lineStyle := m.styles.Line
+
+	durStr := timeutil.FormatDuration(act.Duration(), m.config.Calendar.TimeSpentFormat)
+	if act.EndTime != nil {
+		if m.config.Calendar.TimeEndFormat != "" {
+			durStr += act.EndTime.Format(m.config.Calendar.TimeEndFormat)
+		} else {
+			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
+		}
+	}
+
+	// Row 1: time | dot | project [tags]
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+		m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
+		"  ",
+		m.styles.Dot.Render("●"),
+		"  ",
+		m.renderTagLine(act),
+	) + "\n")
+
+	// Row 2: description (word-wrapped)
+	if act.Description != "" {
+		availWidth := m.viewport.Width - 14 - 2
+		for _, dl := range wrapText(act.Description, availWidth) {
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.NewStyle().Width(9).Render(""),
+				"  ",
+				lineStyle.Render(line),
+				"  ",
+				m.styles.Desc.Render(dl),
+			) + "\n")
+		}
+	}
+
+	// Row 3: duration
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Width(9).Render(""),
+		"  ",
+		lineStyle.Render(line),
+		"  ",
+		m.styles.Duration.Render(durStr),
+	) + "\n")
+
+	// Row 4: notes (word-wrapped)
+	if act.Notes != "" {
+		notes := strings.ReplaceAll(act.Notes, "\n", " ")
+		availWidth := m.viewport.Width - 14 - 2
+		for _, nl := range wrapText(notes, availWidth) {
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				lipgloss.NewStyle().Width(9).Render(""),
+				"  ",
+				lineStyle.Render(line),
+				"  ",
+				lipgloss.NewStyle().Faint(true).Render(nl),
+			) + "\n")
+		}
+	}
+
+	// Spacer
+	if !isLast {
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(9).Render(""),
+			"  ",
+			lineStyle.Render(line),
+		) + "\n")
+	} else {
+		b.WriteString("\n")
+	}
+}
+
 func (m *calendarModel) formatProjectStat(name string, duration time.Duration) string {
 	dur := timeutil.FormatDuration(duration, m.config.Calendar.TimeSpentFormat)
-	projectStyle := m.styles.Project
-	if c, ok := m.theme.TagColors[name]; ok {
-		projectStyle = projectStyle.Foreground(c)
-	}
+	projectStyle := m.tagColorStyle(m.styles.Project, name)
 	if m.config.Calendar.AlignDurationLeft {
 		return fmt.Sprintf("%s %s\n",
 			m.styles.Duration.Render(dur),

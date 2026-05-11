@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/kriuchkov/tock/internal/adapters/repositories/todotxt"
 	"github.com/kriuchkov/tock/internal/app/localization"
 	"github.com/kriuchkov/tock/internal/config"
+	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
 	"github.com/kriuchkov/tock/internal/timeutil"
@@ -46,7 +46,7 @@ type Runtime struct {
 	Viper           *viper.Viper
 	TimeFormatter   *timeutil.Formatter
 	Localizer       *localization.Localizer
-	TagColors       map[string]string
+	TagColors       map[string]models.TagColor
 }
 
 func (rt *Runtime) WithContext(ctx context.Context) context.Context {
@@ -100,16 +100,16 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 }
 
 // buildTagColors merges per-tag colors from two sources. Config-defined colors
-// are the base; backend-specific colors (e.g. TimeWarrior color.tag.*) are
+// are the base; backend-specific colors (e.g. TimeWarrior tags.*.color) are
 // overlaid on top so that the backend's own palette takes precedence.
-func buildTagColors(cfgColors map[string]string, backend, dataPath string) map[string]string {
-	var result map[string]string
+func buildTagColors(cfgColors map[string]string, backend, dataPath string) map[string]models.TagColor {
+	var result map[string]models.TagColor
 
 	if len(cfgColors) > 0 {
-		result = make(map[string]string, len(cfgColors))
+		result = make(map[string]models.TagColor, len(cfgColors))
 		for tag, color := range cfgColors {
 			if color != "" {
-				result[tag] = color
+				result[tag] = models.TagColor{FG: color}
 			}
 		}
 	}
@@ -118,9 +118,11 @@ func buildTagColors(cfgColors map[string]string, backend, dataPath string) map[s
 		twColors := timewarrior.ParseTagColors(dataPath)
 		if len(twColors) > 0 {
 			if result == nil {
-				result = make(map[string]string, len(twColors))
+				result = make(map[string]models.TagColor, len(twColors))
 			}
-			maps.Copy(result, twColors)
+			for tag, tc := range twColors {
+				result[tag] = models.TagColor{FG: tc.FG, BG: tc.BG}
+			}
 		}
 	}
 	return result

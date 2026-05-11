@@ -112,7 +112,7 @@ func TestReportModelHandleKeyMsgChangesMonth(t *testing.T) {
 
 // makeModelWithActivity returns a ready calendarModel with a single activity
 // on 2026-05-10 and the given tagColors wired in.
-func makeModelWithActivity(t *testing.T, act models.Activity, tagColors map[string]string) calendarModel {
+func makeModelWithActivity(t *testing.T, act models.Activity, tagColors map[string]models.TagColor) calendarModel {
 	t.Helper()
 	date := time.Date(2026, time.May, 10, 0, 0, 0, 0, time.Local)
 	end := date.Add(time.Hour)
@@ -141,15 +141,15 @@ func TestTagColors(t *testing.T) {
 	tests := []struct {
 		name              string
 		activity          models.Activity
-		tagColors         map[string]string
-		wantThemeColors   map[string]string // tag → expected lipgloss.Color string
+		tagColors         map[string]models.TagColor
+		wantThemeColors   map[string]string // tag → expected FG lipgloss.Color string
 		wantAbsentInTheme []string          // tags that must NOT be in TagColors
 		wantInContent     []string          // substrings that must appear in viewport
 	}{
 		{
 			name:            "tagColors populated in theme",
 			activity:        models.Activity{Project: "Projekt"},
-			tagColors:       map[string]string{"Projekt": "2", "test": "5"},
+			tagColors:       map[string]models.TagColor{"Projekt": {FG: "2"}, "test": {FG: "5"}},
 			wantThemeColors: map[string]string{"Projekt": "2", "test": "5"},
 		},
 		{
@@ -161,14 +161,14 @@ func TestTagColors(t *testing.T) {
 		{
 			name:            "project color taken from tagColors",
 			activity:        models.Activity{Project: "Projekt"},
-			tagColors:       map[string]string{"Projekt": "2"},
+			tagColors:       map[string]models.TagColor{"Projekt": {FG: "2"}},
 			wantThemeColors: map[string]string{"Projekt": "2"},
 			wantInContent:   []string{"Projekt"},
 		},
 		{
 			name:              "tag colors taken from tagColors; uncolored tag absent from theme",
 			activity:          models.Activity{Project: "Projekt", Tags: []string{"test", "test2", "uncolored"}},
-			tagColors:         map[string]string{"test": "5", "test2": "3"},
+			tagColors:         map[string]models.TagColor{"test": {FG: "5"}, "test2": {FG: "3"}},
 			wantThemeColors:   map[string]string{"test": "5", "test2": "3"},
 			wantAbsentInTheme: []string{"uncolored"},
 			wantInContent:     []string{"test", "test2", "uncolored"},
@@ -182,7 +182,7 @@ func TestTagColors(t *testing.T) {
 		{
 			name:            "project color applied in breakdown total section",
 			activity:        models.Activity{Project: "Projekt"},
-			tagColors:       map[string]string{"Projekt": "2"},
+			tagColors:       map[string]models.TagColor{"Projekt": {FG: "2"}},
 			wantThemeColors: map[string]string{"Projekt": "2"},
 			wantInContent:   []string{"Projekt", "Total"},
 		},
@@ -196,7 +196,7 @@ func TestTagColors(t *testing.T) {
 				assert.Empty(t, model.theme.TagColors)
 			}
 			for tag, want := range tt.wantThemeColors {
-				assert.Equal(t, want, string(model.theme.TagColors[tag]), "TagColors[%q]", tag)
+				assert.Equal(t, want, string(model.theme.TagColors[tag].FG), "TagColors[%q].FG", tag)
 			}
 			for _, tag := range tt.wantAbsentInTheme {
 				_, present := model.theme.TagColors[tag]

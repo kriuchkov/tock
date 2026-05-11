@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/config"
+	"github.com/kriuchkov/tock/internal/core/models"
 )
 
 func configWithTimewarriorPath(p string) *config.Config {
@@ -59,8 +60,8 @@ func TestResolveFilePathExplicitOverrideExpandsTilde(t *testing.T) {
 func TestBuildTagColors_ConfigOnly(t *testing.T) {
 	cfgColors := map[string]string{"Work": "3", "Coding": "33"}
 	got := buildTagColors(cfgColors, "file", "/irrelevant/path")
-	assert.Equal(t, "3", got["Work"])
-	assert.Equal(t, "33", got["Coding"])
+	assert.Equal(t, "3", got["Work"].FG)
+	assert.Equal(t, "33", got["Coding"].FG)
 	assert.Len(t, got, 2)
 }
 
@@ -84,18 +85,18 @@ func TestBuildTagColors_TimewarriorOverridesConfig(t *testing.T) {
 	}
 	got := buildTagColors(cfgColors, backendTimewarrior, dataDir)
 
-	assert.Equal(t, "3", got["Work"])
-	assert.Equal(t, "33", got["Coding"])
-	assert.Equal(t, "2", got["Development"])
-	assert.Equal(t, "196", got["Meetings"])
-	assert.Equal(t, "240", got["Lunch"]) // gray8 = 232+8
-	assert.Equal(t, "99", got["Extra"])  // config-only entry survives
+	assert.Equal(t, "3", got["Work"].FG)
+	assert.Equal(t, "33", got["Coding"].FG)
+	assert.Equal(t, "2", got["Development"].FG)
+	assert.Equal(t, "196", got["Meetings"].FG)
+	assert.Equal(t, "240", got["Lunch"].FG) // gray8 = 232+8
+	assert.Equal(t, "99", got["Extra"].FG)  // config-only entry survives
 }
 
 func TestBuildTagColors_TimewarriorCfgMissing(t *testing.T) {
 	cfgColors := map[string]string{"Work": "3"}
 	got := buildTagColors(cfgColors, backendTimewarrior, "/nonexistent/data")
-	assert.Equal(t, map[string]string{"Work": "3"}, got)
+	assert.Equal(t, map[string]models.TagColor{"Work": {FG: "3"}}, got)
 }
 
 func TestBuildTagColors_BothEmpty(t *testing.T) {
