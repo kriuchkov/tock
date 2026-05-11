@@ -10,14 +10,13 @@ import (
 
 // ParseTagColors reads the timewarrior.cfg file located one directory above
 // dataDir and returns a map of tag name → raw color value string. Entries in the
-// config look like:
+// config follow the format documented in timew-tags(1):
 //
-//	color.tag.work=color2
-//	color.tag.personal=rgb/1/3/5
+//	tags.work.color = color2
+//	tags.personal.color = black on yellow
 //
-// Values are converted to ANSI 256-color index strings or hex strings suitable
-// for direct use as lipgloss.Color values. Keys are the tag names as written
-// in the config.
+// Values are converted to ANSI 256-color index strings suitable for direct use
+// as lipgloss.Color values. Only the foreground component is used.
 // If the config file does not exist or cannot be read, nil is returned.
 func ParseTagColors(dataDir string) map[string]string {
 	cfgPath := filepath.Join(filepath.Dir(dataDir), "timewarrior.cfg")
@@ -41,11 +40,13 @@ func ParseTagColors(dataDir string) map[string]string {
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
 
-		const prefix = "color.tag."
-		if !strings.HasPrefix(key, prefix) {
+		// Format: tags.<name>.color
+		const prefix = "tags."
+		const suffix = ".color"
+		if !strings.HasPrefix(key, prefix) || !strings.HasSuffix(key, suffix) {
 			continue
 		}
-		tag := strings.TrimPrefix(key, prefix)
+		tag := key[len(prefix) : len(key)-len(suffix)]
 		if tag == "" {
 			continue
 		}
@@ -59,13 +60,14 @@ func ParseTagColors(dataDir string) map[string]string {
 }
 
 // parseTimewarriorColor converts a TimeWarrior foreground color specification
-// into a raw color string (ANSI index or hex) suitable for lipgloss.Color.
+// into a raw color string (ANSI index) suitable for lipgloss.Color.
 // Only the foreground component is extracted; background (on_*) and
 // text-decoration tokens are ignored.
 //
 // Supported formats:
 //   - colorN         – ANSI 256-color index (e.g. "color2", "color196")
-//   - rgb/R/G/B      – 6-bit RGB cube (R,G,B ∈ [0,5]); mapped to 256-color index
+//   - rgbRGB         – 3-digit 6×6×6 RGB cube (each digit 0–5), e.g. "rgb135"
+//   - grayN          – grayscale ramp, N ∈ [0,23]; mapped to ANSI indices 232–255
 //   - Named ANSI 16  – black, red, green, yellow, blue, magenta, cyan, white
 //
 // The spec may contain multiple space-separated tokens (e.g. "bold color2 on_color8").
@@ -79,24 +81,26 @@ func parseTimewarriorColor(spec string) (string, bool) {
 
 		// colorN
 		if after, ok := strings.CutPrefix(token, "color"); ok {
-			n := after
-			if idx, err := strconv.Atoi(n); err == nil && idx >= 0 && idx <= 255 {
-				return n, true
+			if idx, err := strconv.Atoi(after); err == nil && idx >= 0 && idx <= 255 {
+				return after, true
 			}
 		}
 
-		// rgb/R/G/B
-		if after, ok := strings.CutPrefix(token, "rgb/"); ok {
-			parts := strings.SplitN(after, "/", 3)
-			if len(parts) == 3 {
-				r, re := strconv.Atoi(parts[0])
-				g, ge := strconv.Atoi(parts[1])
-				b, be := strconv.Atoi(parts[2])
-				if re == nil && ge == nil && be == nil &&
-					r >= 0 && r <= 5 && g >= 0 && g <= 5 && b >= 0 && b <= 5 {
-					idx := 16 + 36*r + 6*g + b
-					return strconv.Itoa(idx), true
-				}
+		// rgbRGB — three digits each 0–5, e.g. "rgb135"
+		if after, ok := strings.CutPrefix(token, "rgb"); ok && len(after) == 3 {
+			r := int(after[0] - '0')
+			g := int(after[1] - '0')
+			b := int(after[2] - '0')
+			if r >= 0 && r <= 5 && g >= 0 && g <= 5 && b >= 0 && b <= 5 {
+				idx := 16 + 36*r + 6*g + b
+				return strconv.Itoa(idx), true
+			}
+		}
+
+		// grayN — N ∈ [0,23], mapped to ANSI 232–255
+		if after, ok := strings.CutPrefix(token, "gray"); ok {
+			if n, err := strconv.Atoi(after); err == nil && n >= 0 && n <= 23 {
+				return strconv.Itoa(232 + n), true
 			}
 		}
 

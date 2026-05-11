@@ -19,7 +19,15 @@ func TestParseTimewarriorColor(t *testing.T) {
 		{"color196", "196", true},
 		{"color0", "0", true},
 		{"color255", "255", true},
-		{"rgb/1/3/5", "75", true}, // 16 + 36*1 + 6*3 + 5 = 75
+		// rgb3-digit: 16 + 36*r + 6*g + b
+		{"rgb135", "75", true},  // 16 + 36 + 18 + 5
+		{"rgb000", "16", true},  // 16 + 0 + 0 + 0
+		{"rgb555", "231", true}, // 16 + 180 + 30 + 5
+		{"rgb345", "153", true}, // 16 + 108 + 24 + 5
+		// grayN: 232 + N
+		{"gray0", "232", true},
+		{"gray8", "240", true},
+		{"gray23", "255", true},
 		{"red", "1", true},
 		{"green", "2", true},
 		{"blue", "4", true},
@@ -30,6 +38,7 @@ func TestParseTimewarriorColor(t *testing.T) {
 		{"cyan", "6", true},
 		// With modifiers — foreground should still be extracted
 		{"bold color3 on_color8", "3", true},
+		{"black on yellow", "0", true},
 		{"underline color5", "5", true},
 		// Background-only spec — no foreground
 		{"on_color3", "", false},
@@ -55,11 +64,13 @@ func TestParseTagColors(t *testing.T) {
 	require.NoError(t, os.MkdirAll(dataDir, 0o700))
 
 	cfgContent := `# TimeWarrior config
-color.tag.work=color2
-color.tag.personal=red
-color.tag.focus=bold color5 on_color0
-color.tag.=color3
-color.something_else=color1
+tags.work.color = color2
+tags.personal.color = red
+tags.focus.color = bold color5 on_color0
+tags.grayed.color = gray8
+tags.vividred.color = rgb500
+tags..color = color3
+something_else = color1
 `
 	require.NoError(t, os.WriteFile(filepath.Join(base, "timewarrior.cfg"), []byte(cfgContent), 0o600))
 
@@ -69,12 +80,14 @@ color.something_else=color1
 	assert.Equal(t, "2", colors["work"])
 	assert.Equal(t, "1", colors["personal"])
 	assert.Equal(t, "5", colors["focus"])
+	assert.Equal(t, "240", colors["grayed"])   // gray8 = 232+8
+	assert.Equal(t, "196", colors["vividred"]) // rgb500 = 16+36*5+0+0
 
 	// Empty tag name should be skipped
 	_, hasEmpty := colors[""]
 	assert.False(t, hasEmpty)
 
-	// Non-color.tag.* entries should be ignored
+	// Non-tags.*.color entries should be ignored
 	_, hasSomething := colors["something_else"]
 	assert.False(t, hasSomething)
 }
