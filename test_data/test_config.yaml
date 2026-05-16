@@ -8,10 +8,4 @@ file:
 last_update_check: 2026-05-14T09:25:38.596148+03:00
 theme:
     name: default
-    tag_colors:
-        Work: "3"         # Yellow (overridden by timewarrior.cfg if backend=timewarrior)
-        Coding: "33"      # Blue
-        Lunch: "240"      # Dark Grey
-        Development: "2"  # Green
-        Meetings: "196"   # Red
 time_format: 12
