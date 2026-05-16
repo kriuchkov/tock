@@ -1,0 +1,66 @@
+{"start":"20260401T080000Z","end":"20260401T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260401T090000Z","end":"20260401T110000Z","tags":["Meetings"],"annotation":"Cross-team alignment"}
+{"start":"20260401T113000Z","end":"20260401T130000Z","tags":["Development"],"annotation":"Topic compaction"}
+{"start":"20260402T080000Z","end":"20260402T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260402T090000Z","end":"20260402T130000Z","tags":["Coding"],"annotation":"Stream processor"}
+{"start":"20260402T130000Z","end":"20260402T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260403T090000Z","end":"20260403T120000Z","tags":["Testing"],"annotation":"End-to-end pipeline tests"}
+{"start":"20260403T140000Z","end":"20260403T160000Z","tags":["Meetings"],"annotation":"Compliance review"}
+{"start":"20260404T080000Z","end":"20260404T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260404T090000Z","end":"20260404T130000Z","tags":["Development"],"annotation":"Monitoring dashboards"}
+{"start":"20260404T130000Z","end":"20260404T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260407T080000Z","end":"20260407T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260407T090000Z","end":"20260407T120000Z","tags":["Coding"],"annotation":"Alert rules"}
+{"start":"20260408T080000Z","end":"20260408T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260408T090000Z","end":"20260408T110000Z","tags":["Meetings"],"annotation":"Incident retrospective"}
+{"start":"20260408T113000Z","end":"20260408T130000Z","tags":["Development"],"annotation":"Runbook automation"}
+{"start":"20260408T130000Z","end":"20260408T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260409T080000Z","end":"20260409T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260409T090000Z","end":"20260409T130000Z","tags":["Coding"],"annotation":"On-call tooling"}
+{"start":"20260410T083000Z","end":"20260410T090000Z","tags":["Work"],"annotation":"Team check-in"}
+{"start":"20260410T093000Z","end":"20260410T130000Z","tags":["Development"],"annotation":"SLO dashboard"}
+{"start":"20260410T130000Z","end":"20260410T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260411T080000Z","end":"20260411T081500Z","tags":["Work"],"annotation":"Monthly close"}
+{"start":"20260411T090000Z","end":"20260411T130000Z","tags":["Coding"],"annotation":"Release 1.2 prep"}
+{"start":"20260411T130000Z","end":"20260411T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260414T080000Z","end":"20260414T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260414T090000Z","end":"20260414T120000Z","tags":["Development"],"annotation":"Q2 kickoff setup"}
+{"start":"20260414T130000Z","end":"20260414T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260415T080000Z","end":"20260415T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260415T090000Z","end":"20260415T110000Z","tags":["Meetings"],"annotation":"Q1 retrospective"}
+{"start":"20260415T113000Z","end":"20260415T130000Z","tags":["Coding"],"annotation":"Docs update"}
+{"start":"20260415T130000Z","end":"20260415T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260416T080000Z","end":"20260416T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260416T090000Z","end":"20260416T120000Z","tags":["Development"],"annotation":"Q2 planning setup"}
+{"start":"20260416T130000Z","end":"20260416T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260416T140000Z","end":"20260416T170000Z","tags":["Coding"],"annotation":"Feature flags service"}
+{"start":"20260417T080000Z","end":"20260417T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260417T090000Z","end":"20260417T110000Z","tags":["Meetings"],"annotation":"Sprint planning"}
+{"start":"20260417T113000Z","end":"20260417T130000Z","tags":["Coding"],"annotation":"Flag evaluation engine"}
+{"start":"20260417T130000Z","end":"20260417T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260418T083000Z","end":"20260418T090000Z","tags":["Work"],"annotation":"Team check-in"}
+{"start":"20260418T093000Z","end":"20260418T130000Z","tags":["Development"],"annotation":"Flag targeting rules"}
+{"start":"20260418T130000Z","end":"20260418T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260419T080000Z","end":"20260419T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260419T090000Z","end":"20260419T130000Z","tags":["Coding"],"annotation":"Percentage rollout"}
+{"start":"20260419T140000Z","end":"20260419T160000Z","tags":["Meetings"],"annotation":"Data team sync"}
+{"start":"20260422T080000Z","end":"20260422T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260422T090000Z","end":"20260422T120000Z","tags":["Development"],"annotation":"A/B experiment tracking"}
+{"start":"20260422T130000Z","end":"20260422T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260423T080000Z","end":"20260423T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260423T090000Z","end":"20260423T110000Z","tags":["Meetings"],"annotation":"Sprint review"}
+{"start":"20260423T113000Z","end":"20260423T130000Z","tags":["Coding"],"annotation":"SDK client library"}
+{"start":"20260424T080000Z","end":"20260424T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260424T090000Z","end":"20260424T130000Z","tags":["Development"],"annotation":"Flag audit log"}
+{"start":"20260424T130000Z","end":"20260424T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260425T090000Z","end":"20260425T120000Z","tags":["Testing"],"annotation":"Flag service load tests"}
+{"start":"20260425T140000Z","end":"20260425T160000Z","tags":["Meetings"],"annotation":"Security audit"}
+{"start":"20260426T080000Z","end":"20260426T081500Z","tags":["Work"],"annotation":"Weekly retrospective"}
+{"start":"20260426T090000Z","end":"20260426T130000Z","tags":["Coding"],"annotation":"Admin UI backend"}
+{"start":"20260426T130000Z","end":"20260426T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260429T080000Z","end":"20260429T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260429T090000Z","end":"20260429T120000Z","tags":["Development"],"annotation":"RBAC for flags"}
+{"start":"20260429T130000Z","end":"20260429T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260430T080000Z","end":"20260430T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260430T090000Z","end":"20260430T110000Z","tags":["Meetings"],"annotation":"Product review"}
+{"start":"20260430T113000Z","end":"20260430T130000Z","tags":["Coding"],"annotation":"Webhook notifications"}

@@ -17,3 +17,7 @@ build:
 	-v $$(go env GOCACHE):/.cache/go-build -e GOCACHE=/.cache/go-build \
 	-v $$(go env GOMODCACHE):/.cache/mod -e GOMODCACHE=/.cache/mod \
 	--entrypoint "" golang:1.26 sh -c "go build -o tock ./cmd/tock"
+
+
+refresh-test-data:
+	python3 scripts/refresh_test_data.py --days $(or $(DAYS),1)

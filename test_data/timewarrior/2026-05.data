@@ -1,0 +1,27 @@
+{"start":"20260501T080000Z","end":"20260501T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260501T090000Z","end":"20260501T130000Z","tags":["Development"],"annotation":"SDK Go client"}
+{"start":"20260501T130000Z","end":"20260501T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260502T083000Z","end":"20260502T090000Z","tags":["Work"],"annotation":"Team check-in"}
+{"start":"20260502T093000Z","end":"20260502T130000Z","tags":["Coding"],"annotation":"SDK TypeScript client"}
+{"start":"20260502T130000Z","end":"20260502T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260502T140000Z","end":"20260502T160000Z","tags":["Meetings"],"annotation":"Engineering all-hands"}
+{"start":"20260507T080000Z","end":"20260507T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260507T090000Z","end":"20260507T120000Z","tags":["Development"],"annotation":"Multi-environment support"}
+{"start":"20260507T130000Z","end":"20260507T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260508T080000Z","end":"20260508T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260508T090000Z","end":"20260508T110000Z","tags":["Meetings"],"annotation":"Sprint planning"}
+{"start":"20260508T113000Z","end":"20260508T130000Z","tags":["Coding"],"annotation":"Environment promotion flow"}
+{"start":"20260509T080000Z","end":"20260509T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260509T090000Z","end":"20260509T130000Z","tags":["Development"],"annotation":"Staging environment gates"}
+{"start":"20260509T130000Z","end":"20260509T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260510T090000Z","end":"20260510T120000Z","tags":["Testing"],"annotation":"Smoke tests suite"}
+{"start":"20260510T140000Z","end":"20260510T160000Z","tags":["Meetings"],"annotation":"Release readiness"}
+{"start":"20260513T080000Z","end":"20260513T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260513T090000Z","end":"20260513T120000Z","tags":["Coding"],"annotation":"Changelog generator"}
+{"start":"20260513T130000Z","end":"20260513T140000Z","tags":["Lunch"],"annotation":"Lunch"}
+{"start":"20260514T080000Z","end":"20260514T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260514T090000Z","end":"20260514T110000Z","tags":["Meetings"],"annotation":"Sprint review"}
+{"start":"20260514T113000Z","end":"20260514T130000Z","tags":["Development"],"annotation":"Release 1.3 final checks"}
+{"start":"20260515T080000Z","end":"20260515T081500Z","tags":["Work"],"annotation":"Daily Standup"}
+{"start":"20260515T090000Z","end":"20260515T120000Z","tags":["Coding"],"annotation":"Post-release hotfix prep"}
+{"start":"20260515T130000Z","end":"20260515T140000Z","tags":["Lunch", "Lunch"],"annotation":"Lunch"}

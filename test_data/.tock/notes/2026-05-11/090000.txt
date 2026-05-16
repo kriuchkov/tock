@@ -1,0 +1,6 @@
+---
+tags:
+- refactor
+- go
+---
+Moved file and timewarrior adapters.

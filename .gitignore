@@ -6,7 +6,6 @@ demo/demo.cast
 demo/demo_data.txt
 
 .idea/
-test_data/
 .vscode/
 vendor/
 bin/
