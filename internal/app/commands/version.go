@@ -15,7 +15,7 @@ var (
 
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
+		Use:   cmdVersion,
 		Short: "Print the version info",
 		Run: func(cmd *cobra.Command, _ []string) {
 			fmt.Fprintf(cmd.OutOrStdout(), defaultText("version.output"), version, commit, date, runtime.Version())

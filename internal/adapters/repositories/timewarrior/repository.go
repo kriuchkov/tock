@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -163,8 +164,8 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 
 	// Check if we are updating an existing interval (e.g. stopping it)
 	updated := false
-	for i := len(intervals) - 1; i >= 0; i-- {
-		if intervals[i].Start == newInterval.Start {
+	for i, v := range slices.Backward(intervals) {
+		if v.Start == newInterval.Start {
 			intervals[i] = newInterval
 			updated = true
 			break

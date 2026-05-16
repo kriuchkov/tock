@@ -235,20 +235,31 @@ func (m watchModel) View() string {
 	return "\n" + content + "\n"
 }
 
+// Font pixel constants for the big-digit renderer.
+const (
+	fontFull  = "###"
+	fontSides = "# #"
+	fontRight = "  #"
+	fontLeft  = "#  "
+	fontEmpty = "   "
+	fontColon = " # "
+)
+
 var font = map[rune][]string{
-	'0': {"###", "# #", "# #", "# #", "###"},
-	'1': {"  #", "  #", "  #", "  #", "  #"},
-	'2': {"###", "  #", "###", "#  ", "###"},
-	'3': {"###", "  #", "###", "  #", "###"},
-	'4': {"# #", "# #", "###", "  #", "  #"},
-	'5': {"###", "#  ", "###", "  #", "###"},
-	'6': {"###", "#  ", "###", "# #", "###"},
-	'7': {"###", "  #", "  #", "  #", "  #"},
-	'8': {"###", "# #", "###", "# #", "###"},
-	'9': {"###", "# #", "###", "  #", "###"},
-	':': {"   ", " # ", "   ", " # ", "   "},
+	'0': {fontFull, fontSides, fontSides, fontSides, fontFull},
+	'1': {fontRight, fontRight, fontRight, fontRight, fontRight},
+	'2': {fontFull, fontRight, fontFull, fontLeft, fontFull},
+	'3': {fontFull, fontRight, fontFull, fontRight, fontFull},
+	'4': {fontSides, fontSides, fontFull, fontRight, fontRight},
+	'5': {fontFull, fontLeft, fontFull, fontRight, fontFull},
+	'6': {fontFull, fontLeft, fontFull, fontSides, fontFull},
+	'7': {fontFull, fontRight, fontRight, fontRight, fontRight},
+	'8': {fontFull, fontSides, fontFull, fontSides, fontFull},
+	'9': {fontFull, fontSides, fontFull, fontRight, fontFull},
+	':': {fontEmpty, fontColon, fontEmpty, fontColon, fontEmpty},
 }
 
+//nolint:goconst //it's more readable to have the full string literals
 func renderBigText(text string, color string) string {
 	var lines [5]string
 	for _, char := range text {

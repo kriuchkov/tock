@@ -16,17 +16,43 @@ type TagColor struct {
 	BG string // background ANSI index, e.g. "8"; empty if not set
 }
 
-// ParseTagColors reads the timewarrior.cfg file located one directory above
-// dataDir and returns a map of tag name → TagColor. Entries in the config
-// follow the format documented in timew-tags(1):
+// ParseTagColors reads a TimeWarrior config file and returns a map of
+// tag name → TagColor. The config file is resolved in the following order:
 //
-//	tags.work.color = color2
-//	tags.personal.color = black on yellow
+//  1. cfgPath, if non-empty (explicit override)
+//  2. filepath.Dir(dataDir)/timewarrior.cfg  (default XDG_DATA_HOME layout)
+//  3. ~/.config/timewarrior/timewarrior.cfg  (XDG_CONFIG_HOME layout)
 //
-// If the config file does not exist or cannot be read, nil is returned.
-func ParseTagColors(dataDir string) map[string]TagColor {
-	cfgPath := filepath.Join(filepath.Dir(dataDir), "timewarrior.cfg")
-	f, err := os.Open(cfgPath)
+// The first path that exists and can be opened is used.
+// If no file is found, nil is returned.
+func ParseTagColors(dataDir, cfgPath string) map[string]TagColor {
+	candidates := resolveCfgCandidates(dataDir, cfgPath)
+	for _, p := range candidates {
+		if result := parseTagColorsFromFile(p); result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
+// resolveCfgCandidates returns the ordered list of config file paths to try.
+func resolveCfgCandidates(dataDir, explicit string) []string {
+	if explicit != "" {
+		return []string{explicit}
+	}
+	candidates := []string{
+		filepath.Join(filepath.Dir(dataDir), "timewarrior.cfg"),
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".config", "timewarrior", "timewarrior.cfg"))
+	}
+	return candidates
+}
+
+// parseTagColorsFromFile opens path and parses tag color entries.
+// Returns nil if the file cannot be opened.
+func parseTagColorsFromFile(path string) map[string]TagColor {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil
 	}

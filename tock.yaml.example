@@ -40,6 +40,13 @@ timewarrior:
   # Default: ~/.timewarrior/data
   data_path: ~/.timewarrior/data
 
+  # Optional: explicit path to timewarrior.cfg
+  # When set, this path is used directly instead of the auto-detected locations.
+  # Auto-detection tries (in order):
+  #   1. <data_path>/../timewarrior.cfg  (classic ~/.timewarrior layout)
+  #   2. ~/.config/timewarrior/timewarrior.cfg  (XDG layout)
+  # config_path: ~/.timewarrior/timewarrior.cfg
+
 # Check for updates
 # Default: true
 check_updates: true

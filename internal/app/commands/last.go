@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"slices"
 	"text/tabwriter"
 
 	"github.com/go-faster/errors"
@@ -59,8 +60,8 @@ func runLastCmd(cmd *cobra.Command, opt *lastOptions) error {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, text(cmd, "last.table.header"))
 
-	for i := len(activities) - 1; i >= 0; i-- {
-		a := activities[i]
+	for i, v := range slices.Backward(activities) {
+		a := v
 		fmt.Fprintf(w, "[%d]\t%s\t%s\n", i, a.Description, a.Project)
 	}
 

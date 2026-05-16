@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -102,13 +103,13 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 
 	formatted := FormatActivity(activity)
 	updated := false
-	for index := len(lines) - 1; index >= 0; index-- {
-		parsed, parseErr := ParseActivity(lines[index])
+	for i, v := range slices.Backward(lines) {
+		parsed, parseErr := ParseActivity(v)
 		if parseErr != nil || parsed == nil {
 			continue
 		}
 		if parsed.StartTime.Equal(activity.StartTime) {
-			lines[index] = formatted
+			lines[i] = formatted
 			updated = true
 			break
 		}

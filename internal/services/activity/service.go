@@ -2,6 +2,7 @@ package activity
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -228,8 +229,8 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 	var recent []models.Activity
 	seen := make(map[string]bool)
 
-	for i := len(all) - 1; i >= 0; i-- {
-		a := all[i]
+	for _, v := range slices.Backward(all) {
+		a := v
 		key := a.Project + "|" + a.Description
 		if !seen[key] {
 			recent = append(recent, a)

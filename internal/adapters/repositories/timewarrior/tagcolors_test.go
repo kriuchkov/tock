@@ -76,7 +76,7 @@ something_else = color1
 `
 	require.NoError(t, os.WriteFile(filepath.Join(base, "timewarrior.cfg"), []byte(cfgContent), 0o600))
 
-	colors := ParseTagColors(dataDir)
+	colors := ParseTagColors(dataDir, "")
 	require.NotNil(t, colors)
 
 	assert.Equal(t, "2", colors["work"].FG)
@@ -97,6 +97,20 @@ something_else = color1
 }
 
 func TestParseTagColors_MissingFile(t *testing.T) {
-	colors := ParseTagColors("/nonexistent/path/data")
+	// Supply an explicit nonexistent path to prevent XDG fallback from
+	// picking up the real ~/.config/timewarrior/timewarrior.cfg on the host.
+	colors := ParseTagColors("/nonexistent/path/data", "/nonexistent/custom.cfg")
 	assert.Nil(t, colors)
+}
+
+func TestParseTagColors_ExplicitCfgPath(t *testing.T) {
+	base := t.TempDir()
+
+	cfgFile := filepath.Join(base, "custom.cfg")
+	require.NoError(t, os.WriteFile(cfgFile, []byte("tags.work.color = color3\n"), 0o600))
+
+	// dataDir is irrelevant when explicit path is given
+	colors := ParseTagColors("/not/a/real/data/dir", cfgFile)
+	require.NotNil(t, colors)
+	assert.Equal(t, "3", colors["work"].FG)
 }

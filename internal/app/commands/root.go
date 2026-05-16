@@ -12,6 +12,8 @@ import (
 
 const (
 	defaultRecentActivitiesForCompletion = 1000
+	appName                              = "tock"
+	cmdVersion                           = "version"
 )
 
 var loadRuntime = appruntime.Load
@@ -24,7 +26,7 @@ func NewRootCmd() *cobra.Command {
 	var language string
 
 	cmd := &cobra.Command{
-		Use:     "tock",
+		Use:     appName,
 		Short:   "A simple timetracker for the command line",
 		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -113,7 +115,7 @@ func getServiceForCompletion(cmd *cobra.Command) (ports.ActivityResolver, error)
 
 func shouldSkipRuntimeContext(cmd *cobra.Command) bool {
 	switch cmd.Name() {
-	case "version", "completion":
+	case cmdVersion, "completion":
 		return true
 	}
 	return false

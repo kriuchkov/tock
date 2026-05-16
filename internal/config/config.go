@@ -51,7 +51,8 @@ type TodoTXTConfig struct {
 }
 
 type TimewarriorConfig struct {
-	DataPath string `mapstructure:"data_path"`
+	DataPath   string `mapstructure:"data_path"`
+	ConfigPath string `mapstructure:"config_path"` // optional explicit path to timewarrior.cfg
 }
 
 type SqliteConfig struct {

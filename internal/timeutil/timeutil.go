@@ -16,6 +16,16 @@ const (
 	Format12Hour
 )
 
+// Time layout string constants.
+const (
+	layout24Hour         = "15:04"
+	layout12Hour         = "03:04 PM"
+	layout12HourNoZero   = "3:04 PM"
+	layout24HourDate     = "2006-01-02 15:04"
+	layout12HourDate     = "2006-01-02 03:04 PM"
+	formatDecimalKeyword = "decimal"
+)
+
 // Formatter handles time formatting and parsing.
 type Formatter struct {
 	format TimeFormat
@@ -39,17 +49,17 @@ func (f *Formatter) Format() TimeFormat {
 // GetDisplayFormat returns the Go time format string for display.
 func (f *Formatter) GetDisplayFormat() string {
 	if f.format == Format12Hour {
-		return "03:04 PM"
+		return layout12Hour
 	}
-	return "15:04"
+	return layout24Hour
 }
 
 // GetDisplayFormatWithDate returns format string with date.
 func (f *Formatter) GetDisplayFormatWithDate() string {
 	if f.format == Format12Hour {
-		return "2006-01-02 03:04 PM"
+		return layout12HourDate
 	}
-	return "2006-01-02 15:04"
+	return layout24HourDate
 }
 
 // ParseTime parses user input supporting both 12hr and 24hr formats
@@ -58,7 +68,7 @@ func (f *Formatter) ParseTime(input string) (time.Time, error) {
 	input = strings.TrimSpace(input)
 
 	// Try 24-hour format first (always supported as fallback)
-	parsed, err := time.ParseInLocation("15:04", input, time.Local)
+	parsed, err := time.ParseInLocation(layout24Hour, input, time.Local)
 	if err == nil {
 		now := time.Now()
 		return time.Date(now.Year(), now.Month(), now.Day(),
@@ -69,8 +79,8 @@ func (f *Formatter) ParseTime(input string) (time.Time, error) {
 	if f.format == Format12Hour {
 		// Try various 12-hour formats (both zero-padded and non-padded)
 		formats := []string{
-			"3:04 PM", "3:04PM", // with minutes, no padding
-			"03:04 PM", "03:04PM", // with minutes, zero-padded
+			layout12HourNoZero, "3:04PM", // with minutes, no padding
+			layout12Hour, "03:04PM", // with minutes, zero-padded
 			"3 PM", "3PM", // without minutes, no padding
 			"03 PM", "03PM", // without minutes, zero-padded
 		}
@@ -111,7 +121,7 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 	}
 
 	// Try 24-hour with date: "2006-01-02 15:04"
-	parsed, err := time.ParseInLocation("2006-01-02 15:04", input, time.Local)
+	parsed, err := time.ParseInLocation(layout24HourDate, input, time.Local)
 	if err == nil {
 		return parsed, nil
 	}
@@ -121,7 +131,7 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 		formats := []string{
 			"2006-01-02 3:04 PM",
 			"2006-01-02 3:04PM",
-			"2006-01-02 03:04 PM",
+			layout12HourDate,
 			"2006-01-02 03:04PM",
 		}
 
@@ -157,9 +167,9 @@ func (f *Formatter) ParseTimeWithDate(input string) (time.Time, error) {
 // e.g. 2h15m → "2.25", 7h20m → "7.33". Use "decimal:N" for N decimal places,
 // e.g. "decimal:0" → "7", "decimal:4" → "7.3333".
 func FormatDuration(d time.Duration, format string) string {
-	if format == "decimal" || strings.HasPrefix(format, "decimal:") {
+	if format == formatDecimalKeyword || strings.HasPrefix(format, formatDecimalKeyword+":") {
 		prec := 2
-		if after, ok := strings.CutPrefix(format, "decimal:"); ok {
+		if after, ok := strings.CutPrefix(format, formatDecimalKeyword+":"); ok {
 			if n, err := strconv.Atoi(after); err == nil && n >= 0 {
 				prec = n
 			}

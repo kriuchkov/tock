@@ -1,14 +1,14 @@
 module github.com/kriuchkov/tock
 
-go 1.26
+go 1.26.3
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
+	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-faster/errors v0.7.1
-	github.com/mattn/go-sqlite3 v1.14.44
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/muesli/termenv v0.16.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/cobra v1.10.2

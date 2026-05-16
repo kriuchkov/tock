@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -145,11 +146,11 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 	// Check if we are updating an existing activity
 	updated := false
 	// Iterate backwards to find the most recent entry (though StartTime should be unique)
-	for i := len(lines) - 1; i >= 0; i-- {
-		if strings.TrimSpace(lines[i]) == "" {
+	for i, v := range slices.Backward(lines) {
+		if strings.TrimSpace(v) == "" {
 			continue
 		}
-		act, _ := ParseActivity(lines[i])
+		act, _ := ParseActivity(v)
 		// We identify the activity by StartTime.
 		// Since file format might have lower precision (minutes), we compare formatted strings or truncated times.
 		// Using Unix() comparison for simplicity, assuming minute precision is enough for uniqueness in this context.
