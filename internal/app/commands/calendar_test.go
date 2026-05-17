@@ -266,3 +266,58 @@ func TestRenderWeekBar(t *testing.T) {
 		assert.Empty(t, bar)
 	})
 }
+
+func TestEffectiveTagColor_ScopeSelectiveToggle(t *testing.T) {
+	cfg := &config.Config{
+		Theme: config.ThemeConfig{
+			TagColors: map[string]string{"Work": "2"},
+		},
+		Timewarrior: config.TimewarriorConfig{
+			UseTockTagColorsWeeklyActivity: true,
+		},
+	}
+
+	model := initialCalendarModel(
+		&stubActivityResolver{},
+		cfg,
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+		map[string]models.TagColor{"Work": {FG: "196", BG: "0"}},
+	)
+
+	weekly, ok := model.effectiveTagColor("Work", tagColorScopeWeekly)
+	require.True(t, ok)
+	assert.Equal(t, "2", string(weekly.FG))
+	assert.Empty(t, string(weekly.BG))
+
+	calendar, ok := model.effectiveTagColor("Work", tagColorScopeCalendar)
+	require.True(t, ok)
+	assert.Equal(t, "196", string(calendar.FG))
+	assert.Equal(t, "0", string(calendar.BG))
+}
+
+func TestEffectiveTagColor_GlobalToggleAppliesToAllScopes(t *testing.T) {
+	cfg := &config.Config{
+		Theme: config.ThemeConfig{
+			TagColors: map[string]string{"Work": "3"},
+		},
+		Timewarrior: config.TimewarriorConfig{
+			UseTockTagColors: true,
+		},
+	}
+
+	model := initialCalendarModel(
+		&stubActivityResolver{},
+		cfg,
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+		map[string]models.TagColor{"Work": {FG: "196", BG: "0"}},
+	)
+
+	for _, scope := range []tagColorScope{tagColorScopeCalendar, tagColorScopeWeekly, tagColorScopeTopProject} {
+		ts, ok := model.effectiveTagColor("Work", scope)
+		require.True(t, ok)
+		assert.Equal(t, "3", string(ts.FG))
+		assert.Empty(t, string(ts.BG))
+	}
+}

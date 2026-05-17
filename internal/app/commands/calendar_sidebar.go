@@ -160,7 +160,9 @@ func (m *calendarModel) renderWeekBar(dur, maxDur time.Duration, projects []insi
 			continue
 		}
 		remaining -= w
-		segments.WriteString(m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), p.Name).Render(strings.Repeat("█", w)))
+		segments.WriteString(
+			m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), p.Name, tagColorScopeWeekly).Render(strings.Repeat("█", w)),
+		)
 	}
 	return segments.String()
 }
@@ -195,9 +197,9 @@ func (m *calendarModel) renderTopProjects(maxHeight int) string {
 			}
 		}
 
-		fmt.Fprintf(&b, "%s\n", m.tagColorStyle(m.styles.Project, project.Name).Render(project.Name))
+		fmt.Fprintf(&b, "%s\n", m.tagColorStyle(m.styles.Project, project.Name, tagColorScopeTopProject).Render(project.Name))
 		fmt.Fprintf(&b, "%s %s\n",
-			m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), project.Name).Render(bar),
+			m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), project.Name, tagColorScopeTopProject).Render(bar),
 			m.styles.Duration.Render(project.Duration.Round(time.Minute).String()))
 		b.WriteString("\n")
 	}

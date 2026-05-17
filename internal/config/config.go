@@ -51,8 +51,12 @@ type TodoTXTConfig struct {
 }
 
 type TimewarriorConfig struct {
-	DataPath   string `mapstructure:"data_path"`
-	ConfigPath string `mapstructure:"config_path"` // optional explicit path to timewarrior.cfg
+	DataPath                       string `mapstructure:"data_path"`
+	ConfigPath                     string `mapstructure:"config_path"`         // optional explicit path to timewarrior.cfg
+	UseTockTagColors               bool   `mapstructure:"use_tock_tag_colors"` // global: ignore tags.*.color from timewarrior.cfg and use tock theme.tag_colors
+	UseTockTagColorsCalendar       bool   `mapstructure:"use_tock_tag_colors_calendar"`
+	UseTockTagColorsWeeklyActivity bool   `mapstructure:"use_tock_tag_colors_weekly_activity"`
+	UseTockTagColorsTopProjects    bool   `mapstructure:"use_tock_tag_colors_top_projects"`
 }
 
 type SqliteConfig struct {
@@ -127,6 +131,10 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("working_hours.enabled", false)
 	v.SetDefault("working_hours.stop_at", "")
 	v.SetDefault("working_hours.weekdays", "mon,tue,wed,thu,fri")
+	v.SetDefault("timewarrior.use_tock_tag_colors", false)
+	v.SetDefault("timewarrior.use_tock_tag_colors_calendar", false)
+	v.SetDefault("timewarrior.use_tock_tag_colors_weekly_activity", false)
+	v.SetDefault("timewarrior.use_tock_tag_colors_top_projects", false)
 
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
@@ -138,6 +146,10 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("language", "TOCK_LANG")
 	_ = v.BindEnv("todotxt.path", "TOCK_TODOTXT_PATH")
 	_ = v.BindEnv("timewarrior.data_path", "TOCK_TIMEWARRIOR_DATA_PATH")
+	_ = v.BindEnv("timewarrior.use_tock_tag_colors", "TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS")
+	_ = v.BindEnv("timewarrior.use_tock_tag_colors_calendar", "TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_CALENDAR")
+	_ = v.BindEnv("timewarrior.use_tock_tag_colors_weekly_activity", "TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_WEEKLY_ACTIVITY")
+	_ = v.BindEnv("timewarrior.use_tock_tag_colors_top_projects", "TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_TOP_PROJECTS")
 	_ = v.BindEnv("sqlite.path", "TOCK_SQLITE_PATH")
 	_ = v.BindEnv("file.path", "TOCK_FILE", "TOCK_FILE_PATH")
 	_ = v.BindEnv("time_format", "TOCK_TIME_FORMAT")

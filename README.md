@@ -187,6 +187,10 @@ theme:
     text: '#FFFFFF'
 timewarrior:
     data_path: /Users/user/.timewarrior/data
+  use_tock_tag_colors: true
+  use_tock_tag_colors_calendar: true
+  use_tock_tag_colors_weekly_activity: true
+  use_tock_tag_colors_top_projects: true
 working_hours:
   enabled: true
   stop_at: "17:30"
@@ -277,6 +281,14 @@ export TOCK_BACKEND="timewarrior"
 
 # Optional: Specify custom data directory (default: ~/.timewarrior/data)
 export TOCK_TIMEWARRIOR_DATA_PATH="/path/to/timewarrior/data"
+
+# Optional: Ignore tags.*.color from timewarrior.cfg and use tock theme.tag_colors
+export TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS="true"
+
+# Optional: Selective overrides for specific calendar sections
+export TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_CALENDAR="true"
+export TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_WEEKLY_ACTIVITY="true"
+export TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_TOP_PROJECTS="true"
 ```
 
 ### 4. SQLite

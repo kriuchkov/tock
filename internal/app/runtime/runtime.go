@@ -94,16 +94,23 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 		Viper:           loadedViper,
 		TimeFormatter:   timeutil.NewFormatter(cfg.TimeFormat),
 		Localizer:       loc,
-		TagColors:       buildTagColors(cfg.Theme.TagColors, backend, filePath, cfg.Timewarrior.ConfigPath),
+		TagColors: buildTagColors(
+			cfg.Theme.TagColors,
+			backend,
+			filePath,
+			cfg.Timewarrior.ConfigPath,
+			cfg.Timewarrior.UseTockTagColors,
+		),
 	}
 	return rt, nil
 }
 
 // buildTagColors merges per-tag colors from two sources. Config-defined colors
 // are the base; backend-specific colors (e.g. TimeWarrior tags.*.color) are
-// overlaid on top so that the backend's own palette takes precedence.
+// overlaid on top so that the backend's own palette takes precedence unless
+// useTockTagColors is enabled.
 // twCfgPath is an optional explicit path to timewarrior.cfg (empty = auto-detect).
-func buildTagColors(cfgColors map[string]string, backend, dataPath, twCfgPath string) map[string]models.TagColor {
+func buildTagColors(cfgColors map[string]string, backend, dataPath, twCfgPath string, useTockTagColors bool) map[string]models.TagColor {
 	var result map[string]models.TagColor
 
 	if len(cfgColors) > 0 {
@@ -115,7 +122,7 @@ func buildTagColors(cfgColors map[string]string, backend, dataPath, twCfgPath st
 		}
 	}
 
-	if backend == backendTimewarrior {
+	if backend == backendTimewarrior && !useTockTagColors {
 		twColors := timewarrior.ParseTagColors(dataPath, twCfgPath)
 		if len(twColors) > 0 {
 			if result == nil {

@@ -6,6 +6,10 @@
 # TOCK_FILE_PATH=/custom/path/tock.txt
 # TOCK_TODOTXT_PATH=/custom/path/todo.txt
 # TOCK_TIMEWARRIOR_DATA_PATH=/custom/timewarrior/data
+# TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS=true
+# TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_CALENDAR=true
+# TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_WEEKLY_ACTIVITY=true
+# TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_TOP_PROJECTS=true
 # TOCK_TIME_FORMAT=12
 # TOCK_CHECK_UPDATES=false
 # TOCK_WORKING_HOURS_ENABLED=true
@@ -46,6 +50,18 @@ timewarrior:
   #   1. <data_path>/../timewarrior.cfg  (classic ~/.timewarrior layout)
   #   2. ~/.config/timewarrior/timewarrior.cfg  (XDG layout)
   # config_path: ~/.timewarrior/timewarrior.cfg
+
+  # Optional: ignore TimeWarrior tag colors from timewarrior.cfg and use
+  # tock `theme.tag_colors` values instead (affects calendar details,
+  # weekly activity bars, and top projects bars).
+  # Default: false
+  # use_tock_tag_colors: true
+
+  # Optional: selective overrides (if global use_tock_tag_colors is false).
+  # Each flag enables tock `theme.tag_colors` only for that section.
+  # use_tock_tag_colors_calendar: true
+  # use_tock_tag_colors_weekly_activity: true
+  # use_tock_tag_colors_top_projects: true
 
 # Check for updates
 # Default: true

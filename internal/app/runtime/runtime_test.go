@@ -59,7 +59,7 @@ func TestResolveFilePathExplicitOverrideExpandsTilde(t *testing.T) {
 
 func TestBuildTagColors_ConfigOnly(t *testing.T) {
 	cfgColors := map[string]string{"Work": "3", "Coding": "33"}
-	got := buildTagColors(cfgColors, "file", "/irrelevant/path", "")
+	got := buildTagColors(cfgColors, "file", "/irrelevant/path", "", false)
 	assert.Equal(t, "3", got["Work"].FG)
 	assert.Equal(t, "33", got["Coding"].FG)
 	assert.Len(t, got, 2)
@@ -83,7 +83,7 @@ func TestBuildTagColors_TimewarriorOverridesConfig(t *testing.T) {
 		"Work":  "3",  // config-only, no timewarrior entry
 		"Extra": "99", // config-only, no timewarrior entry
 	}
-	got := buildTagColors(cfgColors, backendTimewarrior, dataDir, "")
+	got := buildTagColors(cfgColors, backendTimewarrior, dataDir, "", false)
 
 	assert.Equal(t, "3", got["Work"].FG)
 	assert.Equal(t, "33", got["Coding"].FG)
@@ -95,11 +95,28 @@ func TestBuildTagColors_TimewarriorOverridesConfig(t *testing.T) {
 
 func TestBuildTagColors_TimewarriorCfgMissing(t *testing.T) {
 	cfgColors := map[string]string{"Work": "3"}
-	got := buildTagColors(cfgColors, backendTimewarrior, "/nonexistent/data", "")
+	got := buildTagColors(cfgColors, backendTimewarrior, "/nonexistent/data", "", false)
 	assert.Equal(t, map[string]models.TagColor{"Work": {FG: "3"}}, got)
 }
 
+func TestBuildTagColors_UseTockTagColors_DisablesTimewarriorOverride(t *testing.T) {
+	tmp := t.TempDir()
+	dataDir := filepath.Join(tmp, "data")
+	require.NoError(t, os.MkdirAll(dataDir, 0o700))
+
+	// Would normally override Coding from config.
+	cfgContent := "tags.Coding.color = color196\n"
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "timewarrior.cfg"), []byte(cfgContent), 0o600))
+
+	cfgColors := map[string]string{"Coding": "33", "Work": "3"}
+	got := buildTagColors(cfgColors, backendTimewarrior, dataDir, "", true)
+
+	assert.Equal(t, "33", got["Coding"].FG)
+	assert.Equal(t, "3", got["Work"].FG)
+	assert.Len(t, got, 2)
+}
+
 func TestBuildTagColors_BothEmpty(t *testing.T) {
-	got := buildTagColors(nil, "file", "", "")
+	got := buildTagColors(nil, "file", "", "", false)
 	assert.Nil(t, got)
 }

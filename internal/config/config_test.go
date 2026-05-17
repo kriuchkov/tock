@@ -167,3 +167,41 @@ func TestWorkingHoursEnvironmentOverrides(t *testing.T) {
 	assert.Equal(t, "18:15", cfg.WorkingHours.StopAt)
 	assert.Equal(t, "mon,wed,fri", cfg.WorkingHours.Weekdays)
 }
+
+func TestTimewarriorUseTockTagColorsEnvOverride(t *testing.T) {
+	t.Setenv("TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS", "true")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "tock.yaml")
+	configContent := `timewarrior:
+  use_tock_tag_colors: false
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, _, err := Load(WithConfigFile(configPath))
+	require.NoError(t, err)
+	assert.True(t, cfg.Timewarrior.UseTockTagColors)
+}
+
+func TestTimewarriorUseTockTagColorsScopedEnvOverrides(t *testing.T) {
+	t.Setenv("TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_CALENDAR", "true")
+	t.Setenv("TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_WEEKLY_ACTIVITY", "true")
+	t.Setenv("TOCK_TIMEWARRIOR_USE_TOCK_TAG_COLORS_TOP_PROJECTS", "false")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "tock.yaml")
+	configContent := `timewarrior:
+  use_tock_tag_colors_calendar: false
+  use_tock_tag_colors_weekly_activity: false
+  use_tock_tag_colors_top_projects: true
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, _, err := Load(WithConfigFile(configPath))
+	require.NoError(t, err)
+	assert.True(t, cfg.Timewarrior.UseTockTagColorsCalendar)
+	assert.True(t, cfg.Timewarrior.UseTockTagColorsWeeklyActivity)
+	assert.False(t, cfg.Timewarrior.UseTockTagColorsTopProjects)
+}

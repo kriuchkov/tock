@@ -336,9 +336,45 @@ func (m *calendarModel) updateViewportContent() {
 	m.viewport.SetContent(b.String())
 }
 
-// tagColorStyle returns a lipgloss style with fg/bg applied from TagColors when present.
-func (m *calendarModel) tagColorStyle(base lipgloss.Style, name string) lipgloss.Style {
+type tagColorScope string
+
+const (
+	tagColorScopeCalendar   tagColorScope = "calendar"
+	tagColorScopeWeekly     tagColorScope = "weekly_activity"
+	tagColorScopeTopProject tagColorScope = "top_projects"
+)
+
+func (m *calendarModel) useTockTagColorsFor(scope tagColorScope) bool {
+	tw := m.config.Timewarrior
+	if tw.UseTockTagColors {
+		return true
+	}
+	switch scope {
+	case tagColorScopeCalendar:
+		return tw.UseTockTagColorsCalendar
+	case tagColorScopeWeekly:
+		return tw.UseTockTagColorsWeeklyActivity
+	case tagColorScopeTopProject:
+		return tw.UseTockTagColorsTopProjects
+	default:
+		return false
+	}
+}
+
+func (m *calendarModel) effectiveTagColor(name string, scope tagColorScope) (TagColorStyle, bool) {
+	if m.useTockTagColorsFor(scope) {
+		if c, ok := m.config.Theme.TagColors[name]; ok && c != "" {
+			return TagColorStyle{FG: lipgloss.Color(c)}, true
+		}
+		return TagColorStyle{}, false
+	}
 	ts, ok := m.theme.TagColors[name]
+	return ts, ok
+}
+
+// tagColorStyle returns a lipgloss style with fg/bg applied from TagColors when present.
+func (m *calendarModel) tagColorStyle(base lipgloss.Style, name string, scope tagColorScope) lipgloss.Style {
+	ts, ok := m.effectiveTagColor(name, scope)
 	if !ok {
 		return base
 	}
@@ -354,8 +390,8 @@ func (m *calendarModel) tagColorStyle(base lipgloss.Style, name string) lipgloss
 // tagBarStyle returns a lipgloss style suitable for a solid bar (█ chars).
 // BG is preferred as the foreground color (it's the "accent" of the pair);
 // FG is used only when BG is absent; falls back to base if neither is set.
-func (m *calendarModel) tagBarStyle(base lipgloss.Style, name string) lipgloss.Style {
-	ts, ok := m.theme.TagColors[name]
+func (m *calendarModel) tagBarStyle(base lipgloss.Style, name string, scope tagColorScope) lipgloss.Style {
+	ts, ok := m.effectiveTagColor(name, scope)
 	if !ok {
 		return base
 	}
@@ -370,13 +406,13 @@ func (m *calendarModel) tagBarStyle(base lipgloss.Style, name string) lipgloss.S
 
 // renderTagLine renders the project name followed by an optional bracketed tag list.
 func (m *calendarModel) renderTagLine(act models.Activity) string {
-	projectLine := m.tagColorStyle(m.styles.Project, act.Project).Render(act.Project)
+	projectLine := m.tagColorStyle(m.styles.Project, act.Project, tagColorScopeCalendar).Render(act.Project)
 	if len(act.Tags) == 0 {
 		return projectLine
 	}
 	tagParts := make([]string, 0, len(act.Tags))
 	for _, tag := range act.Tags {
-		tagParts = append(tagParts, m.tagColorStyle(lipgloss.NewStyle().Foreground(m.theme.Tag), tag).Render(tag))
+		tagParts = append(tagParts, m.tagColorStyle(lipgloss.NewStyle().Foreground(m.theme.Tag), tag, tagColorScopeCalendar).Render(tag))
 	}
 	return projectLine + " [" + strings.Join(tagParts, ", ") + "]"
 }
@@ -462,7 +498,7 @@ func (m *calendarModel) renderActivityEntry(b *strings.Builder, act models.Activ
 
 func (m *calendarModel) formatProjectStat(name string, duration time.Duration) string {
 	dur := timeutil.FormatDuration(duration, m.config.Calendar.TimeSpentFormat)
-	projectStyle := m.tagColorStyle(m.styles.Project, name)
+	projectStyle := m.tagColorStyle(m.styles.Project, name, tagColorScopeCalendar)
 	if m.config.Calendar.AlignDurationLeft {
 		return fmt.Sprintf("%s %s\n",
 			m.styles.Duration.Render(dur),
