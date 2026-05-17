@@ -84,3 +84,27 @@ func TestBuildWeeklyActivityData(t *testing.T) {
 	assert.Equal(t, 270*time.Minute, data.CurrentWeekTotal)
 	assert.Equal(t, 3*time.Hour, data.MaxDuration)
 }
+
+func TestBuildWeeklyActivityData_CurrentWeekProjects(t *testing.T) {
+	dailyReports := map[string]*models.Report{
+		"2026-03-10": {
+			TotalDuration: 2 * time.Hour,
+			ByProject: map[string]models.ProjectReport{
+				"Beta":  {Duration: 30 * time.Minute},
+				"Alpha": {Duration: 90 * time.Minute},
+			},
+		},
+	}
+
+	data := insights.BuildWeeklyActivityData(dailyReports, time.Date(2026, time.March, 12, 12, 0, 0, 0, time.Local))
+
+	// Tuesday of the week that starts on 2026-03-09.
+	require.Len(t, data.CurrentWeekProjects[1], 2)
+	assert.Equal(t, "Alpha", data.CurrentWeekProjects[1][0].Name)
+	assert.Equal(t, 90*time.Minute, data.CurrentWeekProjects[1][0].Duration)
+	assert.Equal(t, "Beta", data.CurrentWeekProjects[1][1].Name)
+	assert.Equal(t, 30*time.Minute, data.CurrentWeekProjects[1][1].Duration)
+
+	// Days without reports should have nil/empty breakdown.
+	assert.Empty(t, data.CurrentWeekProjects[0])
+}

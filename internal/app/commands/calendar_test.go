@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kriuchkov/tock/internal/app/insights"
 	"github.com/kriuchkov/tock/internal/app/localization"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/models"
@@ -226,4 +228,41 @@ func TestReportModelHandleKeyMsgScrollsViewport(t *testing.T) {
 	_, handled := model.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	require.True(t, handled)
 	assert.Positive(t, model.viewport.YOffset)
+}
+
+func TestRenderWeekBar(t *testing.T) {
+	model := initialCalendarModel(
+		&stubActivityResolver{},
+		&config.Config{},
+		timeutil.NewFormatter("24"),
+		localization.MustNew(localization.LanguageEnglish),
+		map[string]models.TagColor{"Alpha": {FG: "2"}, "Beta": {FG: "4"}},
+	)
+
+	t.Run("segmented width matches scaled day width", func(t *testing.T) {
+		bar := model.renderWeekBar(
+			2*time.Hour,
+			4*time.Hour,
+			[]insights.ProjectDuration{
+				{Name: "Alpha", Duration: 90 * time.Minute},
+				{Name: "Beta", Duration: 30 * time.Minute},
+			},
+		)
+		assert.Equal(t, 12, strings.Count(bar, "█"))
+	})
+
+	t.Run("no project breakdown uses solid fallback", func(t *testing.T) {
+		bar := model.renderWeekBar(2*time.Hour, 4*time.Hour, nil)
+		assert.Equal(t, 12, strings.Count(bar, "█"))
+	})
+
+	t.Run("very small duration uses single bar char", func(t *testing.T) {
+		bar := model.renderWeekBar(time.Minute, 10*time.Hour, nil)
+		assert.Contains(t, bar, barChar)
+	})
+
+	t.Run("zero duration returns empty", func(t *testing.T) {
+		bar := model.renderWeekBar(0, 10*time.Hour, nil)
+		assert.Empty(t, bar)
+	})
 }

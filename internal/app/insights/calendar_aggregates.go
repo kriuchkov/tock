@@ -27,6 +27,7 @@ type ProjectDuration struct {
 
 type WeeklyActivityData struct {
 	CurrentWeekDurations  [7]time.Duration
+	CurrentWeekProjects   [7][]ProjectDuration // per-day project breakdown, sorted by duration desc
 	PreviousWeekDurations [7]time.Duration
 	CurrentWeekTotal      time.Duration
 	MaxDuration           time.Duration
@@ -144,6 +145,7 @@ func BuildWeeklyActivityData(dailyReports map[string]*models.Report, currentDate
 		if currentDuration > data.MaxDuration {
 			data.MaxDuration = currentDuration
 		}
+		data.CurrentWeekProjects[i] = projectDurationsForDate(dailyReports, day)
 
 		prevDay := startOfPrevWeek.AddDate(0, 0, i)
 		previousDuration := totalDurationForDate(dailyReports, prevDay)
@@ -224,4 +226,21 @@ func totalDurationForDate(dailyReports map[string]*models.Report, date time.Time
 		return 0
 	}
 	return report.TotalDuration
+}
+
+// projectDurationsForDate returns per-project durations for a given date, sorted by duration desc.
+func projectDurationsForDate(dailyReports map[string]*models.Report, date time.Time) []ProjectDuration {
+	key := DateKey(date)
+	report, ok := dailyReports[key]
+	if !ok {
+		return nil
+	}
+	result := make([]ProjectDuration, 0, len(report.ByProject))
+	for name, pr := range report.ByProject {
+		result = append(result, ProjectDuration{Name: name, Duration: pr.Duration})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Duration > result[j].Duration
+	})
+	return result
 }

@@ -108,16 +108,8 @@ func (m *calendarModel) renderWeeklyActivity() string {
 			dayStyle = dayStyle.Foreground(m.styles.Dot.GetForeground()).Bold(true)
 		}
 
-		bar := ""
 		prevBar := ""
 		if weekly.MaxDuration > 0 {
-			width := int((float64(dur) / float64(weekly.MaxDuration)) * 25)
-			if width > 0 {
-				bar = strings.Repeat("█", width)
-			} else if dur > 0 {
-				bar = barChar
-			}
-
 			prevWidth := int((float64(prevDur) / float64(weekly.MaxDuration)) * 25)
 			if prevWidth > 0 {
 				prevBar = strings.Repeat("▒", prevWidth)
@@ -126,11 +118,51 @@ func (m *calendarModel) renderWeeklyActivity() string {
 			}
 		}
 
-		fmt.Fprintf(&b, "%s %s\n", dayStyle.Width(2).Render(label), lipgloss.NewStyle().Foreground(m.theme.Primary).Render(bar))
+		fmt.Fprintf(&b, "%s %s\n", dayStyle.Width(2).Render(label), m.renderWeekBar(dur, weekly.MaxDuration, weekly.CurrentWeekProjects[i]))
 		fmt.Fprintf(&b, "   %s\n", lipgloss.NewStyle().Foreground(m.theme.Faint).Render(prevBar))
 	}
 	b.WriteString("\n")
 	return b.String()
+}
+
+// renderWeekBar renders a segmented bar for one day. Each project gets a
+// proportional number of █ chars colored by the project's tag color.
+// Projects without a color all share the primary theme color.
+func (m *calendarModel) renderWeekBar(dur, maxDur time.Duration, projects []insights.ProjectDuration) string {
+	const totalWidth = 25
+	if maxDur == 0 || dur == 0 {
+		if dur > 0 {
+			return lipgloss.NewStyle().Foreground(m.theme.Primary).Render(barChar)
+		}
+		return ""
+	}
+
+	totalWidthInt := int((float64(dur) / float64(maxDur)) * totalWidth)
+	if totalWidthInt == 0 {
+		return lipgloss.NewStyle().Foreground(m.theme.Primary).Render(barChar)
+	}
+
+	if len(projects) == 0 {
+		return lipgloss.NewStyle().Foreground(m.theme.Primary).Render(strings.Repeat("█", totalWidthInt))
+	}
+
+	// Assign widths proportionally to each project.
+	var segments strings.Builder
+	remaining := totalWidthInt
+	for j, p := range projects {
+		var w int
+		if j == len(projects)-1 {
+			w = remaining
+		} else {
+			w = int((float64(p.Duration) / float64(dur)) * float64(totalWidthInt))
+		}
+		if w <= 0 {
+			continue
+		}
+		remaining -= w
+		segments.WriteString(m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), p.Name).Render(strings.Repeat("█", w)))
+	}
+	return segments.String()
 }
 
 func (m *calendarModel) renderTopProjects(maxHeight int) string {
