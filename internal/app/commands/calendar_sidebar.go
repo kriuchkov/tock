@@ -163,9 +163,9 @@ func (m *calendarModel) renderTopProjects(maxHeight int) string {
 			}
 		}
 
-		fmt.Fprintf(&b, "%s\n", m.styles.Project.Render(project.Name))
+		fmt.Fprintf(&b, "%s\n", m.tagColorStyle(m.styles.Project, project.Name).Render(project.Name))
 		fmt.Fprintf(&b, "%s %s\n",
-			lipgloss.NewStyle().Foreground(m.theme.Primary).Render(bar),
+			m.tagBarStyle(lipgloss.NewStyle().Foreground(m.theme.Primary), project.Name).Render(bar),
 			m.styles.Duration.Render(project.Duration.Round(time.Minute).String()))
 		b.WriteString("\n")
 	}

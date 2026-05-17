@@ -351,6 +351,23 @@ func (m *calendarModel) tagColorStyle(base lipgloss.Style, name string) lipgloss
 	return base
 }
 
+// tagBarStyle returns a lipgloss style suitable for a solid bar (█ chars).
+// BG is preferred as the foreground color (it's the "accent" of the pair);
+// FG is used only when BG is absent; falls back to base if neither is set.
+func (m *calendarModel) tagBarStyle(base lipgloss.Style, name string) lipgloss.Style {
+	ts, ok := m.theme.TagColors[name]
+	if !ok {
+		return base
+	}
+	if ts.BG != "" {
+		return base.Foreground(ts.BG)
+	}
+	if ts.FG != "" {
+		return base.Foreground(ts.FG)
+	}
+	return base
+}
+
 // renderTagLine renders the project name followed by an optional bracketed tag list.
 func (m *calendarModel) renderTagLine(act models.Activity) string {
 	projectLine := m.tagColorStyle(m.styles.Project, act.Project).Render(act.Project)
