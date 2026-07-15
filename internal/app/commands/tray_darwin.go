@@ -21,11 +21,11 @@ const (
 	trayRefreshInterval = time.Second
 	trayRecentCount     = 10
 	trayTodayProjects   = 6
-	// trayTodayEvery throttles the today-summary rebuild. The panel is
-	// minute-granular, so refreshing it every second would read the store for
-	// nothing; this cadence also picks up activities changed from the CLI while
-	// the tray is open.
-	trayTodayEvery = 15
+	// traySyncEvery is the fallback resync period (in ticks) for the store-derived
+	// menus. Most CLI changes are caught at once via the running-activity change
+	// (see syncStoreMenus); this periodic pass only covers edits that leave the
+	// running activity untouched, so it can be coarse.
+	traySyncEvery = 15
 )
 
 // trayController drives the macOS menu bar item. All state mutation happens on
@@ -53,9 +53,12 @@ type trayController struct {
 	recentClick chan int
 
 	// todaySlots are fixed submenu items under mToday holding the per-project
-	// breakdown; todayTick throttles their rebuild (see trayTodayEvery).
-	todaySlots []*systray.MenuItem
-	todayTick  int
+	// breakdown. syncTick throttles the periodic rebuild of the store-derived
+	// menus (recent + today); lastRunningKey detects when the running activity
+	// changed under us (a CLI start/stop) so we can resync at once.
+	todaySlots     []*systray.MenuItem
+	syncTick       int
+	lastRunningKey string
 }
 
 // runTray blocks running the menu bar event loop until the user quits. It must
@@ -162,15 +165,9 @@ func (c *trayController) loop(ctx context.Context) {
 // refresh syncs the title, tooltip and menu item states with the currently
 // running activity (if any).
 func (c *trayController) refresh(ctx context.Context) {
-	// Keep the today panel fresh (and pick up CLI edits) without querying the
-	// store every second; actions refresh it immediately via refreshAll.
-	c.todayTick++
-	if c.todayTick >= trayTodayEvery {
-		c.todayTick = 0
-		c.refreshToday(ctx)
-	}
-
 	running := c.runningActivity(ctx)
+	c.syncStoreMenus(ctx, running)
+
 	if running == nil {
 		// In auto-spawn mode the tray exists only for the activity that launched
 		// it: once that activity is stopped, quit so the icon disappears.
@@ -196,14 +193,33 @@ func (c *trayController) refresh(ctx context.Context) {
 	c.mStartLast.Disable()
 }
 
-// refreshAll updates both the running-activity state and the recent submenu; the
-// per-second tick only refreshes the timer (via refresh) to avoid re-querying
-// the recent list every second.
+// refreshAll refreshes everything at once — running-activity state, recent
+// submenu and today summary. Used after a menu action so the change shows
+// immediately instead of at the next tick.
 func (c *trayController) refreshAll(ctx context.Context) {
 	c.refresh(ctx)
 	c.refreshRecent(ctx)
 	c.refreshToday(ctx)
-	c.todayTick = 0
+}
+
+// syncStoreMenus keeps the recent list and today summary in step with the store
+// when it changes outside the tray. It resyncs at once when the running activity
+// changes — the usual sign of a `tock start`/`continue`/`stop` from the terminal
+// — and otherwise on a periodic tick to catch edits that leave the running
+// activity untouched (a removed or retimed past entry).
+func (c *trayController) syncStoreMenus(ctx context.Context, running *models.Activity) {
+	runningKey := ""
+	if running != nil {
+		runningKey = running.ID()
+	}
+
+	c.syncTick++
+	if runningKey != c.lastRunningKey || c.syncTick >= traySyncEvery {
+		c.lastRunningKey = runningKey
+		c.syncTick = 0
+		c.refreshRecent(ctx)
+		c.refreshToday(ctx)
+	}
 }
 
 // refreshToday rebuilds the "Today" summary: the total tracked time today and a
