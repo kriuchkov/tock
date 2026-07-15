@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -248,8 +249,106 @@ func (s *service) GetLast(ctx context.Context) (*models.Activity, error) {
 	return s.repo.FindLast(ctx)
 }
 
+// AddNote appends note text to an activity, keeping its existing tags. The
+// authoritative notes/tags come from the notes repository when present, so the
+// caller may pass a non-enriched activity (e.g. from GetLast).
+func (s *service) AddNote(ctx context.Context, activity models.Activity, note string) (*models.Activity, error) {
+	if s.notesRepo == nil {
+		return nil, coreErrors.ErrNotesUnavailable
+	}
+
+	existingNotes, existingTags, err := s.loadStoredNotes(ctx, activity)
+	if err != nil {
+		return nil, err
+	}
+
+	updated := activity
+	updated.Notes = joinNotes(existingNotes, note)
+	updated.Tags = existingTags
+
+	if err = s.notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
+		return nil, errors.Wrap(err, "save note")
+	}
+	return &updated, nil
+}
+
+// AddTags merges new tags into an activity, keeping its existing notes and
+// de-duplicating while preserving order.
+func (s *service) AddTags(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error) {
+	if s.notesRepo == nil {
+		return nil, coreErrors.ErrNotesUnavailable
+	}
+
+	existingNotes, existingTags, err := s.loadStoredNotes(ctx, activity)
+	if err != nil {
+		return nil, err
+	}
+
+	updated := activity
+	updated.Notes = existingNotes
+	updated.Tags = mergeTags(existingTags, tags)
+
+	if err = s.notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
+		return nil, errors.Wrap(err, "save tags")
+	}
+	return &updated, nil
+}
+
 func (s *service) Remove(ctx context.Context, activity models.Activity) error {
 	return s.repo.Remove(ctx, activity)
+}
+
+// loadStoredNotes returns the authoritative notes/tags for an activity,
+// preferring values persisted in the notes repository over whatever the
+// passed-in activity carries.
+func (s *service) loadStoredNotes(ctx context.Context, activity models.Activity) (string, []string, error) {
+	existingNotes := strings.TrimSpace(activity.Notes)
+	existingTags := append([]string(nil), activity.Tags...)
+
+	storedNotes, storedTags, err := s.notesRepo.Get(ctx, activity.ID(), activity.StartTime)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "get notes")
+	}
+
+	if trimmed := strings.TrimSpace(storedNotes); trimmed != "" {
+		existingNotes = trimmed
+	}
+	if len(storedTags) > 0 {
+		existingTags = append([]string(nil), storedTags...)
+	}
+	return existingNotes, existingTags, nil
+}
+
+func mergeTags(existingTags, newTags []string) []string {
+	seen := make(map[string]struct{}, len(existingTags)+len(newTags))
+	merged := make([]string, 0, len(existingTags)+len(newTags))
+
+	for _, tag := range append(append([]string(nil), existingTags...), newTags...) {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		if _, ok := seen[tag]; ok {
+			continue
+		}
+		seen[tag] = struct{}{}
+		merged = append(merged, tag)
+	}
+
+	return merged
+}
+
+func joinNotes(existingNotes, noteText string) string {
+	existingNotes = strings.TrimSpace(existingNotes)
+	noteText = strings.TrimSpace(noteText)
+
+	if existingNotes == "" {
+		return noteText
+	}
+	if noteText == "" {
+		return existingNotes
+	}
+	return existingNotes + "\n\n" + noteText
 }
 
 func (s *service) enrichActivities(ctx context.Context, activities []models.Activity) ([]models.Activity, error) {

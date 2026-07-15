@@ -62,6 +62,14 @@ func (s stubResolver) GetLast(context.Context) (*models.Activity, error) {
 	return nil, unconfiguredResolverCall()
 }
 
+func (s stubResolver) AddNote(context.Context, models.Activity, string) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
+func (s stubResolver) AddTags(context.Context, models.Activity, []string) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
 func (s stubResolver) Remove(context.Context, models.Activity) error {
 	return unconfiguredResolverCall()
 }

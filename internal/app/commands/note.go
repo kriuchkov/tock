@@ -46,9 +46,9 @@ func runNoteCmd(cmd *cobra.Command, args []string, opts *noteOptions) error {
 		return errors.Wrap(err, "resolve activity")
 	}
 
-	updated, err := appendNoteToActivity(ctx, rt.NotesRepository, activity, noteText)
+	updated, err := rt.ActivityService.AddNote(ctx, activity, noteText)
 	if err != nil {
-		return errors.Wrap(err, "append note to activity")
+		return errors.Wrap(err, "add note to activity")
 	}
 
 	out := cmd.OutOrStdout()
@@ -91,53 +91,4 @@ func resolveNoteActivity(ctx context.Context, svc ports.ActivityResolver, activi
 		return findLastActivity(ctx, svc)
 	}
 	return findActivityByIndex(ctx, svc, activityKey)
-}
-
-func appendNoteToActivity(
-	ctx context.Context,
-	notesRepo ports.NotesRepository,
-	activity models.Activity,
-	noteText string,
-) (models.Activity, error) {
-	if notesRepo == nil {
-		return models.Activity{}, errors.New(defaultText("note.error.unavailable"))
-	}
-
-	existingNotes := strings.TrimSpace(activity.Notes)
-	existingTags := append([]string(nil), activity.Tags...)
-
-	storedNotes, storedTags, err := notesRepo.Get(ctx, activity.ID(), activity.StartTime)
-	if err != nil {
-		return models.Activity{}, errors.Wrap(err, "get notes")
-	}
-
-	if trimmed := strings.TrimSpace(storedNotes); trimmed != "" {
-		existingNotes = trimmed
-	}
-	if len(storedTags) > 0 {
-		existingTags = append([]string(nil), storedTags...)
-	}
-
-	updated := activity
-	updated.Notes = joinNotes(existingNotes, noteText)
-	updated.Tags = existingTags
-
-	if err = notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
-		return models.Activity{}, errors.Wrap(err, "save note")
-	}
-
-	return updated, nil
-}
-
-func joinNotes(existingNotes, noteText string) string {
-	existingNotes = strings.TrimSpace(existingNotes)
-	noteText = strings.TrimSpace(noteText)
-
-	if existingNotes == "" {
-		return noteText
-	}
-	if noteText == "" {
-		return existingNotes
-	}
-	return existingNotes + "\n\n" + noteText
 }

@@ -503,3 +503,51 @@ func TestService_List_OverridesWithNotesRepositoryDataWhenPresent(t *testing.T) 
 	assert.Equal(t, "note from repo", activities[0].Notes)
 	assert.Equal(t, []string{"desk", "focus"}, activities[0].Tags)
 }
+
+func TestService_AddNote_JoinsWithStoredNotesAndKeepsTags(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := new(portsmocks.MockNotesRepository)
+	svc := activity.NewService(repo, notesRepo)
+
+	start := time.Date(2026, 3, 16, 10, 15, 0, 0, time.Local)
+	act := models.Activity{Project: "Work", Description: "Review PR", StartTime: start}
+
+	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).
+		Return("initial note", []string{"focus"}, nil)
+	notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), start, "initial note\n\nfollow up", []string{"focus"}).
+		Return(nil)
+
+	updated, err := svc.AddNote(context.Background(), act, "follow up")
+	require.NoError(t, err)
+	assert.Equal(t, "initial note\n\nfollow up", updated.Notes)
+	assert.Equal(t, []string{"focus"}, updated.Tags)
+	notesRepo.AssertExpectations(t)
+}
+
+func TestService_AddTags_MergesDedupsAndKeepsNotes(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := new(portsmocks.MockNotesRepository)
+	svc := activity.NewService(repo, notesRepo)
+
+	start := time.Date(2026, 3, 16, 10, 15, 0, 0, time.Local)
+	act := models.Activity{Project: "Work", Description: "Review PR", StartTime: start}
+
+	notesRepo.On("Get", mock.Anything, mock.AnythingOfType("string"), start).
+		Return("existing note", []string{"desk"}, nil)
+	notesRepo.On("Save", mock.Anything, mock.AnythingOfType("string"), start, "existing note", []string{"desk", "planning", "ship"}).
+		Return(nil)
+
+	updated, err := svc.AddTags(context.Background(), act, []string{"planning", "desk", "ship"})
+	require.NoError(t, err)
+	assert.Equal(t, "existing note", updated.Notes)
+	assert.Equal(t, []string{"desk", "planning", "ship"}, updated.Tags)
+	notesRepo.AssertExpectations(t)
+}
+
+func TestService_AddNote_ReturnsErrorWhenNotesRepoMissing(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	svc := activity.NewService(repo, nil)
+
+	_, err := svc.AddNote(context.Background(), models.Activity{StartTime: time.Now()}, "note")
+	require.ErrorIs(t, err, coreErrors.ErrNotesUnavailable)
+}

@@ -106,6 +106,154 @@ func (_c *MockActivityResolver_Add_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// AddNote provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) AddNote(ctx context.Context, activity models.Activity, note string) (*models.Activity, error) {
+	ret := _mock.Called(ctx, activity, note)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNote")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, string) (*models.Activity, error)); ok {
+		return returnFunc(ctx, activity, note)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, string) *models.Activity); ok {
+		r0 = returnFunc(ctx, activity, note)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.Activity, string) error); ok {
+		r1 = returnFunc(ctx, activity, note)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_AddNote_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddNote'
+type MockActivityResolver_AddNote_Call struct {
+	*mock.Call
+}
+
+// AddNote is a helper method to define mock.On call
+//   - ctx context.Context
+//   - activity models.Activity
+//   - note string
+func (_e *MockActivityResolver_Expecter) AddNote(ctx interface{}, activity interface{}, note interface{}) *MockActivityResolver_AddNote_Call {
+	return &MockActivityResolver_AddNote_Call{Call: _e.mock.On("AddNote", ctx, activity, note)}
+}
+
+func (_c *MockActivityResolver_AddNote_Call) Run(run func(ctx context.Context, activity models.Activity, note string)) *MockActivityResolver_AddNote_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.Activity
+		if args[1] != nil {
+			arg1 = args[1].(models.Activity)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_AddNote_Call) Return(activity *models.Activity, err error) *MockActivityResolver_AddNote_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_AddNote_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity, note string) (*models.Activity, error)) *MockActivityResolver_AddNote_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddTags provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) AddTags(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error) {
+	ret := _mock.Called(ctx, activity, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddTags")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, []string) (*models.Activity, error)); ok {
+		return returnFunc(ctx, activity, tags)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, []string) *models.Activity); ok {
+		r0 = returnFunc(ctx, activity, tags)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.Activity, []string) error); ok {
+		r1 = returnFunc(ctx, activity, tags)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_AddTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddTags'
+type MockActivityResolver_AddTags_Call struct {
+	*mock.Call
+}
+
+// AddTags is a helper method to define mock.On call
+//   - ctx context.Context
+//   - activity models.Activity
+//   - tags []string
+func (_e *MockActivityResolver_Expecter) AddTags(ctx interface{}, activity interface{}, tags interface{}) *MockActivityResolver_AddTags_Call {
+	return &MockActivityResolver_AddTags_Call{Call: _e.mock.On("AddTags", ctx, activity, tags)}
+}
+
+func (_c *MockActivityResolver_AddTags_Call) Run(run func(ctx context.Context, activity models.Activity, tags []string)) *MockActivityResolver_AddTags_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.Activity
+		if args[1] != nil {
+			arg1 = args[1].(models.Activity)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_AddTags_Call) Return(activity *models.Activity, err error) *MockActivityResolver_AddTags_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_AddTags_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error)) *MockActivityResolver_AddTags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRecent provides a mock function for the type MockActivityResolver
 func (_mock *MockActivityResolver) GetRecent(ctx context.Context, limit int) ([]models.Activity, error) {
 	ret := _mock.Called(ctx, limit)

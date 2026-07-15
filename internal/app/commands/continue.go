@@ -124,6 +124,9 @@ func runContinueCmd(cmd *cobra.Command, args []string, opts *continueOptions) er
 		return errors.Wrap(err, "start activity")
 	}
 
+	// Bring up the menu bar icon in the background if configured (macOS only).
+	ensureTrayRunning(cmd)
+
 	if opts.JSONOutput {
 		return writeJSONTo(out, startedActivity)
 	}

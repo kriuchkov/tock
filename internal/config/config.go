@@ -17,6 +17,7 @@ type Config struct {
 	Timewarrior     TimewarriorConfig  `mapstructure:"timewarrior"`
 	Sqlite          SqliteConfig       `mapstructure:"sqlite"`
 	WorkingHours    WorkingHoursConfig `mapstructure:"working_hours"`
+	Tray            TrayConfig         `mapstructure:"tray"`
 	Theme           ThemeConfig        `mapstructure:"theme"`
 	Calendar        CalendarConfig     `mapstructure:"calendar"`
 	TimeFormat      string             `mapstructure:"time_format"`
@@ -67,6 +68,15 @@ type WorkingHoursConfig struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	StopAt   string `mapstructure:"stop_at"`
 	Weekdays string `mapstructure:"weekdays"`
+}
+
+// TrayConfig controls the macOS menu bar (status bar) integration. It is
+// disabled by default and only has an effect on macOS via the `tock tray`
+// command. When AutoStart is set, `tock start` spawns the menu bar icon in the
+// background and it closes itself once the activity is stopped.
+type TrayConfig struct {
+	Enabled   bool `mapstructure:"enabled"`
+	AutoStart bool `mapstructure:"auto_start"`
 }
 
 type ThemeConfig struct {
@@ -131,6 +141,8 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("working_hours.enabled", false)
 	v.SetDefault("working_hours.stop_at", "")
 	v.SetDefault("working_hours.weekdays", "mon,tue,wed,thu,fri")
+	v.SetDefault("tray.enabled", false)
+	v.SetDefault("tray.auto_start", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_calendar", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_weekly_activity", false)
@@ -164,6 +176,8 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("working_hours.enabled", "TOCK_WORKING_HOURS_ENABLED")
 	_ = v.BindEnv("working_hours.stop_at", "TOCK_WORKING_HOURS_STOP_AT")
 	_ = v.BindEnv("working_hours.weekdays", "TOCK_WORKING_HOURS_WEEKDAYS")
+	_ = v.BindEnv("tray.enabled", "TOCK_TRAY_ENABLED")
+	_ = v.BindEnv("tray.auto_start", "TOCK_TRAY_AUTO_START")
 	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 	_ = v.BindEnv("check_updates", "TOCK_CHECK_UPDATES")
 

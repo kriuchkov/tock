@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kriuchkov/tock/internal/core/models"
-	"github.com/kriuchkov/tock/internal/core/ports"
 )
 
 type tagOptions struct {
@@ -45,9 +43,9 @@ func runTagCmd(cmd *cobra.Command, args []string, opts *tagOptions) error {
 		return errors.Wrap(err, "resolve activity")
 	}
 
-	updated, err := appendTagsToActivity(ctx, rt.NotesRepository, activity, tags)
+	updated, err := rt.ActivityService.AddTags(ctx, activity, tags)
 	if err != nil {
-		return errors.Wrap(err, "append tags to activity")
+		return errors.Wrap(err, "add tags to activity")
 	}
 
 	out := cmd.OutOrStdout()
@@ -103,59 +101,4 @@ func parseTagValues(values []string) []string {
 	}
 
 	return tags
-}
-
-func appendTagsToActivity(
-	ctx context.Context,
-	notesRepo ports.NotesRepository,
-	activity models.Activity,
-	newTags []string,
-) (models.Activity, error) {
-	if notesRepo == nil {
-		return models.Activity{}, errors.New(defaultText("note.error.unavailable"))
-	}
-
-	existingNotes := strings.TrimSpace(activity.Notes)
-	existingTags := append([]string(nil), activity.Tags...)
-
-	storedNotes, storedTags, err := notesRepo.Get(ctx, activity.ID(), activity.StartTime)
-	if err != nil {
-		return models.Activity{}, errors.Wrap(err, "get notes")
-	}
-
-	if trimmed := strings.TrimSpace(storedNotes); trimmed != "" {
-		existingNotes = trimmed
-	}
-	if len(storedTags) > 0 {
-		existingTags = append([]string(nil), storedTags...)
-	}
-
-	updated := activity
-	updated.Notes = existingNotes
-	updated.Tags = mergeTags(existingTags, newTags)
-
-	if err = notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
-		return models.Activity{}, errors.Wrap(err, "save tags")
-	}
-
-	return updated, nil
-}
-
-func mergeTags(existingTags, newTags []string) []string {
-	seen := make(map[string]struct{}, len(existingTags)+len(newTags))
-	merged := make([]string, 0, len(existingTags)+len(newTags))
-
-	for _, tag := range append(append([]string(nil), existingTags...), newTags...) {
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			continue
-		}
-		if _, ok := seen[tag]; ok {
-			continue
-		}
-		seen[tag] = struct{}{}
-		merged = append(merged, tag)
-	}
-
-	return merged
 }
