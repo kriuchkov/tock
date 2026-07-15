@@ -20,6 +20,18 @@ builds:
       - -X github.com/kriuchkov/tock/internal/app/commands.version={{.Version}}
       - -X github.com/kriuchkov/tock/internal/app/commands.commit={{.Commit}}
       - -X github.com/kriuchkov/tock/internal/app/commands.date={{.Date}}
+    # Build darwin natively with cgo so the menu bar (fyne.io/systray is
+    # Objective-C) and the sqlite backend (go-sqlite3) are compiled in.
+    # Requires a macOS runner. Linux stays CGO-free (pure-Go cross-build).
+    overrides:
+      - goos: darwin
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+      - goos: darwin
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
 
 archives:
   - format: tar.gz

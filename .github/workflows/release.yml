@@ -35,7 +35,9 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-latest
+    # macOS runner so goreleaser can build the darwin binaries with cgo (the
+    # menu bar needs the Objective-C systray backend; sqlite needs go-sqlite3).
+    runs-on: macos-latest
     permissions:
       contents: write
     steps:
