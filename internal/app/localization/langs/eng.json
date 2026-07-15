@@ -206,6 +206,7 @@
   "tray.short": "Run the macOS menu bar icon (timer, start last, stop)",
   "tray.disabled": "The menu bar icon is disabled. Enable it with 'tray.enabled: true' in your config (or TOCK_TRAY_ENABLED=1).",
   "tray.unsupported": "The menu bar icon is only supported on macOS.",
+  "tray.needs_cgo": "The menu bar icon needs a CGO-enabled build. The prebuilt release binaries are compiled without CGO; build from source (the default 'go build'/'go install' on macOS enables it).",
   "tray.running": "Menu bar icon started — look for the clock in the macOS menu bar (top-right). Press Ctrl-C here to quit.",
   "tray.already_running": "The menu bar icon is already running.",
   "tray.install.short": "Install a login agent so the menu bar icon always runs",
