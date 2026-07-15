@@ -5,6 +5,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"fyne.io/systray"
@@ -13,11 +14,18 @@ import (
 	"github.com/kriuchkov/tock/internal/app/localization"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 const (
 	trayRefreshInterval = time.Second
 	trayRecentCount     = 10
+	trayTodayProjects   = 6
+	// trayTodayEvery throttles the today-summary rebuild. The panel is
+	// minute-granular, so refreshing it every second would read the store for
+	// nothing; this cadence also picks up activities changed from the CLI while
+	// the tray is open.
+	trayTodayEvery = 15
 )
 
 // trayController drives the macOS menu bar item. All state mutation happens on
@@ -31,6 +39,7 @@ type trayController struct {
 	untilIdle   bool
 	sawActivity bool
 
+	mToday     *systray.MenuItem
 	mStartLast *systray.MenuItem
 	mRecent    *systray.MenuItem
 	mStop      *systray.MenuItem
@@ -42,6 +51,11 @@ type trayController struct {
 	recentSlots []*systray.MenuItem
 	recent      []models.Activity
 	recentClick chan int
+
+	// todaySlots are fixed submenu items under mToday holding the per-project
+	// breakdown; todayTick throttles their rebuild (see trayTodayEvery).
+	todaySlots []*systray.MenuItem
+	todayTick  int
 }
 
 // runTray blocks running the menu bar event loop until the user quits. It must
@@ -77,6 +91,18 @@ func (c *trayController) onReady(ctx context.Context) {
 	if icon := trayIconPNG(); len(icon) > 0 {
 		systray.SetTemplateIcon(icon, icon)
 	}
+
+	// "Today" summary: total tracked time today with a per-project breakdown in
+	// a submenu. Info only — the parent just expands, the rows are disabled.
+	c.mToday = systray.AddMenuItem(c.loc.Text("tray.menu.today_empty"), "")
+	c.todaySlots = make([]*systray.MenuItem, trayTodayProjects)
+	for i := range c.todaySlots {
+		slot := c.mToday.AddSubMenuItem("", "")
+		slot.Disable()
+		slot.Hide()
+		c.todaySlots[i] = slot
+	}
+	systray.AddSeparator()
 
 	c.mStartLast = systray.AddMenuItem(c.loc.Text("tray.menu.start_last"), "")
 
@@ -136,6 +162,14 @@ func (c *trayController) loop(ctx context.Context) {
 // refresh syncs the title, tooltip and menu item states with the currently
 // running activity (if any).
 func (c *trayController) refresh(ctx context.Context) {
+	// Keep the today panel fresh (and pick up CLI edits) without querying the
+	// store every second; actions refresh it immediately via refreshAll.
+	c.todayTick++
+	if c.todayTick >= trayTodayEvery {
+		c.todayTick = 0
+		c.refreshToday(ctx)
+	}
+
 	running := c.runningActivity(ctx)
 	if running == nil {
 		// In auto-spawn mode the tray exists only for the activity that launched
@@ -168,6 +202,63 @@ func (c *trayController) refresh(ctx context.Context) {
 func (c *trayController) refreshAll(ctx context.Context) {
 	c.refresh(ctx)
 	c.refreshRecent(ctx)
+	c.refreshToday(ctx)
+	c.todayTick = 0
+}
+
+// refreshToday rebuilds the "Today" summary: the total tracked time today and a
+// per-project breakdown ordered by descending duration. A running activity's
+// time is counted live (GetReport clips it to the local day).
+func (c *trayController) refreshToday(ctx context.Context) {
+	from, to := timeutil.LocalDayBounds(time.Now())
+	report, err := c.service.GetReport(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+	if err != nil || report == nil || len(report.ByProject) == 0 {
+		c.mToday.SetTitle(c.loc.Text("tray.menu.today_empty"))
+		c.mToday.Disable()
+		for _, slot := range c.todaySlots {
+			slot.Hide()
+		}
+		return
+	}
+
+	c.mToday.SetTitle(c.loc.Format("tray.menu.today", menuDuration(report.TotalDuration)))
+	c.mToday.Enable()
+
+	projects := sortedProjectReports(report.ByProject)
+	for i, slot := range c.todaySlots {
+		if i < len(projects) {
+			slot.SetTitle(c.projectSummaryLabel(projects[i]))
+			slot.Show()
+		} else {
+			slot.Hide()
+		}
+	}
+}
+
+// sortedProjectReports orders project reports by descending duration, breaking
+// ties by name so the menu is stable across refreshes.
+func sortedProjectReports(byProject map[string]models.ProjectReport) []models.ProjectReport {
+	reports := make([]models.ProjectReport, 0, len(byProject))
+	for _, r := range byProject {
+		reports = append(reports, r)
+	}
+	sort.Slice(reports, func(i, j int) bool {
+		if reports[i].Duration != reports[j].Duration {
+			return reports[i].Duration > reports[j].Duration
+		}
+		return reports[i].ProjectName < reports[j].ProjectName
+	})
+	return reports
+}
+
+// projectSummaryLabel formats one "Project — 1h 30m" breakdown row, falling back
+// to a placeholder when the activity has no project.
+func (c *trayController) projectSummaryLabel(r models.ProjectReport) string {
+	name := r.ProjectName
+	if name == "" {
+		name = c.loc.Text("tray.menu.no_project")
+	}
+	return fmt.Sprintf("%s — %s", name, menuDuration(r.Duration))
 }
 
 // refreshRecent repoints the fixed submenu slots at the latest recent
@@ -203,6 +294,17 @@ func compactDuration(d time.Duration) string {
 	minutes := int(d/time.Minute) % 60
 	if hours > 0 {
 		return fmt.Sprintf("%d:%02d", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
+}
+
+// menuDuration formats a duration for the dropdown: "2h 5m" with hours, "45m"
+// without. Coarser than the status-bar timer so the breakdown stays readable.
+func menuDuration(d time.Duration) string {
+	hours := int(d / time.Hour)
+	minutes := int(d/time.Minute) % 60
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
 }
