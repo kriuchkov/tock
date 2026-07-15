@@ -12,3 +12,14 @@ import (
 func runTray(cmd *cobra.Command) error {
 	return errors.New(text(cmd, "tray.unsupported"))
 }
+
+// ensureTrayRunning is a no-op on non-macOS platforms.
+func ensureTrayRunning(*cobra.Command) {}
+
+func installTrayAgent(cmd *cobra.Command) error {
+	return errors.New(text(cmd, "tray.unsupported"))
+}
+
+func uninstallTrayAgent(cmd *cobra.Command) error {
+	return errors.New(text(cmd, "tray.unsupported"))
+}

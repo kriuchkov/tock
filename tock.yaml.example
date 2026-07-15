@@ -83,6 +83,23 @@ working_hours:
   # Default: mon,tue,wed,thu,fri
   weekdays: "mon,tue,wed,thu,fri"
 
+# macOS menu bar (status bar) icon, started with `tock tray`. macOS only.
+# When enabled, the icon shows a live timer for the running activity and lets
+# you start the last activity or stop the current one.
+#
+# For an always-on icon, run `tock tray install` once: it registers a login
+# agent so `tock tray` runs at every login (remove with `tock tray uninstall`).
+tray:
+  # Enable or disable the menu bar icon
+  # Default: false
+  enabled: false
+
+  # Auto-start the icon in the background on `tock start`/`tock continue`; it
+  # closes itself when the activity is stopped. Redundant if you use the login
+  # agent (`tock tray install`). Requires enabled: true.
+  # Default: false
+  auto_start: false
+
 # Export settings
 export:
   ical:

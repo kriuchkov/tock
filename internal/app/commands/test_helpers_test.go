@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -11,7 +10,6 @@ import (
 	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/models"
-	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
@@ -27,6 +25,8 @@ type stubActivityResolver struct {
 	getReportFn func(context.Context, models.ActivityFilter) (*models.Report, error)
 	getRecentFn func(context.Context, int) ([]models.Activity, error)
 	getLastFn   func(context.Context) (*models.Activity, error)
+	addNoteFn   func(context.Context, models.Activity, string) (*models.Activity, error)
+	addTagsFn   func(context.Context, models.Activity, []string) (*models.Activity, error)
 	removeFn    func(context.Context, models.Activity) error
 }
 
@@ -79,6 +79,28 @@ func (s stubActivityResolver) GetLast(ctx context.Context) (*models.Activity, er
 	return s.getLastFn(ctx)
 }
 
+func (s stubActivityResolver) AddNote(
+	ctx context.Context,
+	activity models.Activity,
+	note string,
+) (*models.Activity, error) {
+	if s.addNoteFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+	return s.addNoteFn(ctx, activity, note)
+}
+
+func (s stubActivityResolver) AddTags(
+	ctx context.Context,
+	activity models.Activity,
+	tags []string,
+) (*models.Activity, error) {
+	if s.addTagsFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+	return s.addTagsFn(ctx, activity, tags)
+}
+
 func (s stubActivityResolver) Remove(ctx context.Context, activity models.Activity) error {
 	if s.removeFn == nil {
 		return nil
@@ -86,42 +108,12 @@ func (s stubActivityResolver) Remove(ctx context.Context, activity models.Activi
 	return s.removeFn(ctx, activity)
 }
 
-type stubNotesRepository struct {
-	saveFn func(context.Context, string, time.Time, string, []string) error
-	getFn  func(context.Context, string, time.Time) (string, []string, error)
-}
-
-func (s stubNotesRepository) Save(
-	ctx context.Context,
-	activityID string,
-	date time.Time,
-	notes string,
-	tags []string,
-) error {
-	if s.saveFn == nil {
-		return nil
-	}
-	return s.saveFn(ctx, activityID, date, notes, tags)
-}
-
-func (s stubNotesRepository) Get(ctx context.Context, activityID string, date time.Time) (string, []string, error) {
-	if s.getFn == nil {
-		return "", nil, nil
-	}
-	return s.getFn(ctx, activityID, date)
-}
-
 func newTestCLICommand(service *stubActivityResolver) *cobra.Command {
-	return newTestCLICommandWithNotes(service, nil)
-}
-
-func newTestCLICommandWithNotes(service *stubActivityResolver, notesRepo ports.NotesRepository) *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
 	cmd.SetContext(context.Background())
 
 	ctx := (&appruntime.Runtime{
 		ActivityService: service,
-		NotesRepository: notesRepo,
 		Config:          &config.Config{},
 		TimeFormatter:   timeutil.NewFormatter("24"),
 		Localizer:       localization.MustNew(localization.LanguageEnglish),

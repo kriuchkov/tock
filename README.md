@@ -485,6 +485,7 @@ Available Commands:
   report      Generate time tracking report
   start       Start a new activity
   stop        Stop the current activity
+  tray        Run the macOS menu bar icon (timer, start last, stop)
   version     Print the version info
   watch       Display a full-screen stopwatch for the current activity
 
@@ -781,6 +782,39 @@ tock analyze --days 7
 **Flags:**
 
 - `-n, --days`: Number of days to analyze (default 30)
+
+### Menu Bar Icon (macOS)
+
+Run a menu bar (status bar) icon that shows a live timer for the running activity, with menu actions to start the last activity, pick from the last 10 recent activities, or stop the current one. macOS only.
+
+Enable it in your config, then run it:
+
+```yaml
+# tock.yaml
+tray:
+  enabled: true
+```
+
+```bash
+tock tray            # run the icon (blocks; Ctrl-C or the Quit menu item to stop)
+```
+
+**Always-on (login agent):** register a launchd agent so the icon starts at every login and stays running:
+
+```bash
+tock tray install    # install & start the login agent
+tock tray uninstall  # stop & remove it
+```
+
+**Auto-start on tracking:** alternatively, have `tock start` / `tock continue` bring up the icon in the background; it closes itself once the activity is stopped (redundant if you use the login agent):
+
+```yaml
+tray:
+  enabled: true
+  auto_start: true
+```
+
+The running-activity timer is shown compactly (e.g. `5m`, `1:05`). Both settings can also be set via `TOCK_TRAY_ENABLED` and `TOCK_TRAY_AUTO_START`.
 
 ## Update Check
 
