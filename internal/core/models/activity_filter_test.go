@@ -42,3 +42,69 @@ func TestBuildActivityFilter(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid date format")
 	})
 }
+
+func TestBuildActivityFilterDateRange(t *testing.T) {
+	tests := []struct {
+		name      string
+		opts      models.ActivityFilterOptions
+		wantFrom  *time.Time
+		wantTo    *time.Time
+		wantError string
+	}{
+		{
+			name:     "builds inclusive range",
+			opts:     models.ActivityFilterOptions{From: "2026-04-01", To: "2026-04-15"},
+			wantFrom: datePointer(1),
+			wantTo:   datePointer(16),
+		},
+		{
+			name:     "builds open-ended range from date",
+			opts:     models.ActivityFilterOptions{From: "2026-04-01"},
+			wantFrom: datePointer(1),
+		},
+		{
+			name:   "builds open-ended range through date",
+			opts:   models.ActivityFilterOptions{To: "2026-04-15"},
+			wantTo: datePointer(16),
+		},
+		{
+			name:      "rejects conflicting date filters",
+			opts:      models.ActivityFilterOptions{Today: true, From: "2026-04-01"},
+			wantError: "cannot specify multiple date filters",
+		},
+		{
+			name:      "rejects invalid from date",
+			opts:      models.ActivityFilterOptions{From: "not-a-date"},
+			wantError: "invalid --from date format",
+		},
+		{
+			name:      "rejects invalid to date",
+			opts:      models.ActivityFilterOptions{To: "2026-13-01"},
+			wantError: "invalid --to date format",
+		},
+		{
+			name:      "rejects reversed range",
+			opts:      models.ActivityFilterOptions{From: "2026-04-16", To: "2026-04-15"},
+			wantError: "--from date must not be after --to date",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filter, err := models.BuildActivityFilter(tt.opts)
+			if tt.wantError != "" {
+				require.ErrorContains(t, err, tt.wantError)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantFrom, filter.FromDate)
+			assert.Equal(t, tt.wantTo, filter.ToDate)
+		})
+	}
+}
+
+func datePointer(day int) *time.Time {
+	date := time.Date(2026, time.April, day, 0, 0, 0, 0, time.Local)
+	return &date
+}

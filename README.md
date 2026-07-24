@@ -681,12 +681,15 @@ tock calendar
 
 ### Text Report
 
-Generate a simple text report for a specific day.
+Generate a simple text report for a day or date range.
 
 ```bash
 tock report --today
 tock report --yesterday
 tock report --date 2025-12-01
+tock report --from 2026-04-01 --to 2026-04-15  # Report an inclusive date range
+tock report --from 2026-04-01                  # Report from date onward
+tock report --to 2026-04-15                    # Report through date
 tock report -p "My Project" -d "Fixing bugs" # Filter by project and description
 tock report --summary        # Show project totals only
 tock report --json           # Output in JSON format
@@ -697,6 +700,8 @@ tock report --json           # Output in JSON format
 - `--today`: Report for today
 - `--yesterday`: Report for yesterday
 - `--date`: Report for specific date (YYYY-MM-DD)
+- `--from`: Start date for report range (YYYY-MM-DD)
+- `--to`: End date for report range, inclusive (YYYY-MM-DD)
 - `-p, --project`: Filter by project and aggregate by description
 - `-d, --description`: Filter by description (case-insensitive substring)
 - `-s, --summary`: Show only project summaries

@@ -356,7 +356,7 @@ tock last -n 20  # Show last 20 activities
 
 ### `report`
 
-Generate a text-based report of your time.
+Generate a text-based report of your time for a day or date range.
 
 **Usage:**
 
@@ -370,6 +370,9 @@ tock report [flags]
 tock report --today                               # Report for today
 tock report --yesterday                           # Report for yesterday
 tock report --date 2023-10-15                     # Report for a specific date
+tock report --from 2023-10-01 --to 2023-10-15    # Report an inclusive date range
+tock report --from 2023-10-01                     # Report from a date onward
+tock report --to 2023-10-15                       # Report through a date
 tock report -p "Work"                             # Filter by project "Work"
 tock report -d "meeting"                          # Filter by description containing "meeting"
 tock report --summary                             # Show summary statistics only
@@ -377,6 +380,21 @@ tock report -p "Work" --summary                   # Show summary for project "Wo
 tock report --today --json                        # JSON output for today
 tock report --date 2023-10-15 -p "Work" --json    # Filtered JSON output
 ```
+
+**Flags:**
+
+- `--today`: Report for today
+- `--yesterday`: Report for yesterday
+- `--date string`: Report for a specific date (`YYYY-MM-DD`)
+- `--from string`: Start date for a report range (`YYYY-MM-DD`)
+- `--to string`: Inclusive end date for a report range (`YYYY-MM-DD`)
+- `-p, --project string`: Filter by project and aggregate by description
+- `-d, --description string`: Filter by description
+- `-s, --summary`: Show only project summaries
+- `--total-only`: Show only total duration
+- `--json`: Output in JSON format
+
+The date selectors `--today`, `--yesterday`, `--date`, and `--from`/`--to` are mutually exclusive. Either range endpoint may be omitted.
 
 ---
 
@@ -421,6 +439,9 @@ tock export [flags]
 tock export --today                             # Export today's report as a text file
 tock export --yesterday --format csv           # Export yesterday's report as CSV
 tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
+tock export --from 2026-04-01 --to 2026-04-15  # Export an inclusive date range
+tock export --from 2026-04-01                  # Export from a date onward
+tock export --to 2026-04-15                    # Export through a date
 tock export -p "Work" -d "meeting" -m csv      # Export filtered activities as CSV
 tock export --today --stdout                   # Print the export to stdout instead of writing a file
 tock export --today -o ./exports               # Write the export file to a specific directory
@@ -431,6 +452,8 @@ tock export --today -o ./exports               # Write the export file to a spec
 - `--today`: Export data for today
 - `--yesterday`: Export data for yesterday
 - `--date string`: Export data for a specific date (`YYYY-MM-DD`)
+- `--from string`: Start date for an export range (`YYYY-MM-DD`)
+- `--to string`: Inclusive end date for an export range (`YYYY-MM-DD`)
 - `-p, --project string`: Filter by project
 - `-d, --description string`: Filter by description
 - `-m, --format string`: Export format: `txt`, `csv`, or `json` (default `txt`)
