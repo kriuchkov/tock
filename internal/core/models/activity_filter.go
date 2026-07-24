@@ -15,8 +15,6 @@ type ActivityFilterOptions struct {
 	Date        string
 	From        string
 	To          string
-	FromDate    *time.Time
-	ToDate      *time.Time
 	Project     string
 	Description string
 }
@@ -34,13 +32,6 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 	filter := ActivityFilter{}
 
 	switch {
-	case opts.FromDate != nil || opts.ToDate != nil:
-		if opts.FromDate != nil {
-			filter.FromDate = opts.FromDate
-		}
-		if opts.ToDate != nil {
-			filter.ToDate = opts.ToDate
-		}
 	case opts.From != "" || opts.To != "":
 		fromDate, toDate, err := buildDateRange(opts.From, opts.To)
 		if err != nil {
@@ -92,10 +83,6 @@ func validateDateFilters(opts ActivityFilterOptions) error {
 	if opts.From != "" || opts.To != "" {
 		dateFilters++
 	}
-	if opts.FromDate != nil || opts.ToDate != nil {
-		dateFilters++
-	}
-
 	if dateFilters > 1 {
 		return errors.New("cannot specify multiple date filters (--today, --yesterday, --date, --from/--to are mutually exclusive)")
 	}
