@@ -13,13 +13,17 @@ type ActivityFilterOptions struct {
 	Today       bool
 	Yesterday   bool
 	Date        string
-	FromDate    *time.Time
-	ToDate      *time.Time
+	From        string
+	To          string
 	Project     string
 	Description string
 }
 
 func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
+	if err := validateDateFilters(opts); err != nil {
+		return ActivityFilter{}, err
+	}
+
 	now := opts.Now
 	if now.IsZero() {
 		now = time.Now()
@@ -28,13 +32,13 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 	filter := ActivityFilter{}
 
 	switch {
-	case opts.FromDate != nil || opts.ToDate != nil:
-		if opts.FromDate != nil {
-			filter.FromDate = opts.FromDate
+	case opts.From != "" || opts.To != "":
+		fromDate, toDate, err := buildDateRange(opts.From, opts.To)
+		if err != nil {
+			return ActivityFilter{}, err
 		}
-		if opts.ToDate != nil {
-			filter.ToDate = opts.ToDate
-		}
+		filter.FromDate = fromDate
+		filter.ToDate = toDate
 	case opts.Today:
 		start, end := timeutil.LocalDayBounds(now)
 		filter.FromDate = &start
@@ -63,4 +67,52 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 	}
 
 	return filter, nil
+}
+
+func validateDateFilters(opts ActivityFilterOptions) error {
+	dateFilters := 0
+	if opts.Today {
+		dateFilters++
+	}
+	if opts.Yesterday {
+		dateFilters++
+	}
+	if opts.Date != "" {
+		dateFilters++
+	}
+	if opts.From != "" || opts.To != "" {
+		dateFilters++
+	}
+	if dateFilters > 1 {
+		return errors.New("cannot specify multiple date filters (--today, --yesterday, --date, --from/--to are mutually exclusive)")
+	}
+
+	return nil
+}
+
+func buildDateRange(from, to string) (*time.Time, *time.Time, error) {
+	var fromDate, toDate *time.Time
+
+	if from != "" {
+		parsed, err := time.ParseInLocation("2006-01-02", from, time.Local)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "invalid --from date format, use YYYY-MM-DD")
+		}
+		fromDate = &parsed
+	}
+
+	if to != "" {
+		parsed, err := time.ParseInLocation("2006-01-02", to, time.Local)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "invalid --to date format, use YYYY-MM-DD")
+		}
+		_, end := timeutil.LocalDayBounds(parsed)
+		toDate = &end
+	}
+
+	if fromDate != nil && toDate != nil && !fromDate.Before(*toDate) {
+		return nil, nil, errors.New("--from date must not be after --to date")
+	}
+
+	return fromDate, toDate, nil
 }

@@ -80,7 +80,7 @@ func TestRuntimeDefaultExportDirUsesTimewarriorErrorForEmptyPath(t *testing.T) {
 	require.EqualError(t, err, "timewarrior data path is empty")
 }
 
-func TestValidateExportFlags(t *testing.T) {
+func TestRunExportCmdRejectsInvalidDateFilters(t *testing.T) {
 	tests := []struct {
 		name    string
 		opt     exportOptions
@@ -102,26 +102,16 @@ func TestValidateExportFlags(t *testing.T) {
 			wantErr: "invalid --to date format",
 		},
 		{
-			name: "from only is valid",
-			opt:  exportOptions{From: "2026-04-01"},
-		},
-		{
-			name: "to only is valid",
-			opt:  exportOptions{To: "2026-04-15"},
-		},
-		{
-			name: "from and to together are valid",
-			opt:  exportOptions{From: "2026-04-01", To: "2026-04-15"},
+			name:    "from date is after to date",
+			opt:     exportOptions{From: "2026-04-16", To: "2026-04-15"},
+			wantErr: "--from date must not be after --to date",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateExportFlags(&tt.opt)
-			if tt.wantErr != "" {
-				require.ErrorContains(t, err, tt.wantErr)
-			} else {
-				require.NoError(t, err)
-			}
+			cmd := newTestCLICommand(&stubActivityResolver{})
+			err := runExportCmd(cmd, &tt.opt)
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }

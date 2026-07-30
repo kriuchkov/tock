@@ -66,3 +66,28 @@ func TestRunReportCmdJSONUsesCommandWriter(t *testing.T) {
 	assert.Contains(t, out.String(), "\"project\": \"tock\"")
 	assert.Contains(t, out.String(), "\"description\": \"refactor\"")
 }
+
+func TestRunReportCmdBuildsInclusiveDateRange(t *testing.T) {
+	service := &stubActivityResolver{
+		getReportFn: func(_ context.Context, filter models.ActivityFilter) (*models.Report, error) {
+			require.NotNil(t, filter.FromDate)
+			require.NotNil(t, filter.ToDate)
+			assert.Equal(t, time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local), *filter.FromDate)
+			assert.Equal(t, time.Date(2026, time.April, 16, 0, 0, 0, 0, time.Local), *filter.ToDate)
+
+			return &models.Report{TotalDuration: 8 * time.Hour}, nil
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	err := runReportCmd(cmd, &reportOptions{
+		From:      "2026-04-01",
+		To:        "2026-04-15",
+		TotalOnly: true,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "8h 0m\n", out.String())
+}

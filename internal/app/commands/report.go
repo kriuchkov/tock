@@ -20,6 +20,8 @@ type reportOptions struct {
 	Today       bool
 	Yesterday   bool
 	Date        string
+	From        string
+	To          string
 	Summary     bool
 	Project     string
 	Description string
@@ -46,6 +48,8 @@ func NewReportCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&opt.Today, "today", false, defaultText("report.flag.today"))
 	cmd.Flags().BoolVar(&opt.Yesterday, "yesterday", false, defaultText("report.flag.yesterday"))
 	cmd.Flags().StringVar(&opt.Date, "date", "", defaultText("report.flag.date"))
+	cmd.Flags().StringVar(&opt.From, "from", "", defaultText("report.flag.from"))
+	cmd.Flags().StringVar(&opt.To, "to", "", defaultText("report.flag.to"))
 	cmd.Flags().BoolVarP(&opt.Summary, "summary", "s", false, defaultText("report.flag.summary"))
 	cmd.Flags().StringVarP(&opt.Project, "project", "p", "", defaultText("report.flag.project"))
 	cmd.Flags().StringVarP(&opt.Description, "description", "d", "", defaultText("report.flag.description"))
@@ -67,6 +71,8 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 		Today:       opt.Today,
 		Yesterday:   opt.Yesterday,
 		Date:        opt.Date,
+		From:        opt.From,
+		To:          opt.To,
 		Project:     opt.Project,
 		Description: opt.Description,
 	})
