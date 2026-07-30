@@ -82,9 +82,10 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
     platform-split: shared wiring in `tray.go`, real impl in `tray_darwin.go`/`tray_lifecycle_darwin.go`/
     `tray_icon_darwin.go`/`tray_launchd_darwin.go` (all `//go:build darwin`, using `fyne.io/systray`), and stubs in
     `tray_other.go` — so non-darwin builds never compile systray. It runs a live timer + start/stop
-    menu; `tock start`/`continue` auto-spawn it in the background when `tray.auto_start` is set
-    (single-instance via a `flock` on `~/.tock/tray.lock`), and `tock tray install`/`uninstall` manage
-    a launchd LaunchAgent for an always-on icon. The menu bar template icon is generated at runtime
+    menu; `tock start`/`continue` bring it up when `tray.auto_start` is set — kickstarting the
+    installed launchd agent when there is one (so the icon is permanent), else spawning a detached
+    `tock tray --until-idle` (single-instance via a `flock` on `~/.tock/tray.lock`) — and
+    `tock tray install`/`uninstall` manage the launchd LaunchAgent for an always-on icon. The menu bar template icon is generated at runtime
     (no image assets) from the Tock logo mark.
   - `insights/`, `watching/`, `export/` (text/CSV/JSON + iCal), `localization/` (i18n), `updatecheck/`.
 

@@ -23,6 +23,7 @@ const (
 
 	trayBootoutPolls    = 20
 	trayBootoutInterval = 100 * time.Millisecond
+	trayKickstartPolls  = 5
 )
 
 // trayPlistPath is the per-user LaunchAgent path for the menu bar icon.
@@ -151,6 +152,27 @@ func trayBinaryLooksUnstable(exe string) bool {
 	dir := filepath.Dir(exe)
 	for _, marker := range []string{"go.mod", ".git"} {
 		if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func trayAgentInstalled() bool {
+	_, err := os.Stat(trayPlistPath())
+	return err == nil
+}
+
+// kickstartTrayAgent (re)starts the installed agent and reports whether a tray
+// actually came up and took the lock (kickstart succeeds even if the process
+// dies at once, hence the poll).
+func kickstartTrayAgent(cmd *cobra.Command) bool {
+	if runLaunchctl(cmd, "kickstart", trayServiceTarget()) != nil {
+		return false
+	}
+	for range trayKickstartPolls {
+		time.Sleep(trayBootoutInterval)
+		if trayAlreadyRunning() {
 			return true
 		}
 	}

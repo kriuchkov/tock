@@ -36,7 +36,7 @@ func acquireTrayLock() (*os.File, bool) {
 	if err != nil {
 		return nil, false
 	}
-	fd := int(f.Fd()) //nolint:gosec // a file descriptor from *os.File always fits in int
+	fd := int(f.Fd())
 	if flockErr := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB); flockErr != nil {
 		_ = f.Close()
 		return nil, false
@@ -54,12 +54,17 @@ func trayAlreadyRunning() bool {
 	return false
 }
 
-// ensureTrayRunning spawns a detached menu bar icon when tray.enabled and
-// tray.auto_start are set and no tray is already running. The spawned process
-// runs `tock tray --until-idle`, so it closes itself once the activity stops.
+// ensureTrayRunning brings up a menu bar icon when tray.enabled and
+// tray.auto_start are set and none is running: it kickstarts the installed
+// launchd agent (a permanent icon that survives stops), else spawns a detached
+// `tock tray --until-idle` that closes when the activity stops.
 func ensureTrayRunning(cmd *cobra.Command) {
 	rt := getRuntime(cmd)
 	if !rt.Config.Tray.Enabled || !rt.Config.Tray.AutoStart || trayAlreadyRunning() {
+		return
+	}
+
+	if trayAgentInstalled() && kickstartTrayAgent(cmd) {
 		return
 	}
 
