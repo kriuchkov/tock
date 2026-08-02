@@ -41,6 +41,11 @@ func (r *NotesRepository) Save(ctx context.Context, _ string, date time.Time, no
 	return nil
 }
 
+// Delete is a no-op: notes and tags live on the activity row and are removed with it.
+func (r *NotesRepository) Delete(_ context.Context, _ string, _ time.Time) error {
+	return nil
+}
+
 func (r *NotesRepository) Get(ctx context.Context, _ string, date time.Time) (string, []string, error) {
 	query := `SELECT notes, tags FROM activities WHERE start_time = ? LIMIT 1;`
 	row := r.DB.QueryRowContext(ctx, query, date.UTC())

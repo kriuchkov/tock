@@ -412,19 +412,22 @@ func TestService_GetReport_WithoutDateRangeKeepsFullDuration(t *testing.T) {
 }
 
 func TestService_Remove(t *testing.T) {
+	start := time.Date(2026, 3, 16, 9, 0, 0, 0, time.Local)
+
 	tests := []struct {
 		name      string
 		activity  models.Activity
-		setup     func(repo *portsmocks.MockActivityRepository)
+		setup     func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository)
 		assertErr func(t *testing.T, err error)
 	}{
 		{
-			name:     "success",
-			activity: models.Activity{Project: "A", Description: "Task A"},
-			setup: func(repo *portsmocks.MockActivityRepository) {
+			name:     "success removes stored notes and tags",
+			activity: models.Activity{Project: "A", Description: "Task A", StartTime: start},
+			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
 				repo.EXPECT().Remove(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
 					return a.Project == "A"
 				})).Return(nil)
+				notesRepo.EXPECT().Delete(mock.Anything, start.Format("150405"), start).Return(nil)
 			},
 			assertErr: func(t *testing.T, err error) {
 				require.NoError(t, err)
@@ -433,8 +436,19 @@ func TestService_Remove(t *testing.T) {
 		{
 			name:     "failure",
 			activity: models.Activity{Project: "NonExistent"},
-			setup: func(repo *portsmocks.MockActivityRepository) {
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
 				repo.EXPECT().Remove(mock.Anything, mock.Anything).Return(errors.New("not found"))
+			},
+			assertErr: func(t *testing.T, err error) {
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:     "notes delete failure",
+			activity: models.Activity{Project: "A", StartTime: start},
+			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
+				repo.EXPECT().Remove(mock.Anything, mock.Anything).Return(nil)
+				notesRepo.EXPECT().Delete(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("io error"))
 			},
 			assertErr: func(t *testing.T, err error) {
 				assert.Error(t, err)
@@ -445,15 +459,24 @@ func TestService_Remove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := portsmocks.NewMockActivityRepository(t)
-			tt.setup(repo)
+			notesRepo := portsmocks.NewMockNotesRepository(t)
+			tt.setup(repo, notesRepo)
 
-			svc := activity.NewService(repo, nil)
+			svc := activity.NewService(repo, notesRepo)
 			err := svc.Remove(context.Background(), tt.activity)
 			if tt.assertErr != nil {
 				tt.assertErr(t, err)
 			}
 		})
 	}
+}
+
+func TestService_Remove_NilNotesRepo(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Remove(mock.Anything, mock.Anything).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+	require.NoError(t, svc.Remove(context.Background(), models.Activity{Project: "A"}))
 }
 
 func TestService_List_PreservesExistingTagsWhenNotesRepoHasNoData(t *testing.T) {
