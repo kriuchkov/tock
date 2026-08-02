@@ -30,4 +30,5 @@ type ActivityRepository interface {
 type NotesRepository interface {
 	Save(ctx context.Context, activityID string, date time.Time, notes string, tags []string) error
 	Get(ctx context.Context, activityID string, date time.Time) (string, []string, error)
+	Delete(ctx context.Context, activityID string, date time.Time) error
 }

@@ -295,7 +295,16 @@ func (s *service) AddTags(ctx context.Context, activity models.Activity, tags []
 }
 
 func (s *service) Remove(ctx context.Context, activity models.Activity) error {
-	return s.repo.Remove(ctx, activity)
+	if err := s.repo.Remove(ctx, activity); err != nil {
+		return err
+	}
+
+	if s.notesRepo != nil {
+		if err := s.notesRepo.Delete(ctx, activity.ID(), activity.StartTime); err != nil {
+			return errors.Wrap(err, "delete notes")
+		}
+	}
+	return nil
 }
 
 // loadStoredNotes returns the authoritative notes/tags for an activity,

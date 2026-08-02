@@ -170,8 +170,8 @@ func (_c *MockActivityResolver_AddNote_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockActivityResolver_AddNote_Call) Return(activity *models.Activity, err error) *MockActivityResolver_AddNote_Call {
-	_c.Call.Return(activity, err)
+func (_c *MockActivityResolver_AddNote_Call) Return(activity1 *models.Activity, err error) *MockActivityResolver_AddNote_Call {
+	_c.Call.Return(activity1, err)
 	return _c
 }
 
@@ -244,12 +244,74 @@ func (_c *MockActivityResolver_AddTags_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockActivityResolver_AddTags_Call) Return(activity *models.Activity, err error) *MockActivityResolver_AddTags_Call {
-	_c.Call.Return(activity, err)
+func (_c *MockActivityResolver_AddTags_Call) Return(activity1 *models.Activity, err error) *MockActivityResolver_AddTags_Call {
+	_c.Call.Return(activity1, err)
 	return _c
 }
 
 func (_c *MockActivityResolver_AddTags_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error)) *MockActivityResolver_AddTags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetLast provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) GetLast(ctx context.Context) (*models.Activity, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLast")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (*models.Activity, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) *models.Activity); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_GetLast_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLast'
+type MockActivityResolver_GetLast_Call struct {
+	*mock.Call
+}
+
+// GetLast is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockActivityResolver_Expecter) GetLast(ctx interface{}) *MockActivityResolver_GetLast_Call {
+	return &MockActivityResolver_GetLast_Call{Call: _e.mock.On("GetLast", ctx)}
+}
+
+func (_c *MockActivityResolver_GetLast_Call) Run(run func(ctx context.Context)) *MockActivityResolver_GetLast_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_GetLast_Call) Return(activity *models.Activity, err error) *MockActivityResolver_GetLast_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_GetLast_Call) RunAndReturn(run func(ctx context.Context) (*models.Activity, error)) *MockActivityResolver_GetLast_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -454,6 +516,63 @@ func (_c *MockActivityResolver_List_Call) Return(activitys []models.Activity, er
 }
 
 func (_c *MockActivityResolver_List_Call) RunAndReturn(run func(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error)) *MockActivityResolver_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Remove provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) Remove(ctx context.Context, activity models.Activity) error {
+	ret := _mock.Called(ctx, activity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Remove")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity) error); ok {
+		r0 = returnFunc(ctx, activity)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockActivityResolver_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type MockActivityResolver_Remove_Call struct {
+	*mock.Call
+}
+
+// Remove is a helper method to define mock.On call
+//   - ctx context.Context
+//   - activity models.Activity
+func (_e *MockActivityResolver_Expecter) Remove(ctx interface{}, activity interface{}) *MockActivityResolver_Remove_Call {
+	return &MockActivityResolver_Remove_Call{Call: _e.mock.On("Remove", ctx, activity)}
+}
+
+func (_c *MockActivityResolver_Remove_Call) Run(run func(ctx context.Context, activity models.Activity)) *MockActivityResolver_Remove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.Activity
+		if args[1] != nil {
+			arg1 = args[1].(models.Activity)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_Remove_Call) Return(err error) *MockActivityResolver_Remove_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockActivityResolver_Remove_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity) error) *MockActivityResolver_Remove_Call {
 	_c.Call.Return(run)
 	return _c
 }

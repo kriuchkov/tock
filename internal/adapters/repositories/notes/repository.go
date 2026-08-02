@@ -33,15 +33,15 @@ type noteData struct {
 	Tags []string `yaml:"tags,omitempty"`
 }
 
-func (r *repository) Save(_ context.Context, activityID string, date time.Time, notes string, tags []string) error {
-	dateDir := date.Format("2006-01-02")
+func (r *repository) notePath(activityID string, date time.Time) string {
+	return filepath.Join(r.basePath, date.Format("2006-01-02"), activityID+fileExtension)
+}
 
-	dirPath := filepath.Join(r.basePath, dateDir)
-	if err := os.MkdirAll(dirPath, directoryMode); err != nil {
+func (r *repository) Save(_ context.Context, activityID string, date time.Time, notes string, tags []string) error {
+	filePath := r.notePath(activityID, date)
+	if err := os.MkdirAll(filepath.Dir(filePath), directoryMode); err != nil {
 		return errors.Wrap(err, "mkdir all")
 	}
-
-	filePath := filepath.Join(dirPath, fmt.Sprintf("%s%s", activityID, fileExtension))
 
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fileMode)
 	if err != nil {
@@ -70,11 +70,15 @@ func (r *repository) Save(_ context.Context, activityID string, date time.Time, 
 	return nil
 }
 
-func (r *repository) Get(_ context.Context, activityID string, date time.Time) (string, []string, error) {
-	dateDir := date.Format("2006-01-02")
-	filePath := filepath.Join(r.basePath, dateDir, fmt.Sprintf("%s%s", activityID, fileExtension))
+func (r *repository) Delete(_ context.Context, activityID string, date time.Time) error {
+	if err := os.Remove(r.notePath(activityID, date)); err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "remove file")
+	}
+	return nil
+}
 
-	f, err := os.Open(filePath)
+func (r *repository) Get(_ context.Context, activityID string, date time.Time) (string, []string, error) {
+	f, err := os.Open(r.notePath(activityID, date))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil, nil

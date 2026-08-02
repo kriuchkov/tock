@@ -70,6 +70,38 @@ func TestRepository_Save_NoTags(t *testing.T) {
 	assert.Empty(t, retrievedTags)
 }
 
+func TestRepository_Delete(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := notes.NewRepository(tmpDir)
+	ctx := context.Background()
+
+	now := time.Now()
+	activityID := "090000"
+
+	err := repo.Save(ctx, activityID, now, "note", []string{"test"})
+	require.NoError(t, err)
+
+	err = repo.Delete(ctx, activityID, now)
+	require.NoError(t, err)
+
+	dateDir := now.Format("2006-01-02")
+	assert.NoFileExists(t, filepath.Join(tmpDir, dateDir, activityID+".txt"))
+
+	retrievedNotes, retrievedTags, err := repo.Get(ctx, activityID, now)
+	require.NoError(t, err)
+	assert.Empty(t, retrievedNotes)
+	assert.Nil(t, retrievedTags)
+}
+
+func TestRepository_Delete_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo := notes.NewRepository(tmpDir)
+	ctx := context.Background()
+
+	err := repo.Delete(ctx, "nonexistent", time.Now())
+	require.NoError(t, err)
+}
+
 func TestRepository_Save_Update(t *testing.T) {
 	tmpDir := t.TempDir()
 	repo := notes.NewRepository(tmpDir)

@@ -124,4 +124,41 @@ func TestFileBackendJSONCommands(t *testing.T) {
 	require.NoError(t, err, stderr)
 	exported = decodeActivities(t, stdout)
 	assert.Empty(t, exported)
+
+	// Regression for issue #99: tags must not survive removal when a new
+	// activity is created with the same start time.
+	stdout, stderr, err = runTock(
+		"add",
+		"-p", "Tagged Project",
+		"-d", "First",
+		"-s", "2020-02-01 09:00",
+		"-e", "2020-02-01 10:00",
+		"--tag", "test",
+		"--json",
+	)
+	require.NoError(t, err, stderr)
+	tagged := decodeActivity(t, stdout)
+	assert.Equal(t, []string{"test"}, tagged.Tags)
+
+	stdout, stderr, err = runTock("remove", "2020-02-01-01", "--yes", "--json")
+	require.NoError(t, err, stderr)
+	decodeActivity(t, stdout)
+
+	stdout, stderr, err = runTock(
+		"add",
+		"-p", "Tagged Project",
+		"-d", "Second",
+		"-s", "2020-02-01 09:00",
+		"-e", "2020-02-01 09:15",
+		"--json",
+	)
+	require.NoError(t, err, stderr)
+	decodeActivity(t, stdout)
+
+	stdout, stderr, err = runTock("export", "--date", "2020-02-01", "--format", "json", "--stdout")
+	require.NoError(t, err, stderr)
+	exported = decodeActivities(t, stdout)
+	require.Len(t, exported, 1)
+	assert.Equal(t, "Second", exported[0].Description)
+	assert.Empty(t, exported[0].Tags)
 }
