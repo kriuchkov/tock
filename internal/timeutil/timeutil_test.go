@@ -325,6 +325,92 @@ func TestParseTimeWithDate_12HourMode(t *testing.T) {
 	}
 }
 
+func TestLocalWeekBounds(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     time.Time
+		wantStart time.Time
+		wantEnd   time.Time
+	}{
+		{
+			"mid-week Sunday",
+			time.Date(2026, time.March, 15, 14, 30, 0, 0, time.Local),
+			time.Date(2026, time.March, 9, 0, 0, 0, 0, time.Local),
+			time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local),
+		},
+		{
+			"on Monday itself",
+			time.Date(2026, time.March, 9, 9, 0, 0, 0, time.Local),
+			time.Date(2026, time.March, 9, 0, 0, 0, 0, time.Local),
+			time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end := LocalWeekBounds(tt.input)
+			if !start.Equal(tt.wantStart) {
+				t.Errorf("LocalWeekBounds(%v) start = %v, want %v", tt.input, start, tt.wantStart)
+			}
+			if !end.Equal(tt.wantEnd) {
+				t.Errorf("LocalWeekBounds(%v) end = %v, want %v", tt.input, end, tt.wantEnd)
+			}
+		})
+	}
+}
+
+func TestLocalMonthBounds(t *testing.T) {
+	start, end := LocalMonthBounds(time.Date(2026, time.March, 15, 14, 30, 0, 0, time.Local))
+	wantStart := time.Date(2026, time.March, 1, 0, 0, 0, 0, time.Local)
+	wantEnd := time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local)
+	if !start.Equal(wantStart) || !end.Equal(wantEnd) {
+		t.Errorf("LocalMonthBounds() = (%v, %v), want (%v, %v)", start, end, wantStart, wantEnd)
+	}
+}
+
+func TestLocalQuarterBounds(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     time.Time
+		wantStart time.Time
+		wantEnd   time.Time
+	}{
+		{
+			"Q1",
+			time.Date(2026, time.March, 15, 0, 0, 0, 0, time.Local),
+			time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local),
+			time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local),
+		},
+		{
+			"Q4",
+			time.Date(2026, time.November, 1, 0, 0, 0, 0, time.Local),
+			time.Date(2026, time.October, 1, 0, 0, 0, 0, time.Local),
+			time.Date(2027, time.January, 1, 0, 0, 0, 0, time.Local),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end := LocalQuarterBounds(tt.input)
+			if !start.Equal(tt.wantStart) {
+				t.Errorf("LocalQuarterBounds(%v) start = %v, want %v", tt.input, start, tt.wantStart)
+			}
+			if !end.Equal(tt.wantEnd) {
+				t.Errorf("LocalQuarterBounds(%v) end = %v, want %v", tt.input, end, tt.wantEnd)
+			}
+		})
+	}
+}
+
+func TestLocalYearBounds(t *testing.T) {
+	start, end := LocalYearBounds(time.Date(2026, time.March, 15, 14, 30, 0, 0, time.Local))
+	wantStart := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local)
+	wantEnd := time.Date(2027, time.January, 1, 0, 0, 0, 0, time.Local)
+	if !start.Equal(wantStart) || !end.Equal(wantEnd) {
+		t.Errorf("LocalYearBounds() = (%v, %v), want (%v, %v)", start, end, wantStart, wantEnd)
+	}
+}
+
 func TestFormatDuration(t *testing.T) {
 	tests := []struct {
 		name   string

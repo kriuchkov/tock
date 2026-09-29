@@ -19,6 +19,10 @@ import (
 type reportOptions struct {
 	Today       bool
 	Yesterday   bool
+	Week        bool
+	Month       bool
+	Quarter     bool
+	Year        bool
 	Date        string
 	From        string
 	To          string
@@ -47,6 +51,10 @@ func NewReportCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&opt.Today, "today", false, defaultText("report.flag.today"))
 	cmd.Flags().BoolVar(&opt.Yesterday, "yesterday", false, defaultText("report.flag.yesterday"))
+	cmd.Flags().BoolVar(&opt.Week, "week", false, defaultText("report.flag.week"))
+	cmd.Flags().BoolVar(&opt.Month, "month", false, defaultText("report.flag.month"))
+	cmd.Flags().BoolVar(&opt.Quarter, "quarter", false, defaultText("report.flag.quarter"))
+	cmd.Flags().BoolVar(&opt.Year, "year", false, defaultText("report.flag.year"))
 	cmd.Flags().StringVar(&opt.Date, "date", "", defaultText("report.flag.date"))
 	cmd.Flags().StringVar(&opt.From, "from", "", defaultText("report.flag.from"))
 	cmd.Flags().StringVar(&opt.To, "to", "", defaultText("report.flag.to"))
@@ -70,6 +78,10 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 		Now:         time.Now(),
 		Today:       opt.Today,
 		Yesterday:   opt.Yesterday,
+		Week:        opt.Week,
+		Month:       opt.Month,
+		Quarter:     opt.Quarter,
+		Year:        opt.Year,
 		Date:        opt.Date,
 		From:        opt.From,
 		To:          opt.To,

@@ -12,6 +12,10 @@ type ActivityFilterOptions struct {
 	Now         time.Time
 	Today       bool
 	Yesterday   bool
+	Week        bool
+	Month       bool
+	Quarter     bool
+	Year        bool
 	Date        string
 	From        string
 	To          string
@@ -57,6 +61,22 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 		start, end := timeutil.LocalDayBounds(parsedDate)
 		filter.FromDate = &start
 		filter.ToDate = &end
+	case opts.Week:
+		start, end := timeutil.LocalWeekBounds(now)
+		filter.FromDate = &start
+		filter.ToDate = &end
+	case opts.Month:
+		start, end := timeutil.LocalMonthBounds(now)
+		filter.FromDate = &start
+		filter.ToDate = &end
+	case opts.Quarter:
+		start, end := timeutil.LocalQuarterBounds(now)
+		filter.FromDate = &start
+		filter.ToDate = &end
+	case opts.Year:
+		start, end := timeutil.LocalYearBounds(now)
+		filter.FromDate = &start
+		filter.ToDate = &end
 	}
 
 	if opts.Project != "" {
@@ -77,6 +97,18 @@ func validateDateFilters(opts ActivityFilterOptions) error {
 	if opts.Yesterday {
 		dateFilters++
 	}
+	if opts.Week {
+		dateFilters++
+	}
+	if opts.Month {
+		dateFilters++
+	}
+	if opts.Quarter {
+		dateFilters++
+	}
+	if opts.Year {
+		dateFilters++
+	}
 	if opts.Date != "" {
 		dateFilters++
 	}
@@ -84,7 +116,10 @@ func validateDateFilters(opts ActivityFilterOptions) error {
 		dateFilters++
 	}
 	if dateFilters > 1 {
-		return errors.New("cannot specify multiple date filters (--today, --yesterday, --date, --from/--to are mutually exclusive)")
+		return errors.New(
+			"cannot specify multiple date filters (--today, --yesterday, --week, --month, --quarter, --year, " +
+				"--date, --from/--to are mutually exclusive)",
+		)
 	}
 
 	return nil

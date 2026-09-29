@@ -192,3 +192,40 @@ func LocalDayBounds(t time.Time) (time.Time, time.Time) {
 	start := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
 	return start, start.AddDate(0, 0, 1)
 }
+
+// LocalWeekBounds returns the start of the week (Monday) and the start of the following week
+// in local time.
+func LocalWeekBounds(t time.Time) (time.Time, time.Time) {
+	dayStart, _ := LocalDayBounds(t)
+	weekday := int(dayStart.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	start := dayStart.AddDate(0, 0, -(weekday - 1))
+	return start, start.AddDate(0, 0, 7)
+}
+
+// LocalMonthBounds returns the start of the month and the start of the following month
+// in local time.
+func LocalMonthBounds(t time.Time) (time.Time, time.Time) {
+	local := t.In(time.Local)
+	start := time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, local.Location())
+	return start, start.AddDate(0, 1, 0)
+}
+
+// LocalQuarterBounds returns the start of the calendar quarter and the start of the following
+// quarter in local time.
+func LocalQuarterBounds(t time.Time) (time.Time, time.Time) {
+	local := t.In(time.Local)
+	quarterStartMonth := time.Month((int(local.Month())-1)/3*3 + 1)
+	start := time.Date(local.Year(), quarterStartMonth, 1, 0, 0, 0, 0, local.Location())
+	return start, start.AddDate(0, 3, 0)
+}
+
+// LocalYearBounds returns the start of the year and the start of the following year
+// in local time.
+func LocalYearBounds(t time.Time) (time.Time, time.Time) {
+	local := t.In(time.Local)
+	start := time.Date(local.Year(), time.January, 1, 0, 0, 0, 0, local.Location())
+	return start, start.AddDate(1, 0, 0)
+}
