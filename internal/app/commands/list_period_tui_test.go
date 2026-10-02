@@ -152,6 +152,57 @@ func TestListPeriodModelReloadFetchesPeriodWindow(t *testing.T) {
 	assert.Equal(t, time.Date(2026, time.August, 1, 0, 0, 0, 0, time.Local), *gotFilter.ToDate)
 }
 
+func TestListPeriodModelReloadResetsCursor(t *testing.T) {
+	day := time.Date(2026, time.July, 6, 9, 0, 0, 0, time.Local)
+	dayEnd := day.Add(time.Hour)
+	day2 := day.AddDate(0, 0, 1)
+	day2End := day2.Add(time.Hour)
+
+	var activities []models.Activity
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{Activities: activities}, nil
+		},
+	}
+	model := newTestPeriodModel(service, periodMonthly)
+	model.anchor = time.Date(2026, time.July, 15, 0, 0, 0, 0, time.Local)
+
+	// Empty period: nothing to select.
+	model.reload()
+	assert.Equal(t, -1, model.table.Cursor())
+
+	// Rows appear: the first row must be highlighted without pressing down.
+	activities = []models.Activity{
+		{Project: "core", StartTime: day, EndTime: &dayEnd},
+		{Project: "core", StartTime: day2, EndTime: &day2End},
+	}
+	model.reload()
+	assert.Equal(t, 0, model.table.Cursor())
+
+	// Moving within a period and switching to another one starts at the top again.
+	model.table.MoveDown(1)
+	require.Equal(t, 1, model.table.Cursor())
+	model.reload()
+	assert.Equal(t, 0, model.table.Cursor())
+}
+
+func TestListPeriodModelWindowSizeResizesTable(t *testing.T) {
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{}, nil
+		},
+	}
+	model := newTestPeriodModel(service, periodMonthly)
+
+	model.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	// 30 terminal lines minus the chrome around the table (header, blanks, total, help) minus the
+	// table's own header rows gives the visible data rows.
+	assert.Equal(t, 30-periodViewChromeLines-2, model.table.Height())
+
+	model.Update(tea.WindowSizeMsg{Width: 100, Height: 5})
+	assert.Equal(t, minPeriodTableHeight-2, model.table.Height())
+}
+
 func TestListPeriodModelBuildsBucketsAndRows(t *testing.T) {
 	day1 := time.Date(2026, time.July, 6, 9, 0, 0, 0, time.Local)
 	day1CoreEnd := day1.Add(3 * time.Hour)

@@ -290,24 +290,42 @@ This is the full TUI experience for Tock. Depending on your terminal size, it di
 
 ### `list` (alias: `ls`)
 
-View a simple list of activities for a specific day.
+View activities for a single day, or an aggregated summary for a week, month, or year.
 
 **Usage:**
 
 ```bash
-tock list
+tock list            # daily view (default)
+tock list daily
+tock list weekly
+tock list monthly
+tock list yearly
 ```
 
 **Description:**
-This command opens an interactive table view focusing on the activities of a single day.
-It is useful when you want to see a clean, detailed list of tasks without the calendar grid.
-Activities with notes or tags will display indicators next to the description.
+The optional `[period]` argument selects the view:
 
-**Controls:**
+- `daily` (default): an interactive table focusing on the activities of a single day. It is useful when you
+  want to see a clean, detailed list of tasks without the calendar grid. Activities with notes or tags will
+  display indicators next to the description.
+- `weekly` / `monthly`: one block per day with the time spent per project and a subtotal for days with more
+  than one project, followed by the total for the whole period.
+- `yearly`: the same breakdown with one block per month.
+
+An unknown period (anything other than `daily`, `weekly`, `monthly`, `yearly`) exits with an error.
+
+**Controls (daily view):**
 
 - `Left` / `h`: Previous day
 - `Right` / `l`: Next day
 - `q` / `Ctrl+C`: Quit
+
+**Controls (weekly / monthly / yearly views):**
+
+- `Left` / `h`: Previous week, month, or year
+- `Right` / `l`: Next week, month, or year
+- `Up` / `k`, `Down` / `j`: Scroll through the table
+- `q` / `Esc` / `Ctrl+C`: Quit
 
 ---
 

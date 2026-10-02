@@ -37,6 +37,19 @@ const (
 	periodArgYearly  = "yearly"
 )
 
+// Vertical layout of the period view, used to size the table from the terminal height.
+const (
+	// defaultPeriodTableHeight is used until the first tea.WindowSizeMsg arrives.
+	defaultPeriodTableHeight = 15
+	// minPeriodTableHeight keeps the table header, its border and at least one row visible.
+	minPeriodTableHeight = 3
+	// periodViewChromeLines counts the lines View renders around the table:
+	// title, blank, blank, total line, and the two-line help text.
+	periodViewChromeLines = 6
+	// periodViewHorizontalPadding is the width reserved around the table.
+	periodViewHorizontalPadding = 4
+)
+
 // parseListPeriod maps the optional CLI argument to a period; an empty argument defaults to daily.
 func parseListPeriod(arg string) (listPeriod, bool) {
 	switch strings.ToLower(strings.TrimSpace(arg)) {
@@ -125,9 +138,18 @@ func (m *listPeriodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.table.SetWidth(msg.Width - 4)
+		m.table.SetWidth(msg.Width - periodViewHorizontalPadding)
+		m.table.SetHeight(m.tableHeight())
 	}
 	return m, nil
+}
+
+// tableHeight returns the number of lines the table may occupy for the current terminal height.
+func (m *listPeriodModel) tableHeight() int {
+	if m.height == 0 {
+		return defaultPeriodTableHeight
+	}
+	return max(m.height-periodViewChromeLines, minPeriodTableHeight)
 }
 
 func (m *listPeriodModel) View() string {
@@ -151,7 +173,7 @@ func (m *listPeriodModel) initTable() {
 	t := table.New(
 		table.WithColumns(m.columns()),
 		table.WithFocused(true),
-		table.WithHeight(15),
+		table.WithHeight(defaultPeriodTableHeight),
 	)
 
 	s := table.DefaultStyles()
@@ -192,6 +214,7 @@ func (m *listPeriodModel) reload() {
 	m.err = nil
 	m.buckets, m.total = buildPeriodBuckets(m.period, m.anchor, report.Activities, time.Now())
 	m.table.SetRows(m.buildRows())
+	m.table.SetCursor(0)
 }
 
 func (m *listPeriodModel) buildRows() []table.Row {
