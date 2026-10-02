@@ -114,7 +114,7 @@ func initialWatchModel(activity models.Activity, service ports.ActivityResolver,
 		help:     help.New(),
 		keys: keyMap{
 			Quit: key.NewBinding(
-				key.WithKeys("q", "ctrl+c"),
+				key.WithKeys("q", keyCtrlC),
 				key.WithHelp("q", loc.Format("watch.key.quit")),
 			),
 			Pause: key.NewBinding(

@@ -135,10 +135,25 @@ tock continue -t 14:00 # Continue last activity but with specific start time
 tock continue --note "Resuming work" --tag "resumed" # Continue last activity with a note and tag
 ```
 
-View activities in interactive calendar:
+List activities for a day, or as a weekly/monthly/yearly summary:
 
 ```bash
-tock list
+tock list          # Interactive table for a single day (default)
+tock list weekly   # Time per project for each day of the week
+tock list monthly  # Time per project for each day of the month
+tock list yearly   # Time per project for each month of the year
+```
+
+List controls:
+
+- `Left` / `h`, `Right` / `l`: Previous / next day (or week, month, year)
+- `Up` / `k`, `Down` / `j`: Scroll the table (period views)
+- `q` / `Esc`: Quit
+
+View activities in the interactive calendar:
+
+```bash
+tock calendar
 ```
 
 Calendar controls:
@@ -147,10 +162,6 @@ Calendar controls:
 - `n`: Next month
 - `p`: Previous month
 - `q` / `Esc`: Quit
-
-```bash
-tock calendar
-```
 
 
 ## Configuration
@@ -478,7 +489,7 @@ Available Commands:
   help        Help about any command
   ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.
   last        List recent unique activities
-  list        List activities (Calendar View)
+  list        List activities: daily calendar view, or a weekly/monthly/yearly summary
   note        Append a note to an existing activity
   tag         Append tags to an existing activity
   remove      Remove an activity

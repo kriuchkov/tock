@@ -27,7 +27,7 @@ func TestRunListCmdInvokesProgram(t *testing.T) {
 	}
 
 	cmd := newTestCLICommand(&stubActivityResolver{})
-	require.NoError(t, runListCmd(cmd))
+	require.NoError(t, runListCmd(cmd, nil))
 	assert.True(t, called)
 }
 

@@ -30,6 +30,93 @@ func TestBuildMonthDataSplitsCrossDayActivity(t *testing.T) {
 	assert.Equal(t, time.Hour, data.DailyReports["2026-04-01"].TotalDuration)
 }
 
+func TestBuildDailyReports(t *testing.T) {
+	day := time.Date(2026, time.April, 4, 9, 0, 0, 0, time.Local)
+	dayEnd := day.Add(90 * time.Minute)
+	other := time.Date(2026, time.April, 4, 13, 0, 0, 0, time.Local)
+	otherEnd := other.Add(30 * time.Minute)
+	nextDay := time.Date(2026, time.April, 5, 8, 0, 0, 0, time.Local)
+	nextDayEnd := nextDay.Add(time.Hour)
+
+	daily := insights.BuildDailyReports([]models.Activity{
+		{Project: "core", StartTime: day, EndTime: &dayEnd},
+		{Project: "ops", StartTime: other, EndTime: &otherEnd},
+		{Project: "core", StartTime: nextDay, EndTime: &nextDayEnd},
+	}, nextDayEnd)
+
+	require.Contains(t, daily, "2026-04-04")
+	require.Contains(t, daily, "2026-04-05")
+	assert.Equal(t, 2*time.Hour, daily["2026-04-04"].TotalDuration)
+	assert.Equal(t, 90*time.Minute, daily["2026-04-04"].ByProject["core"].Duration)
+	assert.Equal(t, 30*time.Minute, daily["2026-04-04"].ByProject["ops"].Duration)
+	assert.Equal(t, time.Hour, daily["2026-04-05"].TotalDuration)
+}
+
+func TestBuildDailyReportsSplitsCrossDayActivity(t *testing.T) {
+	start := time.Date(2026, time.March, 31, 23, 0, 0, 0, time.Local)
+	end := start.Add(2 * time.Hour)
+
+	daily := insights.BuildDailyReports([]models.Activity{
+		{Project: "tock", StartTime: start, EndTime: &end},
+	}, end)
+
+	require.Contains(t, daily, "2026-03-31")
+	require.Contains(t, daily, "2026-04-01")
+	assert.Equal(t, time.Hour, daily["2026-03-31"].TotalDuration)
+	assert.Equal(t, time.Hour, daily["2026-04-01"].TotalDuration)
+}
+
+func TestBuildMonthlyReports(t *testing.T) {
+	jan := time.Date(2026, time.January, 10, 9, 0, 0, 0, time.Local)
+	janEnd := jan.Add(2 * time.Hour)
+	feb := time.Date(2026, time.February, 3, 9, 0, 0, 0, time.Local)
+	febEnd := feb.Add(time.Hour)
+	otherYear := time.Date(2025, time.December, 30, 9, 0, 0, 0, time.Local)
+	otherYearEnd := otherYear.Add(time.Hour)
+
+	monthly := insights.BuildMonthlyReports([]models.Activity{
+		{Project: "core", StartTime: jan, EndTime: &janEnd},
+		{Project: "ops", StartTime: feb, EndTime: &febEnd},
+		{Project: "core", StartTime: otherYear, EndTime: &otherYearEnd},
+	}, 2026, febEnd)
+
+	require.Contains(t, monthly, time.January)
+	require.Contains(t, monthly, time.February)
+	assert.NotContains(t, monthly, time.December, "activities outside the target year are excluded")
+	assert.Equal(t, 2*time.Hour, monthly[time.January].TotalDuration)
+	assert.Equal(t, time.Hour, monthly[time.February].TotalDuration)
+}
+
+func TestBuildMonthlyReportsSplitsCrossMonthActivity(t *testing.T) {
+	start := time.Date(2026, time.January, 31, 23, 0, 0, 0, time.Local)
+	end := start.Add(2 * time.Hour)
+
+	monthly := insights.BuildMonthlyReports([]models.Activity{
+		{Project: "tock", StartTime: start, EndTime: &end},
+	}, 2026, end)
+
+	assert.Equal(t, time.Hour, monthly[time.January].TotalDuration)
+	assert.Equal(t, time.Hour, monthly[time.February].TotalDuration)
+}
+
+func TestSortedProjectDurations(t *testing.T) {
+	report := &models.Report{
+		ByProject: map[string]models.ProjectReport{
+			"core": {Duration: 30 * time.Minute},
+			"ops":  {Duration: 2 * time.Hour},
+			"docs": {Duration: time.Hour},
+		},
+	}
+
+	durations := insights.SortedProjectDurations(report)
+	require.Len(t, durations, 3)
+	assert.Equal(t, "ops", durations[0].Name)
+	assert.Equal(t, "docs", durations[1].Name)
+	assert.Equal(t, "core", durations[2].Name)
+
+	assert.Nil(t, insights.SortedProjectDurations(nil))
+}
+
 func TestComputeProductivityStats(t *testing.T) {
 	monthReports := map[int]*models.Report{
 		1: {TotalDuration: 2 * time.Hour},

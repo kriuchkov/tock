@@ -35,36 +35,78 @@ type WeeklyActivityData struct {
 }
 
 func BuildMonthData(activities []models.Activity, year int, month time.Month, now time.Time) MonthData {
+	dailyReports := BuildDailyReports(activities, now)
 	monthReports := make(map[int]*models.Report)
+
+	for key, report := range dailyReports {
+		day, err := time.ParseInLocation(time.DateOnly, key, time.Local)
+		if err != nil {
+			continue
+		}
+		if day.Year() == year && day.Month() == month {
+			monthReports[day.Day()] = report
+		}
+	}
+
+	return MonthData{MonthReports: monthReports, DailyReports: dailyReports}
+}
+
+// BuildDailyReports buckets activities into one report per local day (keyed by DateKey),
+// splitting activities that span midnight so each day is credited correctly.
+func BuildDailyReports(activities []models.Activity, now time.Time) map[string]*models.Report {
 	dailyReports := make(map[string]*models.Report)
 
 	for _, act := range activities {
 		for _, dailyAct := range SplitActivityByDay(act, now) {
-			activityDate := time.Date(
-				dailyAct.StartTime.Year(), dailyAct.StartTime.Month(), dailyAct.StartTime.Day(),
-				0, 0, 0, 0, time.Local,
-			)
-
-			dailyKey := DateKey(activityDate)
+			dailyKey := DateKey(dailyAct.StartTime)
 			dailyReport, ok := dailyReports[dailyKey]
 			if !ok {
 				dailyReport = newDailyReport()
 				dailyReports[dailyKey] = dailyReport
 			}
 			addActivityToReport(dailyReport, dailyAct)
-
-			if activityDate.Year() == year && activityDate.Month() == month {
-				monthReport, exists := monthReports[activityDate.Day()]
-				if !exists {
-					monthReport = newDailyReport()
-					monthReports[activityDate.Day()] = monthReport
-				}
-				addActivityToReport(monthReport, dailyAct)
-			}
 		}
 	}
 
-	return MonthData{MonthReports: monthReports, DailyReports: dailyReports}
+	return dailyReports
+}
+
+// BuildMonthlyReports buckets a year's activities into one report per month (keyed by time.Month),
+// splitting cross-day activities so month boundaries are credited correctly.
+func BuildMonthlyReports(activities []models.Activity, year int, now time.Time) map[time.Month]*models.Report {
+	monthlyReports := make(map[time.Month]*models.Report)
+
+	for _, act := range activities {
+		for _, dailyAct := range SplitActivityByDay(act, now) {
+			if dailyAct.StartTime.Year() != year {
+				continue
+			}
+			month := dailyAct.StartTime.Month()
+			monthReport, ok := monthlyReports[month]
+			if !ok {
+				monthReport = newDailyReport()
+				monthlyReports[month] = monthReport
+			}
+			addActivityToReport(monthReport, dailyAct)
+		}
+	}
+
+	return monthlyReports
+}
+
+// SortedProjectDurations returns the report's per-project durations sorted by duration descending.
+func SortedProjectDurations(report *models.Report) []ProjectDuration {
+	if report == nil {
+		return nil
+	}
+	result := make([]ProjectDuration, 0, len(report.ByProject))
+	for name, projectReport := range report.ByProject {
+		result = append(result, ProjectDuration{Name: name, Duration: projectReport.Duration})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Duration > result[j].Duration
+	})
+	return result
 }
 
 func ComputeProductivityStats(monthReports map[int]*models.Report, daysInMonth int) ProductivityStats {
@@ -230,17 +272,9 @@ func totalDurationForDate(dailyReports map[string]*models.Report, date time.Time
 
 // projectDurationsForDate returns per-project durations for a given date, sorted by duration desc.
 func projectDurationsForDate(dailyReports map[string]*models.Report, date time.Time) []ProjectDuration {
-	key := DateKey(date)
-	report, ok := dailyReports[key]
+	report, ok := dailyReports[DateKey(date)]
 	if !ok {
 		return nil
 	}
-	result := make([]ProjectDuration, 0, len(report.ByProject))
-	for name, pr := range report.ByProject {
-		result = append(result, ProjectDuration{Name: name, Duration: pr.Duration})
-	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Duration > result[j].Duration
-	})
-	return result
+	return SortedProjectDurations(report)
 }

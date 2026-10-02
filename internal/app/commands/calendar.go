@@ -594,9 +594,9 @@ func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
 // based on the selected date. Fetches directly from service to handle cross-month weeks.
 func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.String() {
-	case "q", "ctrl+c", "esc":
+	case "q", keyCtrlC, "esc":
 		return tea.Quit, true
-	case "left", "h":
+	case keyLeft, "h":
 		m.currentDate = m.currentDate.AddDate(0, 0, -1)
 		if m.currentDate.Month() != m.viewDate.Month() {
 			m.viewDate = m.currentDate
@@ -604,7 +604,7 @@ func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		m.updateViewportContent()
 		return nil, true
-	case "right", "l":
+	case keyRight, "l":
 		m.currentDate = m.currentDate.AddDate(0, 0, 1)
 		if m.currentDate.Month() != m.viewDate.Month() {
 			m.viewDate = m.currentDate
@@ -620,7 +620,7 @@ func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		m.updateViewportContent()
 		return nil, true
-	case "down":
+	case keyDown:
 		m.currentDate = m.currentDate.AddDate(0, 0, 7)
 		if m.currentDate.Month() != m.viewDate.Month() {
 			m.viewDate = m.currentDate
