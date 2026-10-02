@@ -8,6 +8,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`add`](#add)
   - [`note`](#note-alias-annotate)
   - [`tag`](#tag-alias-tags)
+  - [`edit`](#edit-alias-change)
   - [`remove`](#remove-alias-rm)
   - [`continue`](#continue-alias-c)
   - [`watch`](#watch)
@@ -170,6 +171,63 @@ tock tag 2026-03-14-01 review urgent --json   # Output updated activity as JSON
 **Flags:**
 
 - `--json`: Output the updated activity as JSON
+
+---
+
+### `edit` (alias: `change`)
+
+Correct an existing activity without touching the log file by hand.
+
+Without flags an interactive editor opens: with no date-index you browse the days and pick the entry
+to change, with a date-index the form for that entry opens directly. With flags the change is applied
+right away; with no date-index the last activity is edited.
+
+**Usage:**
+
+```bash
+tock edit [date-index] [flags]
+```
+
+**Examples:**
+
+```bash
+tock edit                                        # Browse days, pick an entry, edit it in the TUI
+tock edit 2026-03-14-02                          # Open the editor for one entry
+tock edit -e 17:30                               # Fix the end time of the last activity
+tock edit 2026-03-14-02 -p Tock -d "Review"      # Fix project and description
+tock edit 2026-03-14-02 --start 09:15            # Fix the start time (same day)
+tock edit 2026-03-14-02 --duration 90m           # Keep the start, set a new duration
+tock edit 2026-03-14-02 --day 2026-03-15         # Move the entry (and its end time) to another day
+tock edit 2026-03-14-02 --tag review,billable    # Replace the tags
+tock edit 2026-03-14-02 --note "wrong end time"  # Replace the notes
+tock edit 2026-03-14-02 --clear-end              # Drop the end time, the activity runs again
+tock edit 2026-03-14-02 -e 17:30 --json          # Output the updated activity as JSON
+```
+
+**Flags:**
+
+- `-p, --project`: New project name
+- `-d, --description`: New activity description
+- `--day`: Move the activity to this day (`YYYY-MM-DD`), keeping times and duration
+- `-s, --start`: New start time (`HH:MM` or `YYYY-MM-DD HH:MM`)
+- `-e, --end`: New end time (`HH:MM` or `YYYY-MM-DD HH:MM`)
+- `--duration`: New duration measured from the start time (e.g. `1h`, `90m`)
+- `--note`: Replace the activity notes
+- `--tag`: Replace the activity tags
+- `--clear-end`: Drop the end time so the activity is running again
+- `--json`: Output the updated activity as JSON
+
+**Editor keys:** `left`/`right` change the day, `up`/`down` select an entry, `enter` opens the form
+and saves it, `tab` moves between fields, `ctrl+u` clears a field, `esc` goes back, `q` quits.
+An empty **End** field keeps the activity running; `\n` in **Notes** is a line break.
+
+`edit` only touches what it is given: notes, tags, and times the command does not mention are kept.
+Unlike `note` and `tag`, which append, `edit` replaces the values it is given, and a blank `--project`
+or `--description` is rejected. `--day` moves the whole entry, so the end time follows the start — also
+when `--start` is given alongside it. `--json` needs at least one field flag; the interactive editor has
+no JSON output. `--clear-end` is refused while another activity is running, since `tock stop` only ever
+closes the newest open entry. Start times identify an
+entry in every backend, so moving one onto the exact start time of another entry is rejected.
 
 ---
 

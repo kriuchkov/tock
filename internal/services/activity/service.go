@@ -11,6 +11,7 @@ import (
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 type service struct {
@@ -247,6 +248,164 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 
 func (s *service) GetLast(ctx context.Context) (*models.Activity, error) {
 	return s.repo.FindLast(ctx)
+}
+
+// Update applies a partial change to an existing activity. When the start time
+// changes, the entry is re-keyed: the updated activity is written first and the
+// original removed afterwards, so an interrupted update never loses the entry.
+func (s *service) Update(
+	ctx context.Context,
+	original models.Activity,
+	req models.UpdateActivityRequest,
+) (*models.Activity, error) {
+	if req.IsEmpty() {
+		return &original, nil
+	}
+
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+
+	current, err := s.hydrateNotes(ctx, original, req)
+	if err != nil {
+		return nil, err
+	}
+
+	updated := req.Apply(current)
+
+	if updated.StartTime.IsZero() {
+		return nil, errors.New("start time is required")
+	}
+	if updated.EndTime != nil && updated.EndTime.Before(updated.StartTime) {
+		return nil, coreErrors.ErrInvalidTimeRange
+	}
+
+	// Entries are keyed by start time with minute precision, so a sub-minute
+	// difference is not a move and must not re-key the entry.
+	moved := !updated.StartTime.Truncate(time.Minute).Equal(original.StartTime.Truncate(time.Minute))
+	if moved {
+		if err = s.ensureStartTimeFree(ctx, original, updated.StartTime); err != nil {
+			return nil, err
+		}
+	} else {
+		updated.StartTime = original.StartTime
+	}
+
+	if updated.EndTime == nil {
+		if err = s.ensureNoOtherRunningActivity(ctx, original); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = s.repo.Save(ctx, updated); err != nil {
+		return nil, errors.Wrap(err, "save activity")
+	}
+
+	if moved {
+		if err = s.repo.Remove(ctx, original); err != nil {
+			return nil, errors.Wrap(err, "remove previous activity")
+		}
+	}
+
+	if err = s.syncNotes(ctx, original, updated, moved); err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+// validateUpdateRequest rejects explicitly blanked mandatory fields; fields the
+// request does not mention keep whatever the activity already carries.
+func validateUpdateRequest(req models.UpdateActivityRequest) error {
+	if req.Project != nil && strings.TrimSpace(*req.Project) == "" {
+		return coreErrors.ErrProjectRequired
+	}
+	if req.Description != nil && strings.TrimSpace(*req.Description) == "" {
+		return coreErrors.ErrDescriptionRequired
+	}
+	return nil
+}
+
+// hydrateNotes fills in the stored notes/tags the caller may not carry (GetLast
+// and the repositories return activities without them), so an update that does
+// not mention notes or tags cannot erase them.
+func (s *service) hydrateNotes(
+	ctx context.Context,
+	activity models.Activity,
+	req models.UpdateActivityRequest,
+) (models.Activity, error) {
+	if s.notesRepo == nil || (req.Notes != nil && req.Tags != nil) {
+		return activity, nil
+	}
+
+	storedNotes, storedTags, err := s.loadStoredNotes(ctx, activity)
+	if err != nil {
+		return models.Activity{}, err
+	}
+
+	hydrated := activity
+	hydrated.Notes = storedNotes
+	hydrated.Tags = storedTags
+	return hydrated, nil
+}
+
+// ensureNoOtherRunningActivity keeps the "only one activity runs at a time"
+// invariant when an update drops an end time, because a second open entry can
+// no longer be closed by `tock stop`.
+func (s *service) ensureNoOtherRunningActivity(ctx context.Context, original models.Activity) error {
+	isRunning := true
+
+	running, err := s.repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
+	if err != nil {
+		return errors.Wrap(err, "find running activities")
+	}
+
+	for _, activity := range running {
+		if !activity.StartTime.Equal(original.StartTime) {
+			return coreErrors.ErrActivityAlreadyStarted
+		}
+	}
+	return nil
+}
+
+// ensureStartTimeFree rejects a move onto the start time of another activity,
+// because every backend keys an entry by its start time.
+func (s *service) ensureStartTimeFree(ctx context.Context, original models.Activity, startTime time.Time) error {
+	fromDate, toDate := timeutil.LocalDayBounds(startTime)
+
+	activities, err := s.repo.Find(ctx, models.ActivityFilter{FromDate: &fromDate, ToDate: &toDate})
+	if err != nil {
+		return errors.Wrap(err, "find activities")
+	}
+
+	target := startTime.Truncate(time.Minute)
+	for _, activity := range activities {
+		if activity.StartTime.Equal(original.StartTime) {
+			continue
+		}
+		if activity.StartTime.Truncate(time.Minute).Equal(target) {
+			return coreErrors.ErrStartTimeConflict
+		}
+	}
+	return nil
+}
+
+// syncNotes persists the updated notes/tags and clears the sidecar entry left
+// behind when the activity moved to a new start time.
+func (s *service) syncNotes(ctx context.Context, original, updated models.Activity, moved bool) error {
+	if s.notesRepo == nil {
+		return nil
+	}
+
+	if moved {
+		if err := s.notesRepo.Save(ctx, original.ID(), original.StartTime, "", nil); err != nil {
+			return errors.Wrap(err, "clear previous notes")
+		}
+	}
+
+	if err := s.notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
+		return errors.Wrap(err, "save notes")
+	}
+	return nil
 }
 
 // AddNote appends note text to an activity, keeping its existing tags. The

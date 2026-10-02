@@ -574,3 +574,223 @@ func TestService_AddNote_ReturnsErrorWhenNotesRepoMissing(t *testing.T) {
 	_, err := svc.AddNote(context.Background(), models.Activity{StartTime: time.Now()}, "note")
 	require.ErrorIs(t, err, coreErrors.ErrNotesUnavailable)
 }
+
+func TestService_Update_InPlaceKeepsStartTime(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	original := models.Activity{Project: "tock", Description: "typo", StartTime: start, EndTime: &end}
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := portsmocks.NewMockNotesRepository(t)
+
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.Description == "fixed" && a.StartTime.Equal(start) &&
+			a.Notes == "keep me" && len(a.Tags) == 1 && a.Tags[0] == "alpha"
+	})).Return(nil)
+	notesRepo.EXPECT().Get(mock.Anything, original.ID(), start).Return("keep me", []string{"alpha"}, nil)
+	notesRepo.EXPECT().Save(mock.Anything, original.ID(), start, "keep me", []string{"alpha"}).Return(nil)
+
+	svc := activity.NewService(repo, notesRepo)
+	description := "fixed"
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Description: &description})
+	require.NoError(t, err)
+	assert.Equal(t, "fixed", updated.Description)
+	assert.Equal(t, "tock", updated.Project)
+	assert.Equal(t, "keep me", updated.Notes, "notes must survive an edit that does not mention them")
+	assert.Equal(t, []string{"alpha"}, updated.Tags)
+	repo.AssertNotCalled(t, "Remove", mock.Anything, mock.Anything)
+}
+
+func TestService_Update_MovedStartTimeSavesBeforeRemovingOriginal(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	newStart := start.Add(30 * time.Minute)
+	original := models.Activity{Project: "tock", Description: "work", StartTime: start, EndTime: &end, Notes: "note"}
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := portsmocks.NewMockNotesRepository(t)
+
+	var calls []string
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.StartTime.Equal(newStart)
+	})).Run(func(context.Context, models.Activity) { calls = append(calls, "save") }).Return(nil)
+	repo.EXPECT().Remove(mock.Anything, original).
+		Run(func(context.Context, models.Activity) { calls = append(calls, "remove") }).Return(nil)
+
+	notesRepo.EXPECT().Get(mock.Anything, original.ID(), start).Return("note", nil, nil)
+	notesRepo.EXPECT().Save(mock.Anything, original.ID(), start, "", []string(nil)).Return(nil)
+	notesRepo.EXPECT().Save(mock.Anything, mock.Anything, newStart, "note", []string(nil)).Return(nil)
+
+	svc := activity.NewService(repo, notesRepo)
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{StartTime: &newStart})
+	require.NoError(t, err)
+	assert.True(t, updated.StartTime.Equal(newStart))
+	assert.Equal(t, []string{"save", "remove"}, calls)
+}
+
+func TestService_Update_RejectsEndBeforeStart(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	original := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+	earlier := start.Add(-time.Minute)
+
+	svc := activity.NewService(portsmocks.NewMockActivityRepository(t), nil)
+
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{EndTime: &earlier})
+	require.ErrorIs(t, err, coreErrors.ErrInvalidTimeRange)
+}
+
+func TestService_Update_RejectsStartTimeCollision(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	other := models.Activity{Project: "other", StartTime: start.Add(2 * time.Hour)}
+	original := models.Activity{Project: "tock", StartTime: start}
+	newStart := other.StartTime
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original, other}, nil)
+
+	svc := activity.NewService(repo, nil)
+
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{StartTime: &newStart})
+	require.ErrorIs(t, err, coreErrors.ErrStartTimeConflict)
+	repo.AssertNotCalled(t, "Save", mock.Anything, mock.Anything)
+}
+
+func TestService_Update_ClearEndTimeMakesActivityRunning(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	original := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+		return f.IsRunning != nil && *f.IsRunning
+	})).Return(nil, nil)
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.EndTime == nil
+	})).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{ClearEndTime: true})
+	require.NoError(t, err)
+	assert.Nil(t, updated.EndTime)
+}
+
+func TestService_Update_ReplacesTagsAndNotes(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	original := models.Activity{Project: "tock", StartTime: start, Notes: "old", Tags: []string{"a"}}
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	notesRepo := portsmocks.NewMockNotesRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.Anything).Return(nil)
+	notesRepo.EXPECT().Save(mock.Anything, original.ID(), start, "new", []string{"b"}).Return(nil)
+
+	svc := activity.NewService(repo, notesRepo)
+	notes := "new"
+	tags := []string{"b"}
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Notes: &notes, Tags: &tags})
+	require.NoError(t, err)
+	assert.Equal(t, "new", updated.Notes)
+	assert.Equal(t, []string{"b"}, updated.Tags)
+}
+
+func TestService_Update_EmptyRequestIsANoOp(t *testing.T) {
+	original := models.Activity{Project: "tock", StartTime: time.Now()}
+	svc := activity.NewService(portsmocks.NewMockActivityRepository(t), portsmocks.NewMockNotesRepository(t))
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{})
+	require.NoError(t, err)
+	assert.Equal(t, original, *updated)
+}
+
+func TestService_Update_RejectsBlankedMandatoryFields(t *testing.T) {
+	original := models.Activity{Project: "tock", Description: "work", StartTime: time.Now()}
+	svc := activity.NewService(portsmocks.NewMockActivityRepository(t), nil)
+	blank := "   "
+
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Project: &blank})
+	require.ErrorIs(t, err, coreErrors.ErrProjectRequired)
+
+	_, err = svc.Update(context.Background(), original, models.UpdateActivityRequest{Description: &blank})
+	require.ErrorIs(t, err, coreErrors.ErrDescriptionRequired)
+}
+
+func TestService_Update_SubMinuteStartChangeDoesNotReKeyTheEntry(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 47, 0, time.Local)
+	original := models.Activity{Project: "tock", Description: "work", StartTime: start}
+	rounded := start.Truncate(time.Minute)
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.StartTime.Equal(start)
+	})).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{StartTime: &rounded})
+	require.NoError(t, err)
+	assert.True(t, updated.StartTime.Equal(start))
+	repo.AssertNotCalled(t, "Remove", mock.Anything, mock.Anything)
+}
+
+func TestService_Update_MoveToDayKeepsTimeOfDayAndDuration(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(2 * time.Hour)
+	original := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+	day := time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local)
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.Anything).Return(nil)
+	repo.EXPECT().Remove(mock.Anything, original).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{MoveToDay: &day})
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, time.March, 16, 9, 0, 0, 0, time.Local), updated.StartTime)
+	require.NotNil(t, updated.EndTime)
+	assert.Equal(t, time.Date(2026, time.March, 16, 11, 0, 0, 0, time.Local), *updated.EndTime)
+}
+
+func TestService_Update_ClearEndRejectedWhileAnotherActivityRuns(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	original := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+	runningNow := models.Activity{Project: "other", StartTime: start.AddDate(0, 0, 3)}
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+		return f.IsRunning != nil && *f.IsRunning
+	})).Return([]models.Activity{runningNow}, nil)
+
+	svc := activity.NewService(repo, nil)
+
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{ClearEndTime: true})
+	require.ErrorIs(t, err, coreErrors.ErrActivityAlreadyStarted)
+	repo.AssertNotCalled(t, "Save", mock.Anything, mock.Anything)
+}
+
+func TestService_Update_KeepsRunningActivityRunning(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	original := models.Activity{Project: "tock", Description: "work", StartTime: start}
+	description := "work harder"
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.Description == description && a.EndTime == nil
+	})).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+
+	updated, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Description: &description})
+	require.NoError(t, err)
+	assert.Nil(t, updated.EndTime)
+}

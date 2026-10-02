@@ -43,6 +43,7 @@ tock continue 1 --json
 tock stop --json
 tock stop --note "finished MVP" --tag done --json
 tock add -p "Meeting" -d "Weekly sync" -s "2026-03-20 10:00" -e "2026-03-20 10:30" --json
+tock edit 2026-03-20-01 -e 17:30 --json
 tock remove 2026-03-20-01 --yes --json
 ```
 
@@ -60,4 +61,4 @@ tock remove 2026-03-20-01 --yes --json
 
 - `tock current --json` returns an array because multiple running activities may exist in malformed or imported data.
 - `tock export --format json --stdout` returns the raw activity list for the selected filter range.
-- `tock start`, `tock continue`, `tock stop`, `tock add`, and `tock remove` return the affected activity as JSON when called with `--json`.
+- `tock start`, `tock continue`, `tock stop`, `tock add`, `tock edit`, and `tock remove` return the affected activity as JSON when called with `--json`.

@@ -50,6 +50,12 @@ func (s stubResolver) List(ctx context.Context, filter models.ActivityFilter) ([
 	return s.listFn(ctx, filter)
 }
 
+func (s stubResolver) Update(
+	context.Context, models.Activity, models.UpdateActivityRequest,
+) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
 func (s stubResolver) GetReport(context.Context, models.ActivityFilter) (*models.Report, error) {
 	return nil, unconfiguredResolverCall()
 }
