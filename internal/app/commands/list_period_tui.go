@@ -41,8 +41,6 @@ const (
 const (
 	// defaultPeriodTableHeight is used until the first tea.WindowSizeMsg arrives.
 	defaultPeriodTableHeight = 15
-	// minPeriodTableHeight keeps the table header, its border and at least one row visible.
-	minPeriodTableHeight = 3
 	// periodViewChromeLines counts the lines View renders around the table:
 	// title, blank, blank, total line, and the two-line help text.
 	periodViewChromeLines = 6
@@ -139,17 +137,9 @@ func (m *listPeriodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.table.SetWidth(msg.Width - periodViewHorizontalPadding)
-		m.table.SetHeight(m.tableHeight())
+		m.table.SetHeight(fitTableHeight(m.height, periodViewChromeLines, defaultPeriodTableHeight))
 	}
 	return m, nil
-}
-
-// tableHeight returns the number of lines the table may occupy for the current terminal height.
-func (m *listPeriodModel) tableHeight() int {
-	if m.height == 0 {
-		return defaultPeriodTableHeight
-	}
-	return max(m.height-periodViewChromeLines, minPeriodTableHeight)
 }
 
 func (m *listPeriodModel) View() string {
