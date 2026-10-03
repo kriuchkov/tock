@@ -35,10 +35,10 @@ func TestRunReportCmdBuildsFilterAndWritesToCommandOutput(t *testing.T) {
 	cmd.SetOut(&out)
 
 	err := runReportCmd(cmd, &reportOptions{
-		Date:        "2026-03-14",
-		Project:     "tock",
-		Description: "cleanup",
-		TotalOnly:   true,
+		dateFilterFlags: dateFilterFlags{Date: "2026-03-14"},
+		Project:         "tock",
+		Description:     "cleanup",
+		TotalOnly:       true,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "1h 30m\n", out.String())
@@ -84,9 +84,8 @@ func TestRunReportCmdBuildsInclusiveDateRange(t *testing.T) {
 	cmd.SetOut(&out)
 
 	err := runReportCmd(cmd, &reportOptions{
-		From:      "2026-04-01",
-		To:        "2026-04-15",
-		TotalOnly: true,
+		dateFilterFlags: dateFilterFlags{From: "2026-04-01", To: "2026-04-15"},
+		TotalOnly:       true,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "8h 0m\n", out.String())

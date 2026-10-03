@@ -88,22 +88,22 @@ func TestRunExportCmdRejectsInvalidDateFilters(t *testing.T) {
 	}{
 		{
 			name:    "from and today are mutually exclusive",
-			opt:     exportOptions{From: "2026-04-01", Today: true},
+			opt:     exportOptions{dateFilterFlags: dateFilterFlags{From: "2026-04-01", Today: true}},
 			wantErr: "cannot specify multiple date filters",
 		},
 		{
 			name:    "invalid from date",
-			opt:     exportOptions{From: "not-a-date"},
+			opt:     exportOptions{dateFilterFlags: dateFilterFlags{From: "not-a-date"}},
 			wantErr: "invalid --from date format",
 		},
 		{
 			name:    "invalid to date",
-			opt:     exportOptions{To: "2026-13-01"},
+			opt:     exportOptions{dateFilterFlags: dateFilterFlags{To: "2026-13-01"}},
 			wantErr: "invalid --to date format",
 		},
 		{
 			name:    "from date is after to date",
-			opt:     exportOptions{From: "2026-04-16", To: "2026-04-15"},
+			opt:     exportOptions{dateFilterFlags: dateFilterFlags{From: "2026-04-16", To: "2026-04-15"}},
 			wantErr: "--from date must not be after --to date",
 		},
 	}
