@@ -61,6 +61,17 @@ func runListCmd(cmd *cobra.Command, args []string) error {
 	return runListPeriodProgram(model)
 }
 
+// Vertical layout of the daily view, used to size the table from the terminal height.
+const (
+	// defaultDailyTableHeight is used until the first tea.WindowSizeMsg arrives.
+	defaultDailyTableHeight = 10
+	// dailyViewChromeLines counts the lines View renders around the table:
+	// header, blank, blank, and the help text.
+	dailyViewChromeLines = 4
+	// dailyViewHorizontalPadding is the width reserved around the table.
+	dailyViewHorizontalPadding = 4
+)
+
 type listModel struct {
 	service      ports.ActivityResolver
 	timeFormat   *timeutil.Formatter // time display format (12/24 hour)
@@ -102,7 +113,7 @@ func (m *listModel) initTable() {
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
-		table.WithHeight(10),
+		table.WithHeight(defaultDailyTableHeight),
 	)
 
 	s := table.DefaultStyles()
@@ -217,9 +228,18 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.table.SetWidth(msg.Width - 4)
+		m.table.SetWidth(msg.Width - dailyViewHorizontalPadding)
+		m.table.SetHeight(m.tableHeight())
 	}
 	return m, nil
+}
+
+// tableHeight returns the number of lines the table may occupy for the current terminal height.
+func (m *listModel) tableHeight() int {
+	if m.height == 0 {
+		return defaultDailyTableHeight
+	}
+	return max(m.height-dailyViewChromeLines, minPeriodTableHeight)
 }
 
 func (m *listModel) View() string {
