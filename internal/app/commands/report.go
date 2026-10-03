@@ -153,9 +153,7 @@ func writeReportSummaryJSON(out io.Writer, report *models.Report) error {
 		})
 	}
 
-	encoder := json.NewEncoder(out)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(summary)
+	return writeJSONTo(out, summary)
 }
 
 func durationString(d time.Duration) string {
