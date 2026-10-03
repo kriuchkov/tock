@@ -376,16 +376,13 @@ func TestLocalWeekBoundsOnDSTSkippedMidnight(t *testing.T) {
 	if err != nil {
 		t.Skipf("timezone data unavailable: %v", err)
 	}
-	previous := time.Local
-	time.Local = loc
-	t.Cleanup(func() { time.Local = previous })
 
 	// Clocks jump from 00:00 to 01:00 on Sunday 2026-09-06, so that day has no midnight.
-	start, end := LocalWeekBounds(time.Date(2026, time.September, 6, 12, 0, 0, 0, loc))
+	start, end := weekBoundsIn(time.Date(2026, time.September, 6, 12, 0, 0, 0, loc), loc)
 	wantStart := time.Date(2026, time.August, 31, 0, 0, 0, 0, loc)
 	wantEnd := time.Date(2026, time.September, 7, 0, 0, 0, 0, loc)
 	if !start.Equal(wantStart) || !end.Equal(wantEnd) {
-		t.Errorf("LocalWeekBounds() = (%v, %v), want (%v, %v)", start, end, wantStart, wantEnd)
+		t.Errorf("weekBoundsIn() = (%v, %v), want (%v, %v)", start, end, wantStart, wantEnd)
 	}
 }
 

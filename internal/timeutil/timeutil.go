@@ -196,12 +196,16 @@ func LocalDayBounds(t time.Time) (time.Time, time.Time) {
 // LocalWeekBounds returns the start of the week (Monday) and the start of the following week
 // in local time.
 func LocalWeekBounds(t time.Time) (time.Time, time.Time) {
-	local := t.In(time.Local)
+	return weekBoundsIn(t, time.Local)
+}
+
+func weekBoundsIn(t time.Time, loc *time.Location) (time.Time, time.Time) {
+	local := t.In(loc)
 	weekday := int(local.Weekday())
 	if weekday == 0 {
 		weekday = 7
 	}
-	start := time.Date(local.Year(), local.Month(), local.Day()-(weekday-1), 0, 0, 0, 0, local.Location())
+	start := time.Date(local.Year(), local.Month(), local.Day()-(weekday-1), 0, 0, 0, 0, loc)
 	return start, start.AddDate(0, 0, 7)
 }
 
