@@ -101,7 +101,7 @@ func writeReportOutput(
 
 	if opt.JSONOutput {
 		if opt.Summary {
-			return writeReportSummaryJSON(out, report.ByProject)
+			return writeReportSummaryJSON(out, report)
 		}
 		return writeReportJSON(out, report.Activities)
 	}
@@ -136,18 +136,26 @@ type projectSummaryJSON struct {
 	Duration string `json:"duration"`
 }
 
-func writeReportSummaryJSON(out io.Writer, byProject map[string]models.ProjectReport) error {
-	summaries := make([]projectSummaryJSON, 0, len(byProject))
-	for _, projectName := range sortedProjectNames(byProject) {
-		summaries = append(summaries, projectSummaryJSON{
+type reportSummaryJSON struct {
+	Projects []projectSummaryJSON `json:"projects"`
+	Total    string               `json:"total"`
+}
+
+func writeReportSummaryJSON(out io.Writer, report *models.Report) error {
+	summary := reportSummaryJSON{
+		Projects: make([]projectSummaryJSON, 0, len(report.ByProject)),
+		Total:    durationString(report.TotalDuration),
+	}
+	for _, projectName := range sortedProjectNames(report.ByProject) {
+		summary.Projects = append(summary.Projects, projectSummaryJSON{
 			Project:  projectName,
-			Duration: durationString(byProject[projectName].Duration),
+			Duration: durationString(report.ByProject[projectName].Duration),
 		})
 	}
 
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(summaries)
+	return encoder.Encode(summary)
 }
 
 func durationString(d time.Duration) string {
