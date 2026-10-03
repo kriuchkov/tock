@@ -144,26 +144,16 @@ type reportSummaryJSON struct {
 func writeReportSummaryJSON(out io.Writer, report *models.Report) error {
 	summary := reportSummaryJSON{
 		Projects: make([]projectSummaryJSON, 0, len(report.ByProject)),
-		Total:    durationString(report.TotalDuration),
+		Total:    models.FormatDuration(report.TotalDuration),
 	}
 	for _, projectName := range sortedProjectNames(report.ByProject) {
 		summary.Projects = append(summary.Projects, projectSummaryJSON{
 			Project:  projectName,
-			Duration: durationString(report.ByProject[projectName].Duration),
+			Duration: models.FormatDuration(report.ByProject[projectName].Duration),
 		})
 	}
 
 	return writeJSONTo(out, summary)
-}
-
-func durationString(d time.Duration) string {
-	d = d.Round(time.Second)
-	hours := d / time.Hour
-	d %= time.Hour
-	minutes := d / time.Minute
-	d %= time.Minute
-	seconds := d / time.Second
-	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 func writeTotalDuration(out io.Writer, duration time.Duration) error {
