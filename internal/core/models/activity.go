@@ -29,7 +29,12 @@ func (a Activity) Duration() time.Duration {
 
 // DurationString returns the duration formatted as "HH:MM:SS".
 func (a Activity) DurationString() string {
-	d := a.Duration().Round(time.Second)
+	return FormatDuration(a.Duration())
+}
+
+// FormatDuration formats d, rounded to the second, as "HH:MM:SS".
+func FormatDuration(d time.Duration) string {
+	d = d.Round(time.Second)
 	h := d / time.Hour
 	d %= time.Hour
 	m := d / time.Minute
