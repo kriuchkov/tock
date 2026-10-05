@@ -67,6 +67,34 @@ func TestRunReportCmdJSONUsesCommandWriter(t *testing.T) {
 	assert.Contains(t, out.String(), "\"description\": \"refactor\"")
 }
 
+func TestRunReportCmdJSONSummaryGroupsByProjectSortedAndFormatted(t *testing.T) {
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{
+				TotalDuration: 26*time.Hour + 30*time.Minute + 30*time.Second,
+				ByProject: map[string]models.ProjectReport{
+					"tock":    {ProjectName: "tock", Duration: 90*time.Minute + 30*time.Second},
+					"billing": {ProjectName: "billing", Duration: 25 * time.Hour},
+				},
+			}, nil
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	err := runReportCmd(cmd, &reportOptions{JSONOutput: true, Summary: true})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{
+		"projects": [
+			{"project": "billing", "duration": "25:00:00"},
+			{"project": "tock", "duration": "01:30:30"}
+		],
+		"total": "26:30:30"
+	}`, out.String())
+}
+
 func TestRunReportCmdBuildsInclusiveDateRange(t *testing.T) {
 	service := &stubActivityResolver{
 		getReportFn: func(_ context.Context, filter models.ActivityFilter) (*models.Report, error) {

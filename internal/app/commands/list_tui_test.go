@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/go-faster/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,6 +54,24 @@ func TestListModelViewLocalizesHeaderAndHelp(t *testing.T) {
 	assert.Contains(t, view, "Duration")
 	assert.Contains(t, view, "Tags")
 	assert.Contains(t, view, "Notes")
+}
+
+func TestListModelWindowSizeResizesTable(t *testing.T) {
+	service := &stubActivityResolver{
+		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
+			return []models.Activity{}, nil
+		},
+	}
+	model := initialListModel(service, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
+
+	model.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	// 30 terminal lines minus the chrome around the table (header, blanks, help) minus the table's
+	// own header rows gives the visible data rows.
+	assert.Equal(t, 30-dailyViewChromeLines-2, model.table.Height())
+	assert.Equal(t, 30, lipgloss.Height(model.View()))
+
+	model.Update(tea.WindowSizeMsg{Width: 100, Height: 3})
+	assert.Equal(t, minTableHeight-2, model.table.Height())
 }
 
 func TestListModelNavigateUsesNextAvailableDate(t *testing.T) {

@@ -200,7 +200,7 @@ func TestListPeriodModelWindowSizeResizesTable(t *testing.T) {
 	assert.Equal(t, 30-periodViewChromeLines-2, model.table.Height())
 
 	model.Update(tea.WindowSizeMsg{Width: 100, Height: 5})
-	assert.Equal(t, minPeriodTableHeight-2, model.table.Height())
+	assert.Equal(t, minTableHeight-2, model.table.Height())
 }
 
 func TestListPeriodModelBuildsBucketsAndRows(t *testing.T) {

@@ -397,6 +397,7 @@ tock report --summary                             # Show summary statistics only
 tock report -p "Work" --summary                   # Show summary for project "Work"
 tock report --today --json                        # JSON output for today
 tock report --date 2023-10-15 -p "Work" --json    # Filtered JSON output
+tock report --today --summary --json              # Project totals as JSON
 ```
 
 **Flags:**
@@ -410,7 +411,7 @@ tock report --date 2023-10-15 -p "Work" --json    # Filtered JSON output
 - `-d, --description string`: Filter by description
 - `-s, --summary`: Show only project summaries
 - `--total-only`: Show only total duration
-- `--json`: Output in JSON format
+- `--json`: Output in JSON format; with `--summary`, an object with `projects` (`project`, `duration`) and `total`
 
 The date selectors `--today`, `--yesterday`, `--date`, and `--from`/`--to` are mutually exclusive. Either range endpoint may be omitted.
 
