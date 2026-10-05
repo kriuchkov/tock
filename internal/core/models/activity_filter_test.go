@@ -36,6 +36,52 @@ func TestBuildActivityFilter(t *testing.T) {
 		assert.Equal(t, "refactor", *filter.Description)
 	})
 
+	t.Run("builds week filter", func(t *testing.T) {
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Week: true})
+		require.NoError(t, err)
+
+		require.NotNil(t, filter.FromDate)
+		require.NotNil(t, filter.ToDate)
+		assert.Equal(t, time.Date(2026, time.March, 9, 0, 0, 0, 0, time.Local), *filter.FromDate)
+		assert.Equal(t, time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local), *filter.ToDate)
+	})
+
+	t.Run("builds month filter", func(t *testing.T) {
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Month: true})
+		require.NoError(t, err)
+
+		require.NotNil(t, filter.FromDate)
+		require.NotNil(t, filter.ToDate)
+		assert.Equal(t, time.Date(2026, time.March, 1, 0, 0, 0, 0, time.Local), *filter.FromDate)
+		assert.Equal(t, time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local), *filter.ToDate)
+	})
+
+	t.Run("builds quarter filter", func(t *testing.T) {
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Quarter: true})
+		require.NoError(t, err)
+
+		require.NotNil(t, filter.FromDate)
+		require.NotNil(t, filter.ToDate)
+		assert.Equal(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local), *filter.FromDate)
+		assert.Equal(t, time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local), *filter.ToDate)
+	})
+
+	t.Run("builds year filter", func(t *testing.T) {
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Year: true})
+		require.NoError(t, err)
+
+		require.NotNil(t, filter.FromDate)
+		require.NotNil(t, filter.ToDate)
+		assert.Equal(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local), *filter.FromDate)
+		assert.Equal(t, time.Date(2027, time.January, 1, 0, 0, 0, 0, time.Local), *filter.ToDate)
+	})
+
+	t.Run("rejects conflicting week and month filters", func(t *testing.T) {
+		_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Week: true, Month: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot specify multiple date filters")
+	})
+
 	t.Run("rejects invalid date", func(t *testing.T) {
 		_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Date: "15-03-2026"})
 		require.Error(t, err)

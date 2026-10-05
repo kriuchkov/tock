@@ -15,16 +15,13 @@ import (
 )
 
 type exportOptions struct {
-	Today       bool
-	Yesterday   bool
-	Date        string
+	dateFilterFlags
+
 	Project     string
 	Description string
 	Format      string
 	Path        string
 	Stdout      bool
-	From        string
-	To          string
 }
 
 func NewExportCmd() *cobra.Command {
@@ -38,17 +35,13 @@ func NewExportCmd() *cobra.Command {
 		RunE:    func(cmd *cobra.Command, _ []string) error { return runExportCmd(cmd, &opt) },
 	}
 
-	cmd.Flags().BoolVar(&opt.Today, "today", false, defaultText("export.flag.today"))
-	cmd.Flags().BoolVar(&opt.Yesterday, "yesterday", false, defaultText("export.flag.yesterday"))
-	cmd.Flags().StringVar(&opt.Date, "date", "", defaultText("export.flag.date"))
+	opt.dateFilterFlags.register(cmd, "export")
 	cmd.Flags().StringVarP(&opt.Project, "project", "p", "", defaultText("export.flag.project"))
 	cmd.Flags().StringVarP(&opt.Description, "description", "d", "", defaultText("export.flag.description"))
 	cmd.Flags().StringVarP(&opt.Format, "format", "m", "txt", defaultText("export.flag.format"))
 	cmd.Flags().StringVar(&opt.Format, "fmt", "txt", defaultText("export.flag.format"))
 	cmd.Flags().StringVarP(&opt.Path, "path", "o", "", defaultText("export.flag.path"))
 	cmd.Flags().BoolVar(&opt.Stdout, "stdout", false, defaultText("export.flag.stdout"))
-	cmd.Flags().StringVar(&opt.From, "from", "", defaultText("export.flag.from"))
-	cmd.Flags().StringVar(&opt.To, "to", "", defaultText("export.flag.to"))
 
 	_ = cmd.RegisterFlagCompletionFunc("project", projectRegisterFlagCompletion)
 	_ = cmd.RegisterFlagCompletionFunc("description", descriptionRegisterFlagCompletion)
@@ -59,16 +52,7 @@ func runExportCmd(cmd *cobra.Command, opt *exportOptions) error {
 	rt := getRuntime(cmd)
 	out := cmd.OutOrStdout()
 
-	filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{
-		Now:         time.Now(),
-		Today:       opt.Today,
-		Yesterday:   opt.Yesterday,
-		Date:        opt.Date,
-		From:        opt.From,
-		To:          opt.To,
-		Project:     opt.Project,
-		Description: opt.Description,
-	})
+	filter, err := models.BuildActivityFilter(opt.filterOptions(opt.Project, opt.Description))
 
 	if err != nil {
 		return errors.Wrap(err, "build activity filter")

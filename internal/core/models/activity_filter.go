@@ -12,6 +12,10 @@ type ActivityFilterOptions struct {
 	Now         time.Time
 	Today       bool
 	Yesterday   bool
+	Week        bool
+	Month       bool
+	Quarter     bool
+	Year        bool
 	Date        string
 	From        string
 	To          string
@@ -24,40 +28,14 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 		return ActivityFilter{}, err
 	}
 
-	now := opts.Now
-	if now.IsZero() {
-		now = time.Now()
-	}
-
 	filter := ActivityFilter{}
 
-	switch {
-	case opts.From != "" || opts.To != "":
-		fromDate, toDate, err := buildDateRange(opts.From, opts.To)
-		if err != nil {
-			return ActivityFilter{}, err
-		}
-		filter.FromDate = fromDate
-		filter.ToDate = toDate
-	case opts.Today:
-		start, end := timeutil.LocalDayBounds(now)
-		filter.FromDate = &start
-		filter.ToDate = &end
-	case opts.Yesterday:
-		todayStart, _ := timeutil.LocalDayBounds(now)
-		start := todayStart.AddDate(0, 0, -1)
-		end := todayStart
-		filter.FromDate = &start
-		filter.ToDate = &end
-	case opts.Date != "":
-		parsedDate, err := time.ParseInLocation("2006-01-02", opts.Date, time.Local)
-		if err != nil {
-			return ActivityFilter{}, errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
-		}
-		start, end := timeutil.LocalDayBounds(parsedDate)
-		filter.FromDate = &start
-		filter.ToDate = &end
+	fromDate, toDate, err := resolveDateRange(opts)
+	if err != nil {
+		return ActivityFilter{}, err
 	}
+	filter.FromDate = fromDate
+	filter.ToDate = toDate
 
 	if opts.Project != "" {
 		filter.Project = &opts.Project
@@ -69,12 +47,64 @@ func BuildActivityFilter(opts ActivityFilterOptions) (ActivityFilter, error) {
 	return filter, nil
 }
 
+func resolveDateRange(opts ActivityFilterOptions) (*time.Time, *time.Time, error) {
+	now := opts.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	switch {
+	case opts.From != "" || opts.To != "":
+		return buildDateRange(opts.From, opts.To)
+	case opts.Today:
+		start, end := timeutil.LocalDayBounds(now)
+		return &start, &end, nil
+	case opts.Yesterday:
+		todayStart, _ := timeutil.LocalDayBounds(now)
+		start := todayStart.AddDate(0, 0, -1)
+		return &start, &todayStart, nil
+	case opts.Date != "":
+		parsedDate, err := time.ParseInLocation("2006-01-02", opts.Date, time.Local)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "invalid date format (use YYYY-MM-DD)")
+		}
+		start, end := timeutil.LocalDayBounds(parsedDate)
+		return &start, &end, nil
+	case opts.Week:
+		start, end := timeutil.LocalWeekBounds(now)
+		return &start, &end, nil
+	case opts.Month:
+		start, end := timeutil.LocalMonthBounds(now)
+		return &start, &end, nil
+	case opts.Quarter:
+		start, end := timeutil.LocalQuarterBounds(now)
+		return &start, &end, nil
+	case opts.Year:
+		start, end := timeutil.LocalYearBounds(now)
+		return &start, &end, nil
+	}
+
+	return nil, nil, nil
+}
+
 func validateDateFilters(opts ActivityFilterOptions) error {
 	dateFilters := 0
 	if opts.Today {
 		dateFilters++
 	}
 	if opts.Yesterday {
+		dateFilters++
+	}
+	if opts.Week {
+		dateFilters++
+	}
+	if opts.Month {
+		dateFilters++
+	}
+	if opts.Quarter {
+		dateFilters++
+	}
+	if opts.Year {
 		dateFilters++
 	}
 	if opts.Date != "" {
@@ -84,7 +114,10 @@ func validateDateFilters(opts ActivityFilterOptions) error {
 		dateFilters++
 	}
 	if dateFilters > 1 {
-		return errors.New("cannot specify multiple date filters (--today, --yesterday, --date, --from/--to are mutually exclusive)")
+		return errors.New(
+			"cannot specify multiple date filters (--today, --yesterday, --week, --month, --quarter, --year, " +
+				"--date, --from/--to are mutually exclusive)",
+		)
 	}
 
 	return nil

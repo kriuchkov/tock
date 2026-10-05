@@ -387,6 +387,8 @@ tock report [flags]
 ```bash
 tock report --today                               # Report for today
 tock report --yesterday                           # Report for yesterday
+tock report --week                                # Report for this week (Monday to Sunday)
+tock report --month                               # Report for this calendar month
 tock report --date 2023-10-15                     # Report for a specific date
 tock report --from 2023-10-01 --to 2023-10-15    # Report an inclusive date range
 tock report --from 2023-10-01                     # Report from a date onward
@@ -404,6 +406,10 @@ tock report --today --summary --json              # Project totals as JSON
 
 - `--today`: Report for today
 - `--yesterday`: Report for yesterday
+- `--week`: Report for this week (Monday to Sunday)
+- `--month`: Report for this month
+- `--quarter`: Report for this quarter
+- `--year`: Report for this year
 - `--date string`: Report for a specific date (`YYYY-MM-DD`)
 - `--from string`: Start date for a report range (`YYYY-MM-DD`)
 - `--to string`: Inclusive end date for a report range (`YYYY-MM-DD`)
@@ -413,7 +419,7 @@ tock report --today --summary --json              # Project totals as JSON
 - `--total-only`: Show only total duration
 - `--json`: Output in JSON format; with `--summary`, an object with `projects` (`project`, `duration`) and `total`
 
-The date selectors `--today`, `--yesterday`, `--date`, and `--from`/`--to` are mutually exclusive. Either range endpoint may be omitted.
+The date selectors `--today`, `--yesterday`, `--week`, `--month`, `--quarter`, `--year`, `--date`, and `--from`/`--to` are mutually exclusive. Either range endpoint may be omitted.
 
 ---
 
@@ -457,6 +463,7 @@ tock export [flags]
 ```bash
 tock export --today                             # Export today's report as a text file
 tock export --yesterday --format csv           # Export yesterday's report as CSV
+tock export --month --format csv               # Export this month as CSV
 tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
 tock export --from 2026-04-01 --to 2026-04-15  # Export an inclusive date range
 tock export --from 2026-04-01                  # Export from a date onward
@@ -470,6 +477,10 @@ tock export --today -o ./exports               # Write the export file to a spec
 
 - `--today`: Export data for today
 - `--yesterday`: Export data for yesterday
+- `--week`: Export data for this week (Monday to Sunday)
+- `--month`: Export data for this month
+- `--quarter`: Export data for this quarter
+- `--year`: Export data for this year
 - `--date string`: Export data for a specific date (`YYYY-MM-DD`)
 - `--from string`: Start date for an export range (`YYYY-MM-DD`)
 - `--to string`: Inclusive end date for an export range (`YYYY-MM-DD`)
