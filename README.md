@@ -693,6 +693,7 @@ tock report --to 2026-04-15                    # Report through date
 tock report -p "My Project" -d "Fixing bugs" # Filter by project and description
 tock report --summary        # Show project totals only
 tock report --json           # Output in JSON format
+tock report --summary --json # Project totals as JSON
 ```
 
 **Flags:**
@@ -705,7 +706,7 @@ tock report --json           # Output in JSON format
 - `-p, --project`: Filter by project and aggregate by description
 - `-d, --description`: Filter by description (case-insensitive substring)
 - `-s, --summary`: Show only project summaries
-- `--json`: Output report as JSON
+- `--json`: Output report as JSON; with `--summary`, an object with `projects` (`project`, `duration`) and `total`
 
 ### Report Export
 
