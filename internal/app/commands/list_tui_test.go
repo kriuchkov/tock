@@ -2,11 +2,13 @@ package commands
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/go-faster/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -109,4 +111,106 @@ func TestListModelRenderTableBuildsStableKeys(t *testing.T) {
 	assert.Equal(t, "2026-04-04-02", rows[1][0])
 	assert.Equal(t, "core", rows[0][2])
 	assert.Equal(t, "ops", rows[1][2])
+}
+
+func newDeleteTestListModel(t *testing.T, removeFn func(context.Context, models.Activity) error) listModel {
+	t.Helper()
+	day := time.Date(2026, time.April, 4, 0, 0, 0, 0, time.Local)
+	activities := []models.Activity{
+		{Project: "core", Description: "planning", StartTime: day.Add(9 * time.Hour)},
+		{Project: "ops", Description: "deploy", StartTime: day.Add(11 * time.Hour)},
+	}
+	service := &stubActivityResolver{
+		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
+			return slices.Clone(activities), nil
+		},
+		removeFn: func(ctx context.Context, activity models.Activity) error {
+			if err := removeFn(ctx, activity); err != nil {
+				return err
+			}
+			activities = slices.DeleteFunc(activities, func(a models.Activity) bool {
+				return a.StartTime.Equal(activity.StartTime)
+			})
+			return nil
+		},
+	}
+	model := initialListModel(service, timeutil.NewFormatter("24"), localization.MustNew(localization.LanguageEnglish))
+	model.selectedDate = day
+	model.updateActivities()
+	return model
+}
+
+func runeKey(r rune) tea.KeyMsg {
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}
+}
+
+func TestListModelDeleteRemovesSelectedActivityOnConfirm(t *testing.T) {
+	var removed []models.Activity
+	model := newDeleteTestListModel(t, func(_ context.Context, activity models.Activity) error {
+		removed = append(removed, activity)
+		return nil
+	})
+	model.table.MoveDown(1)
+
+	model.Update(runeKey('x'))
+	require.NotNil(t, model.pendingDelete)
+	assert.Contains(t, model.View(), "Delete ops: deploy? [y/N]")
+	assert.Empty(t, removed)
+
+	model.Update(runeKey('y'))
+	require.Len(t, removed, 1)
+	assert.Equal(t, "ops", removed[0].Project)
+	assert.Nil(t, model.pendingDelete)
+	require.Len(t, model.activities, 1)
+	assert.Equal(t, "core", model.activities[0].Project)
+	assert.Equal(t, 0, model.table.Cursor())
+	assert.Contains(t, model.View(), "'x' to delete")
+}
+
+func TestListModelDeleteCancelsOnOtherKey(t *testing.T) {
+	model := newDeleteTestListModel(t, func(context.Context, models.Activity) error {
+		t.Fatal("Remove must not be called when the delete is cancelled")
+		return nil
+	})
+
+	model.Update(runeKey('x'))
+	require.NotNil(t, model.pendingDelete)
+
+	model.Update(runeKey('n'))
+	assert.Nil(t, model.pendingDelete)
+	assert.Len(t, model.activities, 2)
+}
+
+func TestListModelDeleteIgnoresEmptyDay(t *testing.T) {
+	model := newDeleteTestListModel(t, func(context.Context, models.Activity) error {
+		t.Fatal("Remove must not be called on an empty day")
+		return nil
+	})
+	model.selectedDate = time.Date(2026, time.April, 5, 0, 0, 0, 0, time.Local)
+	model.updateActivities()
+
+	model.Update(runeKey('x'))
+	assert.Nil(t, model.pendingDelete)
+}
+
+func TestListModelDeleteReportsRemoveError(t *testing.T) {
+	model := newDeleteTestListModel(t, func(context.Context, models.Activity) error {
+		return errors.New("disk full")
+	})
+
+	model.Update(runeKey('x'))
+	model.Update(runeKey('y'))
+	require.Error(t, model.err)
+	assert.Contains(t, model.View(), "disk full")
+}
+
+func TestListModelSelectsFirstRowAfterEmptyDay(t *testing.T) {
+	model := newDeleteTestListModel(t, func(context.Context, models.Activity) error { return nil })
+
+	model.selectedDate = time.Date(2026, time.April, 5, 0, 0, 0, 0, time.Local)
+	model.updateActivities()
+	model.selectedDate = time.Date(2026, time.April, 4, 0, 0, 0, 0, time.Local)
+	model.updateActivities()
+
+	assert.Equal(t, 0, model.table.Cursor())
 }

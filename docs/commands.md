@@ -318,6 +318,8 @@ An unknown period (anything other than `daily`, `weekly`, `monthly`, `yearly`) e
 
 - `Left` / `h`: Previous day
 - `Right` / `l`: Next day
+- `Up` / `k`, `Down` / `j`: Select an activity
+- `x` / `Delete`: Delete the selected activity; `y` confirms, any other key cancels
 - `q` / `Ctrl+C`: Quit
 
 **Controls (weekly / monthly / yearly views):**

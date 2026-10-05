@@ -83,9 +83,11 @@ type listModel struct {
 	selectedDate time.Time
 	activities   []models.Activity
 	table        table.Model
-	err          error
-	width        int
-	height       int
+	// pendingDelete is the activity awaiting a delete confirmation, if any.
+	pendingDelete *models.Activity
+	err           error
+	width         int
+	height        int
 }
 
 func initialListModel(service ports.ActivityResolver, tf *timeutil.Formatter, loc *localization.Localizer) listModel {
@@ -204,6 +206,10 @@ func (m *listModel) renderTable(activities []models.Activity) {
 		rows = append(rows, table.Row{key, timeStr, a.Project, a.Description, duration, tagsStr, notesStr})
 	}
 	m.table.SetRows(rows)
+	// SetRows leaves the cursor at -1 after rendering an empty day; select the first row again.
+	if m.table.Cursor() < 0 {
+		m.table.SetCursor(0)
+	}
 }
 
 func (m *listModel) Init() tea.Cmd {
@@ -211,23 +217,12 @@ func (m *listModel) Init() tea.Cmd {
 }
 
 func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", keyCtrlC:
-			return m, tea.Quit
-		case keyLeft, "h":
-			m.navigate(-1)
-		case keyRight, "l":
-			m.navigate(1)
-		case "up", "k":
-			m.table, cmd = m.table.Update(msg)
-			return m, cmd
-		case keyDown, "j":
-			m.table, cmd = m.table.Update(msg)
-			return m, cmd
+		if m.pendingDelete != nil {
+			return m.handleDeleteConfirmKey(msg)
 		}
+		return m.handleKey(msg)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -235,6 +230,51 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.SetHeight(fitTableHeight(m.height, dailyViewChromeLines, defaultDailyTableHeight))
 	}
 	return m, nil
+}
+
+func (m *listModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg.String() {
+	case "q", keyCtrlC:
+		return m, tea.Quit
+	case keyLeft, "h":
+		m.navigate(-1)
+	case keyRight, "l":
+		m.navigate(1)
+	case "up", "k", keyDown, "j":
+		m.table, cmd = m.table.Update(msg)
+		return m, cmd
+	case "x", "delete":
+		m.requestDelete()
+	}
+	return m, nil
+}
+
+// handleDeleteConfirmKey deletes the pending activity on "y"; any other key cancels.
+func (m *listModel) handleDeleteConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	activity := *m.pendingDelete
+	m.pendingDelete = nil
+
+	switch msg.String() {
+	case keyCtrlC:
+		return m, tea.Quit
+	case "y", "Y":
+		if err := m.service.Remove(context.Background(), activity); err != nil {
+			m.err = errors.Wrap(err, "remove activity")
+			return m, nil
+		}
+		m.updateActivities()
+	}
+	return m, nil
+}
+
+func (m *listModel) requestDelete() {
+	cursor := m.table.Cursor()
+	if cursor < 0 || cursor >= len(m.activities) {
+		return
+	}
+	activity := m.activities[cursor]
+	m.pendingDelete = &activity
 }
 
 // fitTableHeight returns the number of lines a table may occupy in a terminal of termHeight lines,
@@ -259,5 +299,16 @@ func (m *listModel) View() string {
 
 	// Table
 	tableView := m.table.View()
-	return lipgloss.JoinVertical(lipgloss.Left, header, "", tableView, "\n"+m.loc.Text("list.help"))
+	return lipgloss.JoinVertical(lipgloss.Left, header, "", tableView, "\n"+m.footer())
+}
+
+// footer returns the delete confirmation prompt while one is pending, else the key help.
+func (m *listModel) footer() string {
+	if m.pendingDelete == nil {
+		return m.loc.Text("list.help")
+	}
+	return lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("203")).
+		Render(m.loc.Format("list.delete.confirm", m.pendingDelete.Project, m.pendingDelete.Description))
 }

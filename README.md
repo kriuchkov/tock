@@ -147,8 +147,9 @@ tock list yearly   # Time per project for each month of the year
 List controls:
 
 - `Left` / `h`, `Right` / `l`: Previous / next day (or week, month, year)
-- `Up` / `k`, `Down` / `j`: Scroll the table (period views)
-- `q` / `Esc`: Quit
+- `Up` / `k`, `Down` / `j`: Move through the table
+- `x` / `Delete`: Delete the selected activity after a `y` confirmation (daily view)
+- `q` / `Ctrl+C`: Quit (`Esc` also works in period views)
 
 View activities in the interactive calendar:
 
