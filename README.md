@@ -686,6 +686,8 @@ Generate a simple text report for a day or date range.
 ```bash
 tock report --today
 tock report --yesterday
+tock report --week                             # This week (Monday to Sunday)
+tock report --month                            # This calendar month
 tock report --date 2025-12-01
 tock report --from 2026-04-01 --to 2026-04-15  # Report an inclusive date range
 tock report --from 2026-04-01                  # Report from date onward
@@ -699,6 +701,10 @@ tock report --json           # Output in JSON format
 
 - `--today`: Report for today
 - `--yesterday`: Report for yesterday
+- `--week`: Report for this week (Monday to Sunday)
+- `--month`: Report for this month
+- `--quarter`: Report for this quarter
+- `--year`: Report for this year
 - `--date`: Report for specific date (YYYY-MM-DD)
 - `--from`: Start date for report range (YYYY-MM-DD)
 - `--to`: End date for report range, inclusive (YYYY-MM-DD)
@@ -714,6 +720,7 @@ Export report data as text, CSV, or JSON.
 ```bash
 tock export --today                             # Export today's report as a text file
 tock export --yesterday --format csv           # Export yesterday's report as CSV
+tock export --month --format csv               # Export this month as CSV
 tock export --date 2026-01-29 --fmt json       # Export a specific day as JSON
 tock export --from 2026-04-01 --to 2026-04-15  # Export date range
 tock export --from 2026-04-01                  # Export from date to present
@@ -727,6 +734,10 @@ tock export --today -o ./exports               # Write the export file to a spec
 
 - `--today`: Export data for today
 - `--yesterday`: Export data for yesterday
+- `--week`: Export data for this week (Monday to Sunday)
+- `--month`: Export data for this month
+- `--quarter`: Export data for this quarter
+- `--year`: Export data for this year
 - `--date`: Export data for a specific date (YYYY-MM-DD)
 - `--from`: Start date for export range (YYYY-MM-DD)
 - `--to`: End date for export range (YYYY-MM-DD)
