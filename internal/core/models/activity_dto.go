@@ -54,7 +54,6 @@ type UpdateActivityRequest struct {
 	Description  *string
 	Project      *string
 	StartTime    *time.Time
-	MoveToDay    *time.Time
 	EndTime      *time.Time
 	ClearEndTime bool
 	Notes        *string
@@ -63,7 +62,7 @@ type UpdateActivityRequest struct {
 
 // IsEmpty reports whether the request carries no change at all.
 func (r UpdateActivityRequest) IsEmpty() bool {
-	return r.Description == nil && r.Project == nil && r.StartTime == nil && r.MoveToDay == nil &&
+	return r.Description == nil && r.Project == nil && r.StartTime == nil &&
 		r.EndTime == nil && !r.ClearEndTime && r.Notes == nil && r.Tags == nil
 }
 
@@ -89,10 +88,6 @@ func (r UpdateActivityRequest) Apply(activity Activity) Activity {
 		updated.EndTime = &endTime
 	}
 
-	if r.MoveToDay != nil {
-		updated = MoveActivityToDay(updated, *r.MoveToDay, r.EndTime == nil)
-	}
-
 	if r.Notes != nil {
 		updated.Notes = *r.Notes
 	}
@@ -102,19 +97,25 @@ func (r UpdateActivityRequest) Apply(activity Activity) Activity {
 	return updated
 }
 
-// MoveActivityToDay moves an activity to another day, keeping its time of day.
-// When shiftEnd is set, the end time moves along, preserving the duration.
-func MoveActivityToDay(activity Activity, day time.Time, shiftEnd bool) Activity {
-	moved := activity
-	moved.StartTime = time.Date(
+// MoveActivityToDay moves an activity to another day, keeping its time of day
+// and its duration.
+func MoveActivityToDay(activity Activity, day time.Time) Activity {
+	startTime := time.Date(
 		day.Year(), day.Month(), day.Day(),
 		activity.StartTime.Hour(), activity.StartTime.Minute(), activity.StartTime.Second(), 0,
 		activity.StartTime.Location(),
 	)
+	return RescheduleActivity(activity, startTime)
+}
 
-	if shiftEnd && activity.EndTime != nil {
-		endTime := activity.EndTime.Add(moved.StartTime.Sub(activity.StartTime))
-		moved.EndTime = &endTime
+// RescheduleActivity moves an activity to a new start time, keeping its duration.
+func RescheduleActivity(activity Activity, startTime time.Time) Activity {
+	rescheduled := activity
+	rescheduled.StartTime = startTime
+
+	if activity.EndTime != nil {
+		endTime := activity.EndTime.Add(startTime.Sub(activity.StartTime))
+		rescheduled.EndTime = &endTime
 	}
-	return moved
+	return rescheduled
 }

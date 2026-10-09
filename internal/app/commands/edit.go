@@ -163,12 +163,10 @@ func buildEditRequest(
 		req.Notes = &opts.Notes
 	}
 	if cmd.Flags().Changed(flagTag) {
-		tags := opts.Tags
+		tags := slices.Clone(opts.Tags)
 		req.Tags = &tags
 	}
-	if opts.ClearEnd {
-		req.ClearEndTime = true
-	}
+	req.ClearEndTime = opts.ClearEnd
 
 	if err := applyEditTimes(cmd, tf, activity, opts, &req); err != nil {
 		return models.UpdateActivityRequest{}, err
@@ -204,9 +202,9 @@ func applyEditTimes(
 	return applyEditEnd(cmd, tf, activity, opts, req)
 }
 
-// applyEditDay moves the activity to another day. Combined with an explicit
-// --start the start time is already absolute, so only the end time still has to
-// follow; otherwise the model moves the whole entry.
+// applyEditDay moves the activity to another day. The start time is either the
+// one --start asked for or the activity's own time of day; the end time follows
+// unless the command sets it explicitly.
 func applyEditDay(
 	cmd *cobra.Command,
 	activity models.Activity,
@@ -218,18 +216,16 @@ func applyEditDay(
 		return errors.Wrap(err, "parse day")
 	}
 
-	if req.StartTime == nil {
-		req.MoveToDay = &day
+	moved := models.MoveActivityToDay(activity, day)
+	if req.StartTime != nil {
+		moved = models.RescheduleActivity(activity, *req.StartTime)
+	}
+	req.StartTime = &moved.StartTime
+
+	if cmd.Flags().Changed(flagEnd) || cmd.Flags().Changed(flagDuration) || opts.ClearEnd {
 		return nil
 	}
-
-	keepsOwnEnd := cmd.Flags().Changed(flagEnd) || cmd.Flags().Changed(flagDuration) || opts.ClearEnd
-	if keepsOwnEnd || activity.EndTime == nil {
-		return nil
-	}
-
-	endTime := activity.EndTime.Add(req.StartTime.Sub(activity.StartTime))
-	req.EndTime = &endTime
+	req.EndTime = moved.EndTime
 	return nil
 }
 
@@ -243,9 +239,6 @@ func applyEditEnd(
 	startTime := activity.StartTime
 	if req.StartTime != nil {
 		startTime = *req.StartTime
-	}
-	if req.MoveToDay != nil {
-		startTime = models.MoveActivityToDay(activity, *req.MoveToDay, false).StartTime
 	}
 
 	if cmd.Flags().Changed(flagEnd) {

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kriuchkov/tock/internal/app/localization"
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
@@ -29,12 +30,12 @@ const (
 	editFieldCount
 )
 
-// editNotesEscaper renders a note on the single-line form field and back, so a
-// literal backslash in a note survives the round trip.
-var editNotesEscaper = struct{ encode, decode *strings.Replacer }{
-	encode: strings.NewReplacer(`\`, `\\`, "\n", `\n`),
-	decode: strings.NewReplacer(`\\`, `\`, `\n`, "\n"),
-}
+// Notes are edited on a single-line field, so newlines are escaped on the way
+// in and out; a literal backslash survives the round trip.
+var (
+	editNotesEncoder = strings.NewReplacer(`\`, `\\`, "\n", `\n`)
+	editNotesDecoder = strings.NewReplacer(`\\`, `\`, `\n`, "\n")
+)
 
 var runEditProgram = func(model *editModel) error {
 	program := tea.NewProgram(model, tea.WithAltScreen())
@@ -46,7 +47,9 @@ var runEditProgram = func(model *editModel) error {
 
 // runEditPicker opens the browser UI: navigate days, pick an entry, edit it.
 func runEditPicker(cmd *cobra.Command) error {
-	return runEditModel(cmd, newEditModelForCmd(cmd))
+	model := newEditModelForCmd(cmd)
+	model.loadHistory()
+	return runEditModel(cmd, model)
 }
 
 // runEditForm opens the edit form for a single, already resolved activity.
@@ -91,7 +94,6 @@ type editModel struct {
 	status         string
 	formErr        string
 	err            error
-	width          int
 }
 
 type editFormField struct {
@@ -119,87 +121,52 @@ func newEditModel(
 		selectedDate: time.Now(),
 	}
 	m.initTable()
-	m.reload()
-	m.selectLatestDayWithActivities()
 	return m
 }
 
-// selectLatestDayWithActivities falls back to the most recent day that has
-// entries, so the picker does not open on an empty today.
-func (m *editModel) selectLatestDayWithActivities() {
-	if len(m.activities) > 0 {
-		return
-	}
-	m.navigate(-1)
-}
-
 func (m *editModel) initTable() {
-	columns := []table.Column{
+	m.table = newActivityTable([]table.Column{
 		{Title: m.loc.Text("list.table.key"), Width: 13},
 		{Title: m.loc.Text("list.table.time"), Width: 20},
 		{Title: m.loc.Text("list.table.project"), Width: 20},
 		{Title: m.loc.Text("list.table.description"), Width: 32},
 		{Title: m.loc.Text("list.table.duration"), Width: 10},
 		{Title: m.loc.Text("list.table.tags"), Width: 15},
-	}
-
-	t := table.New(table.WithColumns(columns), table.WithFocused(true), table.WithHeight(10))
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(true)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-	m.table = t
+	}, defaultDailyTableHeight)
 }
 
-// reload re-reads the log; the result is cached so navigating days does not
-// scan the whole history again.
-func (m *editModel) reload() {
+// loadHistory reads the log once, so navigating days does not scan it again,
+// and opens on the most recent day that has entries instead of an empty today.
+func (m *editModel) loadHistory() {
 	activities, err := m.service.List(m.ctx, models.ActivityFilter{})
 	if err != nil {
 		m.err = errors.Wrap(err, "list activities")
 		return
 	}
 	m.allActivities = activities
-	m.renderTable(activities)
+
+	if len(activitiesOnDay(activities, m.selectedDate)) == 0 {
+		m.selectedDate = adjacentActivityDay(activities, m.selectedDate, -1)
+	}
+	m.renderTable()
 }
 
 func (m *editModel) navigate(dir int) {
-	current := time.Date(
-		m.selectedDate.Year(), m.selectedDate.Month(), m.selectedDate.Day(), 0, 0, 0, 0, m.selectedDate.Location(),
-	)
-	if target := models.FindTargetDate(m.allActivities, current, dir); target != nil {
-		m.selectedDate = *target
-	}
-	m.renderTable(m.allActivities)
+	m.selectedDate = adjacentActivityDay(m.allActivities, m.selectedDate, dir)
+	m.renderTable()
 }
 
-func (m *editModel) renderTable(activities []models.Activity) {
-	var dayActivities []models.Activity
-	for _, a := range activities {
-		if sameDay(a.StartTime, m.selectedDate) {
-			dayActivities = append(dayActivities, a)
-		}
-	}
-	dayActivities = models.SortActivitiesByStart(dayActivities)
-	m.activities = dayActivities
-
-	rows := make([]table.Row, 0, len(dayActivities))
-	for i, a := range dayActivities {
+func (m *editModel) renderTable() {
+	m.activities = activitiesOnDay(m.allActivities, m.selectedDate)
+	rows := make([]table.Row, 0, len(m.activities))
+	for i, activity := range m.activities {
 		rows = append(rows, table.Row{
-			fmt.Sprintf("%s-%02d", a.StartTime.Format(time.DateOnly), i+1),
-			m.timeRange(a),
-			a.Project,
-			a.Description,
-			a.Duration().Round(time.Minute).String(),
-			strings.Join(a.Tags, ", "),
+			activityDayKey(activity, i),
+			formatActivityTimeRange(m.timeFormat, activity),
+			activity.Project,
+			activity.Description,
+			formatActivityDuration(activity),
+			formatActivityTags(activity),
 		})
 	}
 	m.table.SetRows(rows)
@@ -208,18 +175,6 @@ func (m *editModel) renderTable(activities []models.Activity) {
 	if cursor < 0 || cursor >= len(rows) {
 		m.table.SetCursor(0)
 	}
-}
-
-func (m *editModel) timeRange(a models.Activity) string {
-	timeStr := a.StartTime.Format(m.timeFormat.GetDisplayFormat())
-	if a.EndTime != nil {
-		return timeStr + " - " + a.EndTime.Format(m.timeFormat.GetDisplayFormat())
-	}
-	return timeStr + " - ..."
-}
-
-func sameDay(a, b time.Time) bool {
-	return a.Year() == b.Year() && a.Month() == b.Month() && a.Day() == b.Day()
 }
 
 func (m *editModel) openForm(activity models.Activity) {
@@ -246,7 +201,7 @@ func newEditForm(activity models.Activity, tf *timeutil.Formatter) editForm {
 	fields[editFieldTags] = editFormField{label: "edit.form.tags", value: strings.Join(activity.Tags, ", ")}
 	fields[editFieldNotes] = editFormField{
 		label: "edit.form.notes",
-		value: editNotesEscaper.encode.Replace(activity.Notes),
+		value: editNotesEncoder.Replace(activity.Notes),
 	}
 
 	return editForm{original: activity, fields: fields}
@@ -262,7 +217,6 @@ func (m *editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.updateList(msg)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
 		m.table.SetWidth(msg.Width - 4)
 	}
 	return m, nil
@@ -315,39 +269,30 @@ func (m *editModel) updateForm(msg tea.KeyMsg) tea.Cmd {
 	case tea.KeyShiftTab, tea.KeyUp:
 		m.form.cursor = (m.form.cursor - 1 + len(m.form.fields)) % len(m.form.fields)
 	case tea.KeyBackspace, tea.KeyDelete:
-		m.editCurrentField(func(value string) string {
-			if value == "" {
-				return value
-			}
-			runes := []rune(value)
-			return string(runes[:len(runes)-1])
-		})
+		field := &m.form.fields[m.form.cursor]
+		if runes := []rune(field.value); len(runes) > 0 {
+			field.value = string(runes[:len(runes)-1])
+		}
 	case tea.KeyCtrlU:
-		m.editCurrentField(func(string) string { return "" })
+		m.form.fields[m.form.cursor].value = ""
 	case tea.KeySpace:
-		m.editCurrentField(func(value string) string { return value + " " })
+		m.form.fields[m.form.cursor].value += " "
 	case tea.KeyRunes:
-		m.editCurrentField(func(value string) string { return value + string(msg.Runes) })
+		m.form.fields[m.form.cursor].value += string(msg.Runes)
 	}
 	return nil
-}
-
-func (m *editModel) editCurrentField(apply func(string) string) {
-	field := m.form.fields[m.form.cursor]
-	field.value = apply(field.value)
-	m.form.fields[m.form.cursor] = field
 }
 
 func (m *editModel) save() tea.Cmd {
 	req, err := buildFormRequest(m.timeFormat, m.form)
 	if err != nil {
-		m.formErr = err.Error()
+		m.formErr = editErrorText(m.loc, err)
 		return nil
 	}
 
 	updated, err := m.service.Update(m.ctx, m.form.original, req)
 	if err != nil {
-		m.formErr = err.Error()
+		m.formErr = editErrorText(m.loc, err)
 		return nil
 	}
 
@@ -359,8 +304,28 @@ func (m *editModel) save() tea.Cmd {
 	}
 
 	m.selectedDate = updated.StartTime
-	m.reload()
+	m.loadHistory()
 	return nil
+}
+
+// editErrorText renders the domain errors the form can provoke with the same
+// localized messages the rest of the UI uses.
+func editErrorText(loc *localization.Localizer, err error) string {
+	switch {
+	case errors.Is(err, coreErrors.ErrProjectRequired):
+		return loc.Text("validation.project_required")
+	case errors.Is(err, coreErrors.ErrDescriptionRequired):
+		return loc.Text("validation.description_required")
+	case errors.Is(err, coreErrors.ErrInvalidTimeRange):
+		return loc.Text("edit.error.invalid_time_range")
+	case errors.Is(err, coreErrors.ErrStartTimeConflict):
+		return loc.Text("edit.error.start_conflict")
+	case errors.Is(err, coreErrors.ErrAmbiguousStartTime):
+		return loc.Text("edit.error.ambiguous_start")
+	case errors.Is(err, coreErrors.ErrActivityAlreadyStarted):
+		return loc.Text("edit.error.already_running")
+	}
+	return err.Error()
 }
 
 // buildFormRequest turns the edited form values into a partial update request,
@@ -370,16 +335,10 @@ func buildFormRequest(tf *timeutil.Formatter, form editForm) (models.UpdateActiv
 	var req models.UpdateActivityRequest
 
 	if project := strings.TrimSpace(form.fields[editFieldProject].value); project != original.Project {
-		if project == "" {
-			return req, errors.New(defaultText("validation.project_required"))
-		}
 		req.Project = &project
 	}
 
 	if description := strings.TrimSpace(form.fields[editFieldDescription].value); description != original.Description {
-		if description == "" {
-			return req, errors.New(defaultText("validation.description_required"))
-		}
 		req.Description = &description
 	}
 
@@ -387,11 +346,11 @@ func buildFormRequest(tf *timeutil.Formatter, form editForm) (models.UpdateActiv
 		return models.UpdateActivityRequest{}, err
 	}
 
-	if tags := parseTagList(form.fields[editFieldTags].value); !slices.Equal(tags, original.Tags) {
+	if tags := parseTagValues([]string{form.fields[editFieldTags].value}); !slices.Equal(tags, original.Tags) {
 		req.Tags = &tags
 	}
 
-	notes := editNotesEscaper.decode.Replace(form.fields[editFieldNotes].value)
+	notes := editNotesDecoder.Replace(form.fields[editFieldNotes].value)
 	if notes != original.Notes {
 		req.Notes = &notes
 	}
@@ -425,16 +384,6 @@ func applyFormTimes(tf *timeutil.Formatter, form editForm, req *models.UpdateAct
 		req.EndTime = &endTime
 	}
 	return nil
-}
-
-func parseTagList(value string) []string {
-	var tags []string
-	for tag := range strings.SplitSeq(value, ",") {
-		if trimmed := strings.TrimSpace(tag); trimmed != "" {
-			tags = append(tags, trimmed)
-		}
-	}
-	return tags
 }
 
 func (m *editModel) View() string {

@@ -10,6 +10,7 @@ var (
 	ErrNotesUnavailable       = errors.New("notes repository is not configured")
 	ErrInvalidTimeRange       = errors.New("end time cannot be before start time")
 	ErrStartTimeConflict      = errors.New("another activity already starts at this time")
+	ErrAmbiguousStartTime     = errors.New("more than one activity starts at this time, so they cannot be told apart")
 	ErrProjectRequired        = errors.New("project name is required")
 	ErrDescriptionRequired    = errors.New("description is required")
 )

@@ -274,5 +274,9 @@
   "edit.form.tags": "Tags",
   "edit.form.notes": "Notes",
   "edit.form.help": "tab/up/down: next field, enter: save, esc: back, ctrl+u: clear field; empty End keeps the activity running, \\n in Notes is a line break",
-  "edit.error.json_needs_flags": "--json needs at least one field to change; the interactive editor has no JSON output"
+  "edit.error.json_needs_flags": "--json needs at least one field to change; the interactive editor has no JSON output",
+  "edit.error.invalid_time_range": "End time cannot be before start time",
+  "edit.error.start_conflict": "Another activity already starts at this time",
+  "edit.error.already_running": "Another activity is running; stop it before reopening this one",
+  "edit.error.ambiguous_start": "Two activities start at this time; edit the log file by hand to give them distinct start times"
 }

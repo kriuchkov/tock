@@ -21,6 +21,26 @@ func editTestActivity() models.Activity {
 	return models.Activity{Project: "tock", Description: "review", StartTime: start, EndTime: &end}
 }
 
+// captureEditRequest records the request `tock edit` builds and returns the
+// activity it would produce.
+func captureEditRequest(activity models.Activity, got *models.UpdateActivityRequest) func(
+	context.Context, models.Activity, models.UpdateActivityRequest,
+) (*models.Activity, error) {
+	return func(_ context.Context, _ models.Activity, req models.UpdateActivityRequest) (*models.Activity, error) {
+		*got = req
+		updated := req.Apply(activity)
+		return &updated, nil
+	}
+}
+
+// stubEditProgram replaces the Bubble Tea runner for the duration of a test.
+func stubEditProgram(t *testing.T, run func(*editModel) error) {
+	t.Helper()
+	runner := runEditProgram
+	t.Cleanup(func() { runEditProgram = runner })
+	runEditProgram = run
+}
+
 func newEditTestCmd(service *stubActivityResolver, out *bytes.Buffer, args ...string) *cobra.Command {
 	cmd := NewEditCmd()
 	cmd.SetContext(newTestCLICommand(service).Context())
@@ -63,25 +83,16 @@ func TestRunEditCmdMovesActivityToAnotherDay(t *testing.T) {
 		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
 			return []models.Activity{activity}, nil
 		},
-		updateFn: func(
-			_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
-		) (*models.Activity, error) {
-			gotReq = req
-			updated := req.Apply(activity)
-			return &updated, nil
-		},
+		updateFn: captureEditRequest(activity, &gotReq),
 	}
 
 	var out bytes.Buffer
 	require.NoError(t, newEditTestCmd(service, &out, "2026-03-14-01", "--day", "2026-03-15").Execute())
 
-	require.NotNil(t, gotReq.MoveToDay)
-	assert.Equal(t, time.Date(2026, time.March, 15, 0, 0, 0, 0, time.Local), *gotReq.MoveToDay)
-
-	moved := gotReq.Apply(activity)
-	assert.Equal(t, time.Date(2026, time.March, 15, 9, 0, 0, 0, time.Local), moved.StartTime)
-	require.NotNil(t, moved.EndTime)
-	assert.Equal(t, time.Date(2026, time.March, 15, 11, 0, 0, 0, time.Local), *moved.EndTime)
+	require.NotNil(t, gotReq.StartTime)
+	require.NotNil(t, gotReq.EndTime)
+	assert.Equal(t, time.Date(2026, time.March, 15, 9, 0, 0, 0, time.Local), *gotReq.StartTime)
+	assert.Equal(t, time.Date(2026, time.March, 15, 11, 0, 0, 0, time.Local), *gotReq.EndTime)
 }
 
 func TestRunEditCmdSetsDurationFromStart(t *testing.T) {
@@ -90,13 +101,7 @@ func TestRunEditCmdSetsDurationFromStart(t *testing.T) {
 
 	service := &stubActivityResolver{
 		getLastFn: func(context.Context) (*models.Activity, error) { return &activity, nil },
-		updateFn: func(
-			_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
-		) (*models.Activity, error) {
-			gotReq = req
-			updated := req.Apply(activity)
-			return &updated, nil
-		},
+		updateFn:  captureEditRequest(activity, &gotReq),
 	}
 
 	var out bytes.Buffer
@@ -169,13 +174,7 @@ func TestRunEditCmdReplacesTagsAndNotes(t *testing.T) {
 
 	service := &stubActivityResolver{
 		getLastFn: func(context.Context) (*models.Activity, error) { return &activity, nil },
-		updateFn: func(
-			_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
-		) (*models.Activity, error) {
-			gotReq = req
-			updated := req.Apply(activity)
-			return &updated, nil
-		},
+		updateFn:  captureEditRequest(activity, &gotReq),
 	}
 
 	var out bytes.Buffer
@@ -239,13 +238,10 @@ func TestRunEditCmdWithIndexOnlyOpensForm(t *testing.T) {
 }
 
 func TestRunEditCmdPrintsEditorResultAfterExit(t *testing.T) {
-	runner := runEditProgram
-	t.Cleanup(func() { runEditProgram = runner })
-
-	runEditProgram = func(model *editModel) error {
+	stubEditProgram(t, func(model *editModel) error {
 		model.status = "Saved: tock | retro"
 		return nil
-	}
+	})
 
 	service := &stubActivityResolver{
 		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
@@ -264,25 +260,16 @@ func TestRunEditCmdCombinesDayWithDuration(t *testing.T) {
 
 	service := &stubActivityResolver{
 		getLastFn: func(context.Context) (*models.Activity, error) { return &activity, nil },
-		updateFn: func(
-			_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
-		) (*models.Activity, error) {
-			gotReq = req
-			updated := req.Apply(activity)
-			return &updated, nil
-		},
+		updateFn:  captureEditRequest(activity, &gotReq),
 	}
 
 	var out bytes.Buffer
 	require.NoError(t, newEditTestCmd(service, &out, "--day", "2026-03-15", "--duration", "45m").Execute())
 
-	require.NotNil(t, gotReq.MoveToDay)
+	require.NotNil(t, gotReq.StartTime)
 	require.NotNil(t, gotReq.EndTime)
+	assert.Equal(t, time.Date(2026, time.March, 15, 9, 0, 0, 0, time.Local), *gotReq.StartTime)
 	assert.Equal(t, time.Date(2026, time.March, 15, 9, 45, 0, 0, time.Local), *gotReq.EndTime)
-
-	moved := gotReq.Apply(activity)
-	assert.Equal(t, time.Date(2026, time.March, 15, 9, 0, 0, 0, time.Local), moved.StartTime)
-	assert.Equal(t, 45*time.Minute, moved.EndTime.Sub(moved.StartTime))
 }
 
 func TestRunEditCmdRejectsBlankProject(t *testing.T) {
@@ -310,13 +297,7 @@ func TestRunEditCmdShiftsEndWhenDayAndStartAreCombined(t *testing.T) {
 		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
 			return []models.Activity{activity}, nil
 		},
-		updateFn: func(
-			_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
-		) (*models.Activity, error) {
-			gotReq = req
-			updated := req.Apply(activity)
-			return &updated, nil
-		},
+		updateFn: captureEditRequest(activity, &gotReq),
 	}
 
 	var out bytes.Buffer
@@ -332,12 +313,10 @@ func TestRunEditCmdShiftsEndWhenDayAndStartAreCombined(t *testing.T) {
 }
 
 func TestRunEditCmdRejectsJSONWithoutFieldFlags(t *testing.T) {
-	runner := runEditProgram
-	t.Cleanup(func() { runEditProgram = runner })
-	runEditProgram = func(*editModel) error {
+	stubEditProgram(t, func(*editModel) error {
 		t.Fatal("the editor must not open when JSON output was requested")
 		return nil
-	}
+	})
 
 	var out bytes.Buffer
 	err := newEditTestCmd(&stubActivityResolver{}, &out, "--json").Execute()

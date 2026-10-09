@@ -223,7 +223,9 @@ An empty **End** field keeps the activity running; `\n` in **Notes** is a line b
 
 `edit` only touches what it is given: notes, tags, and times the command does not mention are kept.
 Unlike `note` and `tag`, which append, `edit` replaces the values it is given, and a blank `--project`
-or `--description` is rejected. `--day` moves the whole entry, so the end time follows the start — also
+or `--description` is rejected. Every backend addresses an entry by its start time, so two entries that
+start in the same minute cannot be told apart — `edit` refuses to write in that case instead of
+changing the wrong one, and the log file has to be fixed by hand. `--day` moves the whole entry, so the end time follows the start — also
 when `--start` is given alongside it. `--json` needs at least one field flag; the interactive editor has
 no JSON output. `--clear-end` is refused while another activity is running, since `tock stop` only ever
 closes the newest open entry. Start times identify an

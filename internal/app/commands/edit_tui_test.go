@@ -11,17 +11,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/app/localization"
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 func newEditTestModel(service *stubActivityResolver) *editModel {
-	return newEditModel(
+	model := newEditModel(
 		context.Background(),
 		service,
 		timeutil.NewFormatter("24"),
 		localization.MustNew(localization.LanguageEnglish),
 	)
+	model.loadHistory()
+	return model
 }
 
 func editListService(activities ...models.Activity) *stubActivityResolver {
@@ -35,8 +38,6 @@ func editListService(activities ...models.Activity) *stubActivityResolver {
 func TestEditModelEnterOpensFormForSelectedRow(t *testing.T) {
 	activity := editTestActivity()
 	model := newEditTestModel(editListService(activity))
-	model.selectedDate = activity.StartTime
-	model.reload()
 
 	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
@@ -60,8 +61,6 @@ func TestEditModelFormTypingAndSaveCallsUpdate(t *testing.T) {
 	}
 
 	model := newEditTestModel(service)
-	model.selectedDate = activity.StartTime
-	model.reload()
 	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
 	model.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -85,8 +84,6 @@ func TestEditModelFormKeepsFormOpenOnServiceError(t *testing.T) {
 	}
 
 	model := newEditTestModel(service)
-	model.selectedDate = activity.StartTime
-	model.reload()
 	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
@@ -106,8 +103,6 @@ func TestEditModelEscapeLeavesFormWithoutSaving(t *testing.T) {
 	}
 
 	model := newEditTestModel(service)
-	model.selectedDate = activity.StartTime
-	model.reload()
 	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 
@@ -139,14 +134,26 @@ func TestBuildFormRequestAcceptsTimeOnlyValues(t *testing.T) {
 	assert.Equal(t, time.Date(2026, time.March, 14, 12, 45, 0, 0, time.Local), *req.EndTime)
 }
 
-func TestBuildFormRequestRejectsEmptyProject(t *testing.T) {
-	tf := timeutil.NewFormatter("24")
-	form := newEditForm(editTestActivity(), tf)
-	form.fields[editFieldProject].value = "  "
+func TestEditModelShowsLocalizedTextForDomainErrors(t *testing.T) {
+	activity := editTestActivity()
+	var gotReq models.UpdateActivityRequest
+	service := editListService(activity)
+	service.updateFn = func(
+		_ context.Context, _ models.Activity, req models.UpdateActivityRequest,
+	) (*models.Activity, error) {
+		gotReq = req
+		return nil, coreErrors.ErrProjectRequired
+	}
 
-	_, err := buildFormRequest(tf, form)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "project name is required")
+	model := newEditTestModel(service)
+	model.openForm(activity)
+	model.form.fields[editFieldProject].value = "   "
+	model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	require.NotNil(t, gotReq.Project, "the form must forward the blanked project so the service can reject it")
+	assert.Empty(t, *gotReq.Project)
+	assert.True(t, model.formOpen)
+	assert.Equal(t, "project name is required", model.formErr)
 }
 
 func TestBuildFormRequestRoundTripsTagsAndMultilineNotes(t *testing.T) {
@@ -177,8 +184,6 @@ func TestBuildFormRequestRoundTripsTagsAndMultilineNotes(t *testing.T) {
 func TestEditModelViewsAreLocalized(t *testing.T) {
 	activity := editTestActivity()
 	model := newEditTestModel(editListService(activity))
-	model.selectedDate = activity.StartTime
-	model.reload()
 
 	listView := model.View()
 	assert.Contains(t, listView, "<< Saturday, 14 Mar 2026 >> select an entry to edit")
@@ -201,13 +206,17 @@ func TestEditModelNavigateJumpsToNextDayWithActivities(t *testing.T) {
 
 	model := newEditTestModel(editListService(first, second))
 	model.selectedDate = first.StartTime
-	model.reload()
+	model.renderTable()
+	require.Equal(t, "review", model.activities[0].Description)
 
 	model.Update(tea.KeyMsg{Type: tea.KeyRight})
 
 	assert.Equal(t, second.StartTime.Day(), model.selectedDate.Day())
 	require.Len(t, model.activities, 1)
 	assert.Equal(t, "later", model.activities[0].Description)
+
+	model.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	assert.Equal(t, first.StartTime.Day(), model.selectedDate.Day())
 }
 
 func TestNewEditModelOpensOnLatestDayWithActivities(t *testing.T) {
@@ -260,4 +269,28 @@ func TestEditModelNavigationReusesTheLoadedHistory(t *testing.T) {
 	model.Update(tea.KeyMsg{Type: tea.KeyRight})
 
 	assert.Equal(t, before, listCalls, "navigating days must not re-scan the whole history")
+}
+
+func TestEditModelKeepsDistinctKeysForActivitiesInTheSameMinute(t *testing.T) {
+	first := editTestActivity()
+	second := first
+	second.Description = "same minute"
+
+	model := newEditTestModel(editListService(first, second))
+
+	rows := model.table.Rows()
+	require.Len(t, rows, 2)
+	assert.Equal(t, "2026-03-14-01", rows[0][0])
+	assert.Equal(t, "2026-03-14-02", rows[1][0])
+}
+
+func TestBuildFormRequestDeduplicatesTagsLikeTheTagCommand(t *testing.T) {
+	tf := timeutil.NewFormatter("24")
+	form := newEditForm(editTestActivity(), tf)
+	form.fields[editFieldTags].value = "review, urgent, review"
+
+	req, err := buildFormRequest(tf, form)
+	require.NoError(t, err)
+	require.NotNil(t, req.Tags)
+	assert.Equal(t, []string{"review", "urgent"}, *req.Tags)
 }
