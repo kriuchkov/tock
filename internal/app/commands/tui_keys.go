@@ -6,4 +6,5 @@ const (
 	keyLeft  = "left"
 	keyRight = "right"
 	keyDown  = "down"
+	keyEsc   = "esc"
 )

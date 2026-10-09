@@ -594,7 +594,7 @@ func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
 // based on the selected date. Fetches directly from service to handle cross-month weeks.
 func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.String() {
-	case "q", keyCtrlC, "esc":
+	case "q", keyCtrlC, keyEsc:
 		return tea.Quit, true
 	case keyLeft, "h":
 		m.currentDate = m.currentDate.AddDate(0, 0, -1)

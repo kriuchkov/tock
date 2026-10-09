@@ -17,10 +17,19 @@ func NewMockNotesRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockNotesRepository {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockNotesRepository{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -64,7 +73,7 @@ type MockNotesRepository_Delete_Call struct {
 //   - ctx context.Context
 //   - activityID string
 //   - date time.Time
-func (_e *MockNotesRepository_Expecter) Delete(ctx interface{}, activityID interface{}, date interface{}) *MockNotesRepository_Delete_Call {
+func (_e *MockNotesRepository_Expecter) Delete(ctx any, activityID any, date any) *MockNotesRepository_Delete_Call {
 	return &MockNotesRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, activityID, date)}
 }
 
@@ -144,7 +153,7 @@ type MockNotesRepository_Get_Call struct {
 //   - ctx context.Context
 //   - activityID string
 //   - date time.Time
-func (_e *MockNotesRepository_Expecter) Get(ctx interface{}, activityID interface{}, date interface{}) *MockNotesRepository_Get_Call {
+func (_e *MockNotesRepository_Expecter) Get(ctx any, activityID any, date any) *MockNotesRepository_Get_Call {
 	return &MockNotesRepository_Get_Call{Call: _e.mock.On("Get", ctx, activityID, date)}
 }
 
@@ -209,7 +218,7 @@ type MockNotesRepository_Save_Call struct {
 //   - date time.Time
 //   - notes string
 //   - tags []string
-func (_e *MockNotesRepository_Expecter) Save(ctx interface{}, activityID interface{}, date interface{}, notes interface{}, tags interface{}) *MockNotesRepository_Save_Call {
+func (_e *MockNotesRepository_Expecter) Save(ctx any, activityID any, date any, notes any, tags any) *MockNotesRepository_Save_Call {
 	return &MockNotesRepository_Save_Call{Call: _e.mock.On("Save", ctx, activityID, date, notes, tags)}
 }
 

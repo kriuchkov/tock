@@ -25,6 +25,7 @@ type stubActivityResolver struct {
 	getReportFn func(context.Context, models.ActivityFilter) (*models.Report, error)
 	getRecentFn func(context.Context, int) ([]models.Activity, error)
 	getLastFn   func(context.Context) (*models.Activity, error)
+	updateFn    func(context.Context, models.Activity, models.UpdateActivityRequest) (*models.Activity, error)
 	addNoteFn   func(context.Context, models.Activity, string) (*models.Activity, error)
 	addTagsFn   func(context.Context, models.Activity, []string) (*models.Activity, error)
 	removeFn    func(context.Context, models.Activity) error
@@ -77,6 +78,17 @@ func (s stubActivityResolver) GetLast(ctx context.Context) (*models.Activity, er
 		return nil, stubMethodNotConfigured()
 	}
 	return s.getLastFn(ctx)
+}
+
+func (s stubActivityResolver) Update(
+	ctx context.Context,
+	original models.Activity,
+	req models.UpdateActivityRequest,
+) (*models.Activity, error) {
+	if s.updateFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+	return s.updateFn(ctx, original, req)
 }
 
 func (s stubActivityResolver) AddNote(

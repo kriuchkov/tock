@@ -92,6 +92,16 @@ func TestTodoTXTIntegration(t *testing.T) {
 	require.NoError(t, err, stderr)
 	assert.Contains(t, stdout, "\"project\": \"Past Project\"")
 	assert.Contains(t, stdout, "\"duration\": \"02:00:00\"")
+
+	stdout, stderr, err = runTock("edit", "2020-01-01-01", "-d", "Fixed Task", "--end", "2020-01-01 13:00")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "Fixed Task")
+
+	stdout, stderr, err = runTock("report", "--date", "2020-01-01", "--json")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "\"description\": \"Fixed Task\"")
+	assert.Contains(t, stdout, "\"duration\": \"03:00:00\"")
+	assert.NotContains(t, stdout, "Old Task")
 }
 
 func TestTodoTXTReadsPlainTodoTXTData(t *testing.T) {
