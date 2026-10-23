@@ -62,3 +62,28 @@ func TestRunICalCmdSingleExportWritesSelectedActivity(t *testing.T) {
 	assert.Contains(t, out.String(), "SUMMARY:ops: second")
 	assert.NotContains(t, out.String(), "SUMMARY:core: first")
 }
+
+func TestRunICalCmdSingleExportSkipsEntriesFromThePreviousDay(t *testing.T) {
+	overnightStart := time.Date(2026, time.March, 13, 23, 0, 0, 0, time.Local)
+	overnightEnd := overnightStart.Add(2 * time.Hour)
+	morningStart := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	morningEnd := morningStart.Add(time.Hour)
+
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{Activities: []models.Activity{
+				{Project: "core", Description: "overnight", StartTime: overnightStart, EndTime: &overnightEnd},
+				{Project: "ops", Description: "morning", StartTime: morningStart, EndTime: &morningEnd},
+			}}, nil
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	err := runICalCmd(cmd, []string{"2026-03-14-01"}, "", false)
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "SUMMARY:ops: morning")
+	assert.NotContains(t, out.String(), "SUMMARY:core: overnight")
+}

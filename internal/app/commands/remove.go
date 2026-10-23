@@ -148,7 +148,7 @@ func findActivityByIndex(ctx context.Context, svc ports.ActivityResolver, index 
 		return models.Activity{}, errors.Wrap(err, "list activities")
 	}
 
-	activity, sequenceErr := models.ActivityForSequence(activities, seq)
+	activity, sequenceErr := models.ActivityForSequence(models.ActivitiesStartingOn(activities, date), seq)
 	if sequenceErr != nil {
 		return models.Activity{}, errors.Errorf("activity #%d not found on %s", seq, date.Format("2006-01-02"))
 	}
