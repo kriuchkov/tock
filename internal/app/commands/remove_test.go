@@ -41,6 +41,29 @@ func TestRunRemoveCmdUsesCommandWriter(t *testing.T) {
 	assert.Equal(t, "Activity removed.\n", out.String())
 }
 
+func TestFindActivityByIndexNumbersByStartDayLikeList(t *testing.T) {
+	overnightStart := time.Date(2026, time.March, 13, 23, 0, 0, 0, time.Local)
+	overnightEnd := overnightStart.Add(2 * time.Hour)
+	morning := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+
+	// File-like backends return every entry overlapping the day, including one from the day before.
+	service := &stubActivityResolver{
+		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
+			return []models.Activity{
+				{Project: "overnight", StartTime: overnightStart, EndTime: &overnightEnd},
+				{Project: "morning", StartTime: morning},
+			}, nil
+		},
+	}
+
+	activity, err := findActivityByIndex(context.Background(), service, "2026-03-14-01")
+	require.NoError(t, err)
+	assert.Equal(t, "morning", activity.Project)
+
+	_, err = findActivityByIndex(context.Background(), service, "2026-03-14-02")
+	require.Error(t, err)
+}
+
 func TestConfirmRemovalAbort(t *testing.T) {
 	activity := models.Activity{
 		Project:     "tock",

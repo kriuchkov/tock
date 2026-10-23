@@ -29,6 +29,20 @@ func TestParseActivityKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "expected YYYY-MM-DD-NN")
 }
 
+func TestActivitiesStartingOnSkipsEntriesFromThePreviousDay(t *testing.T) {
+	overnightStart := time.Date(2026, time.March, 13, 23, 0, 0, 0, time.Local)
+	overnightEnd := overnightStart.Add(2 * time.Hour)
+	morning := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	activities := []models.Activity{
+		{Project: "overnight", StartTime: overnightStart, EndTime: &overnightEnd},
+		{Project: "morning", StartTime: morning},
+	}
+
+	started := models.ActivitiesStartingOn(activities, time.Date(2026, time.March, 14, 0, 0, 0, 0, time.Local))
+	require.Len(t, started, 1)
+	assert.Equal(t, "morning", started[0].Project)
+}
+
 func TestActivityForSequenceAndIDs(t *testing.T) {
 	start1 := time.Date(2026, time.March, 14, 11, 0, 0, 0, time.Local)
 	end1 := start1.Add(time.Hour)

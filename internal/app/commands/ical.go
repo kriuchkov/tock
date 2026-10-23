@@ -67,9 +67,10 @@ func runICalCmd(cmd *cobra.Command, args []string, outputDir string, openApp boo
 	}
 
 	if ref.HasSequence {
-		activity, seqErr := models.ActivityForSequence(activities, ref.Sequence)
+		started := models.ActivitiesStartingOn(activities, ref.Date)
+		activity, seqErr := models.ActivityForSequence(started, ref.Sequence)
 		if seqErr != nil {
-			return errors.New(text(cmd, "ical.error.activity_not_found", ref.Sequence, len(activities)))
+			return errors.New(text(cmd, "ical.error.activity_not_found", ref.Sequence, len(started)))
 		}
 		return handleSingleExport(out, activity, keyOrDate, outputDir, openApp)
 	}

@@ -65,6 +65,19 @@ func SortActivitiesByStart(activities []Activity) []Activity {
 	return sorted
 }
 
+// ActivitiesStartingOn keeps the activities that start on day's date, which is how
+// DATE-INDEX keys number them; a date filter also returns entries from the day before.
+func ActivitiesStartingOn(activities []Activity, day time.Time) []Activity {
+	date := day.Format(time.DateOnly)
+	started := make([]Activity, 0, len(activities))
+	for _, activity := range activities {
+		if activity.StartTime.Format(time.DateOnly) == date {
+			started = append(started, activity)
+		}
+	}
+	return started
+}
+
 func ActivityForSequence(activities []Activity, sequence int) (Activity, error) {
 	sorted := SortActivitiesByStart(activities)
 	if sequence < 1 || sequence > len(sorted) {

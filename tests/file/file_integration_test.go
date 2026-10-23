@@ -219,4 +219,21 @@ func TestFileBackendJSONCommands(t *testing.T) {
 	require.Len(t, exported, 1)
 	assert.Equal(t, "Second", exported[0].Description)
 	assert.Empty(t, exported[0].Tags)
+
+	// DATE-INDEX keys number entries by start day like `tock list`, so an entry
+	// running past midnight does not take the next day's first key.
+	_, stderr, err = runTock("add", "-p", "Night", "-d", "Overnight", "-s", "2020-03-01 23:00", "-e", "2020-03-02 01:00")
+	require.NoError(t, err, stderr)
+	_, stderr, err = runTock("add", "-p", "Day", "-d", "Morning", "-s", "2020-03-02 09:00", "-e", "2020-03-02 10:00")
+	require.NoError(t, err, stderr)
+
+	stdout, stderr, err = runTock("remove", "2020-03-02-01", "--yes", "--json")
+	require.NoError(t, err, stderr)
+	assert.Equal(t, "Morning", decodeActivity(t, stdout).Description)
+
+	stdout, stderr, err = runTock("export", "--date", "2020-03-01", "--format", "json", "--stdout")
+	require.NoError(t, err, stderr)
+	exported = decodeActivities(t, stdout)
+	require.Len(t, exported, 1)
+	assert.Equal(t, "Overnight", exported[0].Description)
 }
