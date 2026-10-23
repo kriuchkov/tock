@@ -11,6 +11,7 @@ import (
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 type service struct {
@@ -247,6 +248,205 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 
 func (s *service) GetLast(ctx context.Context) (*models.Activity, error) {
 	return s.repo.FindLast(ctx)
+}
+
+// Update applies a partial change to an existing activity. When the start time
+// changes, the entry is re-keyed: the updated activity is written first and the
+// original removed afterwards, so an interrupted update never loses the entry.
+func (s *service) Update(
+	ctx context.Context,
+	original models.Activity,
+	req models.UpdateActivityRequest,
+) (*models.Activity, error) {
+	if req.IsEmpty() {
+		return &original, nil
+	}
+
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+
+	current, err := s.hydrateNotes(ctx, original, req)
+	if err != nil {
+		return nil, err
+	}
+
+	updated := req.Apply(current)
+
+	if updated.StartTime.IsZero() {
+		return nil, errors.New("start time is required")
+	}
+
+	// Entries are keyed by start time with minute precision, so a sub-minute
+	// difference is not a move and must not re-key the entry. The original start
+	// is restored before the range check, which must see the start that is saved.
+	moved := !updated.StartTime.Truncate(time.Minute).Equal(original.StartTime.Truncate(time.Minute))
+	if !moved {
+		updated.StartTime = original.StartTime
+	}
+	if updated.EndTime != nil && updated.EndTime.Before(updated.StartTime) {
+		return nil, coreErrors.ErrInvalidTimeRange
+	}
+
+	if err = s.ensureAddressableStartTime(ctx, original); err != nil {
+		return nil, err
+	}
+	if moved {
+		if err = s.ensureStartTimeFree(ctx, original, updated.StartTime); err != nil {
+			return nil, err
+		}
+	}
+
+	if original.EndTime != nil && updated.EndTime == nil {
+		if err = s.ensureNoOtherRunningActivity(ctx, original); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = s.repo.Save(ctx, updated); err != nil {
+		return nil, errors.Wrap(err, "save activity")
+	}
+
+	if moved {
+		if err = s.repo.Remove(ctx, original); err != nil {
+			return nil, errors.Wrap(err, "remove previous activity")
+		}
+	}
+
+	notesChanged := req.Notes != nil || req.Tags != nil
+	if err = s.syncNotes(ctx, original, updated, moved, notesChanged); err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+// validateUpdateRequest rejects explicitly blanked mandatory fields; fields the
+// request does not mention keep whatever the activity already carries.
+func validateUpdateRequest(req models.UpdateActivityRequest) error {
+	if req.Project != nil && strings.TrimSpace(*req.Project) == "" {
+		return coreErrors.ErrProjectRequired
+	}
+	if req.Description != nil && strings.TrimSpace(*req.Description) == "" {
+		return coreErrors.ErrDescriptionRequired
+	}
+	return nil
+}
+
+// hydrateNotes fills in the stored notes/tags the caller may not carry (GetLast
+// and the repositories return activities without them), so an update that does
+// not mention notes or tags cannot erase them.
+func (s *service) hydrateNotes(
+	ctx context.Context,
+	activity models.Activity,
+	req models.UpdateActivityRequest,
+) (models.Activity, error) {
+	if s.notesRepo == nil || (req.Notes != nil && req.Tags != nil) {
+		return activity, nil
+	}
+
+	storedNotes, storedTags, err := s.loadStoredNotes(ctx, activity)
+	if err != nil {
+		return models.Activity{}, err
+	}
+
+	hydrated := activity
+	hydrated.Notes = storedNotes
+	hydrated.Tags = storedTags
+	return hydrated, nil
+}
+
+// ensureNoOtherRunningActivity keeps the "only one activity runs at a time"
+// invariant when an update reopens a finished entry, because a second open
+// entry can no longer be closed by `tock stop`.
+func (s *service) ensureNoOtherRunningActivity(ctx context.Context, original models.Activity) error {
+	isRunning := true
+
+	running, err := s.repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
+	if err != nil {
+		return errors.Wrap(err, "find running activities")
+	}
+
+	for _, activity := range running {
+		if !activity.StartTime.Equal(original.StartTime) {
+			return coreErrors.ErrActivityAlreadyStarted
+		}
+	}
+	return nil
+}
+
+// ensureAddressableStartTime refuses to write an activity whose exact start time
+// is shared by another entry: the backends address an entry by that start time,
+// so the write would silently land on the wrong one. The Bartib file keeps only
+// minutes, so its same-minute entries share an exact start and are caught too.
+func (s *service) ensureAddressableStartTime(ctx context.Context, original models.Activity) error {
+	sameStart, err := s.countActivitiesOnDay(ctx, original.StartTime, original.StartTime.Equal)
+	if err != nil {
+		return err
+	}
+	if sameStart > 1 {
+		return coreErrors.ErrAmbiguousStartTime
+	}
+	return nil
+}
+
+// ensureStartTimeFree rejects a move onto the start time of another activity,
+// because every backend keys an entry by its start time.
+func (s *service) ensureStartTimeFree(ctx context.Context, original models.Activity, startTime time.Time) error {
+	target := startTime.Truncate(time.Minute)
+	sameStart, err := s.countActivitiesOnDay(ctx, startTime, func(t time.Time) bool {
+		return t.Truncate(time.Minute).Equal(target)
+	})
+	if err != nil {
+		return err
+	}
+
+	if original.StartTime.Truncate(time.Minute).Equal(startTime.Truncate(time.Minute)) {
+		sameStart--
+	}
+	if sameStart > 0 {
+		return coreErrors.ErrStartTimeConflict
+	}
+	return nil
+}
+
+// countActivitiesOnDay counts the activities on day's local day whose start
+// time satisfies match.
+func (s *service) countActivitiesOnDay(ctx context.Context, day time.Time, match func(time.Time) bool) (int, error) {
+	fromDate, toDate := timeutil.LocalDayBounds(day)
+
+	activities, err := s.repo.Find(ctx, models.ActivityFilter{FromDate: &fromDate, ToDate: &toDate})
+	if err != nil {
+		return 0, errors.Wrap(err, "find activities")
+	}
+
+	count := 0
+	for _, activity := range activities {
+		if match(activity.StartTime) {
+			count++
+		}
+	}
+	return count, nil
+}
+
+// syncNotes persists the updated notes/tags and, when the activity moved to a
+// new start time, deletes the sidecar entry left at the old one. The new entry
+// is written first, so a failed write never loses the notes. An update that
+// changes neither notes nor the start time has nothing to write.
+func (s *service) syncNotes(ctx context.Context, original, updated models.Activity, moved, notesChanged bool) error {
+	if s.notesRepo == nil || (!moved && !notesChanged) {
+		return nil
+	}
+
+	if err := s.notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
+		return errors.Wrap(err, "save notes")
+	}
+
+	if moved {
+		if err := s.notesRepo.Delete(ctx, original.ID(), original.StartTime); err != nil {
+			return errors.Wrap(err, "delete previous notes")
+		}
+	}
+	return nil
 }
 
 // AddNote appends note text to an activity, keeping its existing tags. The

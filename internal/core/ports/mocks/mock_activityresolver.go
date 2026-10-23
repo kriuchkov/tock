@@ -17,10 +17,19 @@ func NewMockActivityResolver(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockActivityResolver {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockActivityResolver{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -74,7 +83,7 @@ type MockActivityResolver_Add_Call struct {
 // Add is a helper method to define mock.On call
 //   - ctx context.Context
 //   - req models.AddActivityRequest
-func (_e *MockActivityResolver_Expecter) Add(ctx interface{}, req interface{}) *MockActivityResolver_Add_Call {
+func (_e *MockActivityResolver_Expecter) Add(ctx any, req any) *MockActivityResolver_Add_Call {
 	return &MockActivityResolver_Add_Call{Call: _e.mock.On("Add", ctx, req)}
 }
 
@@ -143,7 +152,7 @@ type MockActivityResolver_AddNote_Call struct {
 //   - ctx context.Context
 //   - activity models.Activity
 //   - note string
-func (_e *MockActivityResolver_Expecter) AddNote(ctx interface{}, activity interface{}, note interface{}) *MockActivityResolver_AddNote_Call {
+func (_e *MockActivityResolver_Expecter) AddNote(ctx any, activity any, note any) *MockActivityResolver_AddNote_Call {
 	return &MockActivityResolver_AddNote_Call{Call: _e.mock.On("AddNote", ctx, activity, note)}
 }
 
@@ -217,7 +226,7 @@ type MockActivityResolver_AddTags_Call struct {
 //   - ctx context.Context
 //   - activity models.Activity
 //   - tags []string
-func (_e *MockActivityResolver_Expecter) AddTags(ctx interface{}, activity interface{}, tags interface{}) *MockActivityResolver_AddTags_Call {
+func (_e *MockActivityResolver_Expecter) AddTags(ctx any, activity any, tags any) *MockActivityResolver_AddTags_Call {
 	return &MockActivityResolver_AddTags_Call{Call: _e.mock.On("AddTags", ctx, activity, tags)}
 }
 
@@ -289,7 +298,7 @@ type MockActivityResolver_GetLast_Call struct {
 
 // GetLast is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockActivityResolver_Expecter) GetLast(ctx interface{}) *MockActivityResolver_GetLast_Call {
+func (_e *MockActivityResolver_Expecter) GetLast(ctx any) *MockActivityResolver_GetLast_Call {
 	return &MockActivityResolver_GetLast_Call{Call: _e.mock.On("GetLast", ctx)}
 }
 
@@ -352,7 +361,7 @@ type MockActivityResolver_GetRecent_Call struct {
 // GetRecent is a helper method to define mock.On call
 //   - ctx context.Context
 //   - limit int
-func (_e *MockActivityResolver_Expecter) GetRecent(ctx interface{}, limit interface{}) *MockActivityResolver_GetRecent_Call {
+func (_e *MockActivityResolver_Expecter) GetRecent(ctx any, limit any) *MockActivityResolver_GetRecent_Call {
 	return &MockActivityResolver_GetRecent_Call{Call: _e.mock.On("GetRecent", ctx, limit)}
 }
 
@@ -420,7 +429,7 @@ type MockActivityResolver_GetReport_Call struct {
 // GetReport is a helper method to define mock.On call
 //   - ctx context.Context
 //   - filter models.ActivityFilter
-func (_e *MockActivityResolver_Expecter) GetReport(ctx interface{}, filter interface{}) *MockActivityResolver_GetReport_Call {
+func (_e *MockActivityResolver_Expecter) GetReport(ctx any, filter any) *MockActivityResolver_GetReport_Call {
 	return &MockActivityResolver_GetReport_Call{Call: _e.mock.On("GetReport", ctx, filter)}
 }
 
@@ -488,7 +497,7 @@ type MockActivityResolver_List_Call struct {
 // List is a helper method to define mock.On call
 //   - ctx context.Context
 //   - filter models.ActivityFilter
-func (_e *MockActivityResolver_Expecter) List(ctx interface{}, filter interface{}) *MockActivityResolver_List_Call {
+func (_e *MockActivityResolver_Expecter) List(ctx any, filter any) *MockActivityResolver_List_Call {
 	return &MockActivityResolver_List_Call{Call: _e.mock.On("List", ctx, filter)}
 }
 
@@ -545,7 +554,7 @@ type MockActivityResolver_Remove_Call struct {
 // Remove is a helper method to define mock.On call
 //   - ctx context.Context
 //   - activity models.Activity
-func (_e *MockActivityResolver_Expecter) Remove(ctx interface{}, activity interface{}) *MockActivityResolver_Remove_Call {
+func (_e *MockActivityResolver_Expecter) Remove(ctx any, activity any) *MockActivityResolver_Remove_Call {
 	return &MockActivityResolver_Remove_Call{Call: _e.mock.On("Remove", ctx, activity)}
 }
 
@@ -613,7 +622,7 @@ type MockActivityResolver_Start_Call struct {
 // Start is a helper method to define mock.On call
 //   - ctx context.Context
 //   - req models.StartActivityRequest
-func (_e *MockActivityResolver_Expecter) Start(ctx interface{}, req interface{}) *MockActivityResolver_Start_Call {
+func (_e *MockActivityResolver_Expecter) Start(ctx any, req any) *MockActivityResolver_Start_Call {
 	return &MockActivityResolver_Start_Call{Call: _e.mock.On("Start", ctx, req)}
 }
 
@@ -681,7 +690,7 @@ type MockActivityResolver_Stop_Call struct {
 // Stop is a helper method to define mock.On call
 //   - ctx context.Context
 //   - req models.StopActivityRequest
-func (_e *MockActivityResolver_Expecter) Stop(ctx interface{}, req interface{}) *MockActivityResolver_Stop_Call {
+func (_e *MockActivityResolver_Expecter) Stop(ctx any, req any) *MockActivityResolver_Stop_Call {
 	return &MockActivityResolver_Stop_Call{Call: _e.mock.On("Stop", ctx, req)}
 }
 
@@ -709,6 +718,80 @@ func (_c *MockActivityResolver_Stop_Call) Return(activity *models.Activity, err 
 }
 
 func (_c *MockActivityResolver_Stop_Call) RunAndReturn(run func(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error)) *MockActivityResolver_Stop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Update provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) Update(ctx context.Context, original models.Activity, req models.UpdateActivityRequest) (*models.Activity, error) {
+	ret := _mock.Called(ctx, original, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, models.UpdateActivityRequest) (*models.Activity, error)); ok {
+		return returnFunc(ctx, original, req)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.Activity, models.UpdateActivityRequest) *models.Activity); ok {
+		r0 = returnFunc(ctx, original, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.Activity, models.UpdateActivityRequest) error); ok {
+		r1 = returnFunc(ctx, original, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type MockActivityResolver_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - ctx context.Context
+//   - original models.Activity
+//   - req models.UpdateActivityRequest
+func (_e *MockActivityResolver_Expecter) Update(ctx any, original any, req any) *MockActivityResolver_Update_Call {
+	return &MockActivityResolver_Update_Call{Call: _e.mock.On("Update", ctx, original, req)}
+}
+
+func (_c *MockActivityResolver_Update_Call) Run(run func(ctx context.Context, original models.Activity, req models.UpdateActivityRequest)) *MockActivityResolver_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.Activity
+		if args[1] != nil {
+			arg1 = args[1].(models.Activity)
+		}
+		var arg2 models.UpdateActivityRequest
+		if args[2] != nil {
+			arg2 = args[2].(models.UpdateActivityRequest)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_Update_Call) Return(activity *models.Activity, err error) *MockActivityResolver_Update_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_Update_Call) RunAndReturn(run func(ctx context.Context, original models.Activity, req models.UpdateActivityRequest) (*models.Activity, error)) *MockActivityResolver_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }

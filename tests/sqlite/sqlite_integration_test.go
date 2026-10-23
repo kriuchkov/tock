@@ -101,6 +101,21 @@ func TestSQLiteIntegration(t *testing.T) {
 	assert.Contains(t, stdout, "\"project\": \"PastProject\"")
 	assert.Contains(t, stdout, "\"duration\": \"02:00:00\"") // since it was 10:00 to 12:00
 
+	// 8b. Edit that activity: move it to another day and extend it
+	stdout, stderr, err = runTock("edit", "2020-01-01-01", "--day", "2020-01-02", "--duration", "3h", "--tag", "fixed")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "PastProject")
+
+	stdout, stderr, err = runTock("report", "--date", "2020-01-01", "--json")
+	require.NoError(t, err, stderr)
+	assert.NotContains(t, stdout, "PastProject")
+
+	stdout, stderr, err = runTock("report", "--date", "2020-01-02", "--json")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "\"project\": \"PastProject\"")
+	assert.Contains(t, stdout, "\"duration\": \"03:00:00\"")
+	assert.Contains(t, stdout, "fixed")
+
 	// 9. Remove the last activity (the continued one from today)
 	stdout, stderr, err = runTock("remove", "-y") // automatically remove last without wizard
 	require.NoError(t, err, stderr)

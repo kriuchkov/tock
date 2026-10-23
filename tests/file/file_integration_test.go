@@ -74,11 +74,23 @@ func TestFileBackendJSONCommands(t *testing.T) {
 	assert.Equal(t, "Integration Project", stopped.Project)
 	require.NotNil(t, stopped.EndTime)
 
+	_, stderr, err = runTock("note", "kept across edits", "--json")
+	require.NoError(t, err, stderr)
+	_, stderr, err = runTock("tag", "kept-tag", "--json")
+	require.NoError(t, err, stderr)
+
+	stdout, stderr, err = runTock("edit", "-d", "JSON contract fixed", "--json")
+	require.NoError(t, err, stderr)
+	editedLast := decodeActivity(t, stdout)
+	assert.Equal(t, "JSON contract fixed", editedLast.Description)
+	assert.Equal(t, "kept across edits", editedLast.Notes, "notes must survive editing the last activity")
+	assert.Equal(t, []string{"kept-tag"}, editedLast.Tags, "tags must survive editing the last activity")
+
 	stdout, stderr, err = runTock("continue", "--json")
 	require.NoError(t, err, stderr)
 	continued := decodeActivity(t, stdout)
 	assert.Equal(t, "Integration Project", continued.Project)
-	assert.Equal(t, "JSON contract", continued.Description)
+	assert.Equal(t, "JSON contract fixed", continued.Description)
 	assert.Nil(t, continued.EndTime)
 
 	stdout, stderr, err = runTock("stop", "--json")
@@ -114,11 +126,57 @@ func TestFileBackendJSONCommands(t *testing.T) {
 	assert.Equal(t, "Past Project", exported[0].Project)
 	assert.Equal(t, "Historical Task", exported[0].Description)
 
+	stdout, stderr, err = runTock(
+		"edit", "2020-01-01-01",
+		"-d", "Corrected Task",
+		"--end", "2020-01-01 13:00",
+		"--tag", "fixed,billable",
+		"--note", "end time was wrong",
+		"--json",
+	)
+	require.NoError(t, err, stderr)
+	edited := decodeActivity(t, stdout)
+	assert.Equal(t, "Past Project", edited.Project)
+	assert.Equal(t, "Corrected Task", edited.Description)
+	require.NotNil(t, edited.EndTime)
+	assert.Equal(t, 3*time.Hour, edited.EndTime.Sub(edited.StartTime))
+	assert.Equal(t, []string{"fixed", "billable"}, edited.Tags)
+	assert.Equal(t, "end time was wrong", edited.Notes)
+
+	stdout, stderr, err = runTock("edit", "2020-01-01-01", "--end", "2020-01-01 12:30", "--json")
+	require.NoError(t, err, stderr)
+	kept := decodeActivity(t, stdout)
+	assert.Equal(t, []string{"fixed", "billable"}, kept.Tags, "tags must survive an edit that does not mention them")
+	assert.Equal(t, "end time was wrong", kept.Notes, "notes must survive an edit that does not mention them")
+
+	stdout, stderr, err = runTock("edit", "2020-01-01-01", "--day", "2020-01-02", "--json")
+	require.NoError(t, err, stderr)
+	moved := decodeActivity(t, stdout)
+	assert.Equal(t, "2020-01-02", moved.StartTime.Format(time.DateOnly))
+	require.NotNil(t, moved.EndTime)
+	assert.Equal(t, 2*time.Hour+30*time.Minute, moved.EndTime.Sub(moved.StartTime))
+
+	stdout, stderr, err = runTock("export", "--date", "2020-01-01", "--format", "json", "--stdout")
+	require.NoError(t, err, stderr)
+	assert.Empty(t, decodeActivities(t, stdout))
+
+	stdout, stderr, err = runTock("export", "--date", "2020-01-02", "--format", "json", "--stdout")
+	require.NoError(t, err, stderr)
+	movedDay := decodeActivities(t, stdout)
+	require.Len(t, movedDay, 1)
+	assert.Equal(t, "Corrected Task", movedDay[0].Description)
+	assert.Equal(t, "end time was wrong", movedDay[0].Notes)
+
+	stdout, stderr, err = runTock("edit", "2020-01-02-01", "--day", "2020-01-01", "--json")
+	require.NoError(t, err, stderr)
+	movedBack := decodeActivity(t, stdout)
+	assert.Equal(t, "2020-01-01", movedBack.StartTime.Format(time.DateOnly))
+
 	stdout, stderr, err = runTock("remove", "2020-01-01-01", "--yes", "--json")
 	require.NoError(t, err, stderr)
 	removed := decodeActivity(t, stdout)
 	assert.Equal(t, "Past Project", removed.Project)
-	assert.Equal(t, "Historical Task", removed.Description)
+	assert.Equal(t, "Corrected Task", removed.Description)
 
 	stdout, stderr, err = runTock("export", "--date", "2020-01-01", "--format", "json", "--stdout")
 	require.NoError(t, err, stderr)

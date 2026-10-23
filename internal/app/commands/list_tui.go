@@ -105,7 +105,7 @@ func initialListModel(service ports.ActivityResolver, tf *timeutil.Formatter, lo
 }
 
 func (m *listModel) initTable() {
-	columns := []table.Column{
+	m.table = newActivityTable([]table.Column{
 		{Title: m.loc.Text("list.table.key"), Width: 13},
 		{Title: m.loc.Text("list.table.time"), Width: 20},
 		{Title: m.loc.Text("list.table.project"), Width: 20},
@@ -113,26 +113,7 @@ func (m *listModel) initTable() {
 		{Title: m.loc.Text("list.table.duration"), Width: 10},
 		{Title: m.loc.Text("list.table.tags"), Width: 15},
 		{Title: m.loc.Text("list.table.notes"), Width: 30},
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithFocused(true),
-		table.WithHeight(defaultDailyTableHeight),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(true)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-	m.table = t
+	}, defaultDailyTableHeight)
 }
 
 func (m *listModel) updateActivities() {
@@ -152,64 +133,39 @@ func (m *listModel) navigate(dir int) {
 		return
 	}
 
-	current := time.Date(m.selectedDate.Year(), m.selectedDate.Month(), m.selectedDate.Day(), 0, 0, 0, 0, m.selectedDate.Location())
-	target := models.FindTargetDate(activities, current, dir)
-
-	if target != nil {
-		m.selectedDate = *target
-	}
-
+	m.selectedDate = adjacentActivityDay(activities, m.selectedDate, dir)
 	m.renderTable(activities)
 }
 
 func (m *listModel) renderTable(activities []models.Activity) {
-	var dayActivities []models.Activity    // Filtered for display
-	var allDayActivities []models.Activity // All for the day (for numbering)
-
-	// First pass: find all activities for the selected date to establish correct numbering
-	for _, a := range activities {
-		if a.StartTime.Year() == m.selectedDate.Year() &&
-			a.StartTime.Month() == m.selectedDate.Month() &&
-			a.StartTime.Day() == m.selectedDate.Day() {
-			allDayActivities = append(allDayActivities, a)
-		}
-	}
-	// Sort by start time (assuming they might not be sorted)
-	// Actually models.Activity doesn't have a sort method, but usually they come sorted or we should sort them.
-	// For now we assume they are somewhat ordered or we sort them here?
-	// Let's rely on the order provided by service.List for now, or sort if needed.
-	// We'll trust the service or handle it implicitly.
-	// However, to be safe for key generation:
-
-	// Simply assign to filtered list (currently no other filtering)
-	dayActivities = allDayActivities
-	m.activities = dayActivities
-
-	var rows []table.Row
-	for i, a := range dayActivities {
-		duration := a.Duration().Round(time.Minute).String()
-		timeStr := a.StartTime.Format(m.timeFormat.GetDisplayFormat())
-		if a.EndTime != nil {
-			timeStr += " - " + a.EndTime.Format(m.timeFormat.GetDisplayFormat())
-		} else {
-			timeStr += " - ..."
-		}
-
-		key := fmt.Sprintf("%s-%02d", a.StartTime.Format("2006-01-02"), i+1)
-
-		tagsStr := strings.Join(a.Tags, ", ")
-		notesStr := strings.ReplaceAll(a.Notes, "\n", " ")
-		if len(notesStr) > 27 {
-			notesStr = notesStr[:27] + "..."
-		}
-
-		rows = append(rows, table.Row{key, timeStr, a.Project, a.Description, duration, tagsStr, notesStr})
+	m.activities = activitiesOnDay(activities, m.selectedDate)
+	rows := make([]table.Row, 0, len(m.activities))
+	for i, activity := range m.activities {
+		rows = append(rows, table.Row{
+			activityDayKey(activity, i),
+			formatActivityTimeRange(m.timeFormat, activity),
+			activity.Project,
+			activity.Description,
+			formatActivityDuration(activity),
+			formatActivityTags(activity),
+			truncateNotes(activity.Notes),
+		})
 	}
 	m.table.SetRows(rows)
 	// SetRows leaves the cursor at -1 after rendering an empty day; select the first row again.
 	if m.table.Cursor() < 0 {
 		m.table.SetCursor(0)
 	}
+}
+
+const listNotesWidth = 27
+
+func truncateNotes(notes string) string {
+	notes = strings.ReplaceAll(notes, "\n", " ")
+	if len(notes) > listNotesWidth {
+		return notes[:listNotesWidth] + "..."
+	}
+	return notes
 }
 
 func (m *listModel) Init() tea.Cmd {

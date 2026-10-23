@@ -54,6 +54,7 @@ Features include:
 - **Simple plaintext format** - Activities stored in human-readable files (default)
 - **Multiple Backends** - Support for flat files, TodoTXT, TimeWarrior, and SQLite databases
 - **Notes & Tags** - Attach detailed notes and tags to activities
+- **Fix mistakes fast** - Correct any entry with `tock edit`, by flags or in an interactive editor
 - **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
 - **Fast & Lightweight** - Single binary, no dependencies
 - **Compatible** - Reads/writes Bartib file format, TodoTXT-compatible lines, and TimeWarrior data files
@@ -486,6 +487,7 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   continue    Continues a previous activity
   current     Lists all currently running activities
+  edit        Edit an existing activity
   export      Export report data to file
   help        Help about any command
   ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.
@@ -573,6 +575,32 @@ tock add -p "Project" -d "Task" -s 10:00 -e 11:00 --note "Fixed bug #123" --tag 
 - `--duration`: Duration (e.g. 1h, 30m). Used if end time is not specified.
 - `--note`: Activity notes
 - `--tag`: Activity tags (can be used multiple times)
+
+### Edit activity
+
+Correct an entry instead of editing the log file by hand. Without flags an interactive editor opens;
+with flags the change is applied right away. Without a date-index the last activity is edited.
+
+```bash
+tock edit                                        # Browse days, pick an entry, edit it in the TUI
+tock edit 2025-12-10-01                          # Open the editor for one entry
+tock edit -e 17:30                               # Fix the end time of the last activity
+tock edit 2025-12-10-01 -p Tock -d "Review"      # Fix project and description
+tock edit 2025-12-10-01 --duration 90m           # Keep the start, set a new duration
+tock edit 2025-12-10-01 --day 2025-12-11         # Move the entry to another day
+tock edit 2025-12-10-01 --clear-end              # Drop the end time, the activity runs again
+```
+
+**Flags:**
+
+- `-p, --project`, `-d, --description`: New project / description
+- `--day`, `-s, --start`, `-e, --end`, `--duration`: New date, times, or duration
+- `--note`, `--tag`: Replace notes / tags (`note` and `tag` append instead); untouched fields are kept
+- `--clear-end`: Drop the end time so the activity is running again (refused while another activity runs)
+- `--json`: Output the updated activity as JSON (needs at least one field flag)
+
+In the editor: `left`/`right` change the day, `up`/`down` select an entry, `enter` opens the form and
+saves it, `tab` moves between fields, `esc` goes back, `q` quits.
 
 ### Remove activity
 

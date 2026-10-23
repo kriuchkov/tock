@@ -49,3 +49,37 @@ func TestFindTargetDate(t *testing.T) {
 	assert.Equal(t, time.Date(2026, time.March, 14, 0, 0, 0, 0, time.Local), *next)
 	assert.Nil(t, models.FindTargetDate(activities, time.Date(2026, time.March, 10, 0, 0, 0, 0, time.Local), -1))
 }
+
+func TestMoveActivityToDayKeepsTimeOfDayAndDuration(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 15, 0, 0, time.Local)
+	end := start.Add(90 * time.Minute)
+	activity := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+
+	moved := models.MoveActivityToDay(activity, time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local))
+
+	assert.Equal(t, time.Date(2026, time.March, 16, 9, 15, 0, 0, time.Local), moved.StartTime)
+	require.NotNil(t, moved.EndTime)
+	assert.Equal(t, 90*time.Minute, moved.EndTime.Sub(moved.StartTime))
+}
+
+func TestMoveActivityToDayLeavesARunningActivityOpen(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 15, 0, 0, time.Local)
+	activity := models.Activity{Project: "tock", StartTime: start}
+
+	moved := models.MoveActivityToDay(activity, time.Date(2026, time.March, 16, 0, 0, 0, 0, time.Local))
+
+	assert.Equal(t, time.Date(2026, time.March, 16, 9, 15, 0, 0, time.Local), moved.StartTime)
+	assert.Nil(t, moved.EndTime)
+}
+
+func TestRescheduleActivityPreservesDuration(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	activity := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+
+	rescheduled := models.RescheduleActivity(activity, start.Add(-30*time.Minute))
+
+	assert.Equal(t, start.Add(-30*time.Minute), rescheduled.StartTime)
+	require.NotNil(t, rescheduled.EndTime)
+	assert.Equal(t, time.Hour, rescheduled.EndTime.Sub(rescheduled.StartTime))
+}

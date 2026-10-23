@@ -17,10 +17,19 @@ func NewMockActivityRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockActivityRepository {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockActivityRepository{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -74,7 +83,7 @@ type MockActivityRepository_Find_Call struct {
 // Find is a helper method to define mock.On call
 //   - ctx context.Context
 //   - filter models.ActivityFilter
-func (_e *MockActivityRepository_Expecter) Find(ctx interface{}, filter interface{}) *MockActivityRepository_Find_Call {
+func (_e *MockActivityRepository_Expecter) Find(ctx any, filter any) *MockActivityRepository_Find_Call {
 	return &MockActivityRepository_Find_Call{Call: _e.mock.On("Find", ctx, filter)}
 }
 
@@ -141,7 +150,7 @@ type MockActivityRepository_FindLast_Call struct {
 
 // FindLast is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockActivityRepository_Expecter) FindLast(ctx interface{}) *MockActivityRepository_FindLast_Call {
+func (_e *MockActivityRepository_Expecter) FindLast(ctx any) *MockActivityRepository_FindLast_Call {
 	return &MockActivityRepository_FindLast_Call{Call: _e.mock.On("FindLast", ctx)}
 }
 
@@ -193,7 +202,7 @@ type MockActivityRepository_Remove_Call struct {
 // Remove is a helper method to define mock.On call
 //   - ctx context.Context
 //   - activity models.Activity
-func (_e *MockActivityRepository_Expecter) Remove(ctx interface{}, activity interface{}) *MockActivityRepository_Remove_Call {
+func (_e *MockActivityRepository_Expecter) Remove(ctx any, activity any) *MockActivityRepository_Remove_Call {
 	return &MockActivityRepository_Remove_Call{Call: _e.mock.On("Remove", ctx, activity)}
 }
 
@@ -250,7 +259,7 @@ type MockActivityRepository_Save_Call struct {
 // Save is a helper method to define mock.On call
 //   - ctx context.Context
 //   - activity models.Activity
-func (_e *MockActivityRepository_Expecter) Save(ctx interface{}, activity interface{}) *MockActivityRepository_Save_Call {
+func (_e *MockActivityRepository_Expecter) Save(ctx any, activity any) *MockActivityRepository_Save_Call {
 	return &MockActivityRepository_Save_Call{Call: _e.mock.On("Save", ctx, activity)}
 }
 

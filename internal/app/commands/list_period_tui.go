@@ -121,7 +121,7 @@ func (m *listPeriodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", keyCtrlC, "esc":
+		case "q", keyCtrlC, keyEsc:
 			return m, tea.Quit
 		case keyLeft, "h":
 			m.anchor = shiftPeriod(m.period, m.anchor, -1)

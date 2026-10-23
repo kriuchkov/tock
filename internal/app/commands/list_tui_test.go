@@ -100,9 +100,11 @@ func TestListModelRenderTableBuildsStableKeys(t *testing.T) {
 	secondStart := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.Local)
 	secondEnd := secondStart.Add(30 * time.Minute)
 
+	// Deliberately out of order: the keys must follow the start time, because
+	// that is how `tock edit`/`tock remove` resolve a DATE-INDEX.
 	model.renderTable([]models.Activity{
-		{Project: "core", Description: "first", StartTime: firstStart, EndTime: &firstEnd},
 		{Project: "ops", Description: "second", StartTime: secondStart, EndTime: &secondEnd},
+		{Project: "core", Description: "first", StartTime: firstStart, EndTime: &firstEnd},
 	})
 
 	rows := model.table.Rows()

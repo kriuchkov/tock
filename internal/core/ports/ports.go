@@ -15,6 +15,7 @@ type ActivityResolver interface {
 	GetReport(ctx context.Context, filter models.ActivityFilter) (*models.Report, error)
 	GetRecent(ctx context.Context, limit int) ([]models.Activity, error)
 	GetLast(ctx context.Context) (*models.Activity, error)
+	Update(ctx context.Context, original models.Activity, req models.UpdateActivityRequest) (*models.Activity, error)
 	AddNote(ctx context.Context, activity models.Activity, note string) (*models.Activity, error)
 	AddTags(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error)
 	Remove(ctx context.Context, activity models.Activity) error
