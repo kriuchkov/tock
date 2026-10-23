@@ -217,7 +217,9 @@ func (m *editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.updateList(msg)
 	case tea.WindowSizeMsg:
-		m.table.SetWidth(msg.Width - 4)
+		// The picker renders the daily view's chrome plus a status line.
+		m.table.SetWidth(msg.Width - dailyViewHorizontalPadding)
+		m.table.SetHeight(fitTableHeight(msg.Height, dailyViewChromeLines+1, defaultDailyTableHeight))
 	}
 	return m, nil
 }
@@ -380,7 +382,8 @@ func applyFormTimes(tf *timeutil.Formatter, form editForm, req *models.UpdateAct
 	if err != nil {
 		return errors.Wrap(err, "parse end time")
 	}
-	if original.EndTime == nil || !endTime.Equal(*original.EndTime) {
+	// The form shows minutes only, so an untouched end must keep its seconds.
+	if original.EndTime == nil || !endTime.Equal(original.EndTime.Truncate(time.Minute)) {
 		req.EndTime = &endTime
 	}
 	return nil

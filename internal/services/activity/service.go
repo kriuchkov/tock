@@ -276,23 +276,25 @@ func (s *service) Update(
 	if updated.StartTime.IsZero() {
 		return nil, errors.New("start time is required")
 	}
+
+	// Entries are keyed by start time with minute precision, so a sub-minute
+	// difference is not a move and must not re-key the entry. The original start
+	// is restored before the range check, which must see the start that is saved.
+	moved := !updated.StartTime.Truncate(time.Minute).Equal(original.StartTime.Truncate(time.Minute))
+	if !moved {
+		updated.StartTime = original.StartTime
+	}
 	if updated.EndTime != nil && updated.EndTime.Before(updated.StartTime) {
 		return nil, coreErrors.ErrInvalidTimeRange
 	}
 
-	// Entries are keyed by start time with minute precision, so a sub-minute
-	// difference is not a move and must not re-key the entry.
 	if err = s.ensureAddressableStartTime(ctx, original); err != nil {
 		return nil, err
 	}
-
-	moved := !updated.StartTime.Truncate(time.Minute).Equal(original.StartTime.Truncate(time.Minute))
 	if moved {
 		if err = s.ensureStartTimeFree(ctx, original, updated.StartTime); err != nil {
 			return nil, err
 		}
-	} else {
-		updated.StartTime = original.StartTime
 	}
 
 	if original.EndTime != nil && updated.EndTime == nil {
@@ -372,11 +374,12 @@ func (s *service) ensureNoOtherRunningActivity(ctx context.Context, original mod
 	return nil
 }
 
-// ensureAddressableStartTime refuses to write an activity whose start time is
-// shared by another entry: the backends address an entry by that start time, so
-// the write would silently land on the wrong one.
+// ensureAddressableStartTime refuses to write an activity whose exact start time
+// is shared by another entry: the backends address an entry by that start time,
+// so the write would silently land on the wrong one. The Bartib file keeps only
+// minutes, so its same-minute entries share an exact start and are caught too.
 func (s *service) ensureAddressableStartTime(ctx context.Context, original models.Activity) error {
-	sameStart, err := s.countActivitiesStartingAt(ctx, original.StartTime)
+	sameStart, err := s.countActivitiesOnDay(ctx, original.StartTime, original.StartTime.Equal)
 	if err != nil {
 		return err
 	}
@@ -389,7 +392,10 @@ func (s *service) ensureAddressableStartTime(ctx context.Context, original model
 // ensureStartTimeFree rejects a move onto the start time of another activity,
 // because every backend keys an entry by its start time.
 func (s *service) ensureStartTimeFree(ctx context.Context, original models.Activity, startTime time.Time) error {
-	sameStart, err := s.countActivitiesStartingAt(ctx, startTime)
+	target := startTime.Truncate(time.Minute)
+	sameStart, err := s.countActivitiesOnDay(ctx, startTime, func(t time.Time) bool {
+		return t.Truncate(time.Minute).Equal(target)
+	})
 	if err != nil {
 		return err
 	}
@@ -403,42 +409,42 @@ func (s *service) ensureStartTimeFree(ctx context.Context, original models.Activ
 	return nil
 }
 
-// countActivitiesStartingAt counts the activities starting in the same minute,
-// which is the precision the plaintext backends persist.
-func (s *service) countActivitiesStartingAt(ctx context.Context, startTime time.Time) (int, error) {
-	fromDate, toDate := timeutil.LocalDayBounds(startTime)
+// countActivitiesOnDay counts the activities on day's local day whose start
+// time satisfies match.
+func (s *service) countActivitiesOnDay(ctx context.Context, day time.Time, match func(time.Time) bool) (int, error) {
+	fromDate, toDate := timeutil.LocalDayBounds(day)
 
 	activities, err := s.repo.Find(ctx, models.ActivityFilter{FromDate: &fromDate, ToDate: &toDate})
 	if err != nil {
 		return 0, errors.Wrap(err, "find activities")
 	}
 
-	target := startTime.Truncate(time.Minute)
 	count := 0
 	for _, activity := range activities {
-		if activity.StartTime.Truncate(time.Minute).Equal(target) {
+		if match(activity.StartTime) {
 			count++
 		}
 	}
 	return count, nil
 }
 
-// syncNotes persists the updated notes/tags and clears the sidecar entry left
-// behind when the activity moved to a new start time. An update that changes
-// neither notes nor the start time has nothing to write.
+// syncNotes persists the updated notes/tags and, when the activity moved to a
+// new start time, deletes the sidecar entry left at the old one. The new entry
+// is written first, so a failed write never loses the notes. An update that
+// changes neither notes nor the start time has nothing to write.
 func (s *service) syncNotes(ctx context.Context, original, updated models.Activity, moved, notesChanged bool) error {
 	if s.notesRepo == nil || (!moved && !notesChanged) {
 		return nil
 	}
 
-	if moved {
-		if err := s.notesRepo.Save(ctx, original.ID(), original.StartTime, "", nil); err != nil {
-			return errors.Wrap(err, "clear previous notes")
-		}
-	}
-
 	if err := s.notesRepo.Save(ctx, updated.ID(), updated.StartTime, updated.Notes, updated.Tags); err != nil {
 		return errors.Wrap(err, "save notes")
+	}
+
+	if moved {
+		if err := s.notesRepo.Delete(ctx, original.ID(), original.StartTime); err != nil {
+			return errors.Wrap(err, "delete previous notes")
+		}
 	}
 	return nil
 }

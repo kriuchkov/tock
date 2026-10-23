@@ -621,8 +621,8 @@ func TestService_Update_MovedStartTimeSavesBeforeRemovingOriginal(t *testing.T) 
 		Run(func(context.Context, models.Activity) { calls = append(calls, "remove") }).Return(nil)
 
 	notesRepo.EXPECT().Get(mock.Anything, original.ID(), start).Return("note", nil, nil)
-	notesRepo.EXPECT().Save(mock.Anything, original.ID(), start, "", []string(nil)).Return(nil)
 	notesRepo.EXPECT().Save(mock.Anything, mock.Anything, newStart, "note", []string(nil)).Return(nil)
+	notesRepo.EXPECT().Delete(mock.Anything, original.ID(), start).Return(nil)
 
 	svc := activity.NewService(repo, notesRepo)
 
@@ -641,6 +641,19 @@ func TestService_Update_RejectsEndBeforeStart(t *testing.T) {
 	svc := activity.NewService(portsmocks.NewMockActivityRepository(t), nil)
 
 	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{EndTime: &earlier})
+	require.ErrorIs(t, err, coreErrors.ErrInvalidTimeRange)
+}
+
+func TestService_Update_RangeCheckUsesTheRestoredStartTime(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 20, 0, time.Local)
+	end := start.Add(30 * time.Second)
+	original := models.Activity{Project: "tock", StartTime: start, EndTime: &end}
+	rounded := start.Truncate(time.Minute)
+
+	svc := activity.NewService(portsmocks.NewMockActivityRepository(t), nil)
+
+	// A sub-minute start change keeps 09:00:20, so an end at 09:00:00 is before it.
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{StartTime: &rounded, EndTime: &rounded})
 	require.ErrorIs(t, err, coreErrors.ErrInvalidTimeRange)
 }
 
@@ -755,9 +768,13 @@ func TestService_Update_MovedEntryRewritesTheNotesSidecar(t *testing.T) {
 	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original}, nil).Twice()
 	repo.EXPECT().Save(mock.Anything, mock.Anything).Return(nil)
 	repo.EXPECT().Remove(mock.Anything, original).Return(nil)
+
+	var calls []string
 	notesRepo.EXPECT().Get(mock.Anything, original.ID(), start).Return("note", []string{"alpha"}, nil)
-	notesRepo.EXPECT().Save(mock.Anything, original.ID(), start, "", []string(nil)).Return(nil)
-	notesRepo.EXPECT().Save(mock.Anything, mock.Anything, newStart, "note", []string{"alpha"}).Return(nil)
+	notesRepo.EXPECT().Save(mock.Anything, mock.Anything, newStart, "note", []string{"alpha"}).
+		Run(func(context.Context, string, time.Time, string, []string) { calls = append(calls, "save") }).Return(nil)
+	notesRepo.EXPECT().Delete(mock.Anything, original.ID(), start).
+		Run(func(context.Context, string, time.Time) { calls = append(calls, "delete") }).Return(nil)
 
 	svc := activity.NewService(repo, notesRepo)
 
@@ -766,6 +783,7 @@ func TestService_Update_MovedEntryRewritesTheNotesSidecar(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, "note", updated.Notes)
+	assert.Equal(t, []string{"save", "delete"}, calls, "the old sidecar is deleted only after the new one is written")
 }
 
 func TestService_Update_ClearEndRejectedWhileAnotherActivityRuns(t *testing.T) {
@@ -809,10 +827,10 @@ func TestService_Update_EditingARunningActivitySkipsTheRunningScan(t *testing.T)
 }
 
 func TestService_Update_RefusesEntriesSharingAStartTime(t *testing.T) {
-	start := time.Date(2026, time.March, 14, 9, 0, 30, 0, time.Local)
+	start := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
 	end := start.Add(time.Hour)
 	original := models.Activity{Project: "tock", Description: "first", StartTime: start, EndTime: &end}
-	twin := models.Activity{Project: "tock", Description: "second", StartTime: start.Add(20 * time.Second)}
+	twin := models.Activity{Project: "tock", Description: "second", StartTime: start}
 	description := "fixed"
 
 	repo := portsmocks.NewMockActivityRepository(t)
@@ -823,4 +841,23 @@ func TestService_Update_RefusesEntriesSharingAStartTime(t *testing.T) {
 	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Description: &description})
 	require.ErrorIs(t, err, coreErrors.ErrAmbiguousStartTime)
 	repo.AssertNotCalled(t, "Save", mock.Anything, mock.Anything)
+}
+
+func TestService_Update_EditsEntriesStartingSecondsApart(t *testing.T) {
+	start := time.Date(2026, time.March, 14, 9, 0, 30, 0, time.Local)
+	original := models.Activity{Project: "tock", Description: "first", StartTime: start}
+	sibling := models.Activity{Project: "tock", Description: "second", StartTime: start.Add(20 * time.Second)}
+	description := "fixed"
+
+	repo := portsmocks.NewMockActivityRepository(t)
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{original, sibling}, nil)
+	repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		return a.Description == description && a.StartTime.Equal(start)
+	})).Return(nil)
+
+	svc := activity.NewService(repo, nil)
+
+	// Backends that keep seconds address each entry by its exact start.
+	_, err := svc.Update(context.Background(), original, models.UpdateActivityRequest{Description: &description})
+	require.NoError(t, err)
 }

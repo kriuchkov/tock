@@ -134,6 +134,19 @@ func TestBuildFormRequestAcceptsTimeOnlyValues(t *testing.T) {
 	assert.Equal(t, time.Date(2026, time.March, 14, 12, 45, 0, 0, time.Local), *req.EndTime)
 }
 
+func TestBuildFormRequestKeepsTheSecondsOfAnUntouchedEndTime(t *testing.T) {
+	tf := timeutil.NewFormatter("24")
+	activity := editTestActivity()
+	end := activity.EndTime.Add(42 * time.Second)
+	activity.EndTime = &end
+	form := newEditForm(activity, tf)
+	form.fields[editFieldDescription].value = "renamed"
+
+	req, err := buildFormRequest(tf, form)
+	require.NoError(t, err)
+	assert.Nil(t, req.EndTime, "the form shows minutes only, so it must not rewrite the stored seconds")
+}
+
 func TestEditModelShowsLocalizedTextForDomainErrors(t *testing.T) {
 	activity := editTestActivity()
 	var gotReq models.UpdateActivityRequest
