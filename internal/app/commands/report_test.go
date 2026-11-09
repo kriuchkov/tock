@@ -44,6 +44,41 @@ func TestRunReportCmdBuildsFilterAndWritesToCommandOutput(t *testing.T) {
 	assert.Equal(t, "1h 30m\n", out.String())
 }
 
+func TestRunReportCmdNumbersOvernightEntryByItsStartDay(t *testing.T) {
+	realStart := time.Date(2026, time.November, 6, 22, 0, 0, 0, time.Local)
+	clippedStart := time.Date(2026, time.November, 7, 0, 0, 0, 0, time.Local)
+	overnightEnd := time.Date(2026, time.November, 7, 1, 0, 0, 0, time.Local)
+	standupStart := time.Date(2026, time.November, 7, 9, 0, 0, 0, time.Local)
+	standupEnd := time.Date(2026, time.November, 7, 10, 0, 0, 0, time.Local)
+	overnight := models.Activity{Project: "Night", StartTime: clippedStart, EndTime: &overnightEnd}
+	standup := models.Activity{Project: "Day", StartTime: standupStart, EndTime: &standupEnd}
+
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{
+				Activities: []models.Activity{overnight, standup},
+				ByProject: map[string]models.ProjectReport{
+					"Night": {ProjectName: "Night", Activities: []models.Activity{overnight}},
+					"Day":   {ProjectName: "Day", Activities: []models.Activity{standup}},
+				},
+				ClippedStarts: map[int64]time.Time{clippedStart.UnixNano(): realStart},
+			}, nil
+		},
+		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
+			return []models.Activity{{Project: "Night", StartTime: realStart, EndTime: &overnightEnd}}, nil
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	require.NoError(t, runReportCmd(cmd, &reportOptions{}))
+	assert.Contains(t, out.String(), "2026-11-06-01")
+	assert.Contains(t, out.String(), "2026-11-07-01")
+	assert.NotContains(t, out.String(), "2026-11-07-02")
+}
+
 func TestRunReportCmdJSONUsesCommandWriter(t *testing.T) {
 	end := time.Date(2026, time.March, 14, 11, 0, 0, 0, time.Local)
 	service := &stubActivityResolver{

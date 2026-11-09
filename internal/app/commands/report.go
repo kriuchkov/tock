@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 
 	ce "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
@@ -69,7 +71,38 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 		return errors.Wrap(err, "generate report")
 	}
 
+	if len(report.ClippedStarts) > 0 {
+		report.ActivityIDs, err = reportActivityIDs(cmd.Context(), service, report)
+		if err != nil {
+			return err
+		}
+	}
+
 	return writeReportOutput(cmd, out, tf, report, opt)
+}
+
+// reportActivityIDs numbers entries by the day they really started on, as edit and
+// remove do. An entry cut to the report range belongs to an earlier day's numbering.
+func reportActivityIDs(ctx context.Context, service ports.ActivityResolver, report *models.Report) (map[int64]string, error) {
+	started := make([]models.Activity, 0, len(report.Activities))
+	for _, activity := range report.Activities {
+		if _, clipped := report.ClippedStarts[activity.StartTime.UnixNano()]; !clipped {
+			started = append(started, activity)
+		}
+	}
+	ids := models.ActivitySequenceIDs(started)
+
+	for clippedStart, realStart := range report.ClippedStarts {
+		from := time.Date(realStart.Year(), realStart.Month(), realStart.Day(), 0, 0, 0, 0, realStart.Location())
+		to := from.AddDate(0, 0, 1)
+		activities, err := service.List(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+		if err != nil {
+			return nil, errors.Wrap(err, "list activities")
+		}
+		dayIDs := models.ActivitySequenceIDs(models.ActivitiesStartingOn(activities, from))
+		ids[clippedStart] = dayIDs[realStart.UnixNano()]
+	}
+	return ids, nil
 }
 
 func writeReportOutput(
@@ -99,7 +132,10 @@ func writeReportOutput(
 		return errors.Wrap(err, "write report header")
 	}
 
-	activityIDs := models.ActivitySequenceIDs(report.Activities)
+	activityIDs := report.ActivityIDs
+	if activityIDs == nil {
+		activityIDs = models.ActivitySequenceIDs(report.Activities)
+	}
 	for _, projectName := range sortedProjectNames(report.ByProject) {
 		if err := writeProjectSection(cmd, out, tf, report.ByProject[projectName], activityIDs, opt); err != nil {
 			return err

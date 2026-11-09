@@ -170,6 +170,12 @@ func (s *service) GetReport(ctx context.Context, filter models.ActivityFilter) (
 		}
 
 		report.Activities = append(report.Activities, clipped)
+		if !clipped.StartTime.Equal(a.StartTime) {
+			if report.ClippedStarts == nil {
+				report.ClippedStarts = make(map[int64]time.Time)
+			}
+			report.ClippedStarts[clipped.StartTime.UnixNano()] = a.StartTime
+		}
 		duration := clipped.Duration()
 		report.TotalDuration += duration
 

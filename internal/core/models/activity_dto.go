@@ -40,6 +40,12 @@ type Report struct {
 	Activities    []Activity
 	TotalDuration time.Duration
 	ByProject     map[string]ProjectReport
+	// ClippedStarts maps the StartTime.UnixNano() of an entry cut to the report range
+	// to the time it really started, which decides its DATE-INDEX key.
+	ClippedStarts map[int64]time.Time
+	// ActivityIDs maps each entry's StartTime.UnixNano() to its DATE-INDEX key.
+	// When nil, keys are numbered from Activities.
+	ActivityIDs map[int64]string
 }
 
 type ProjectReport struct {
