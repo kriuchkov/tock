@@ -61,7 +61,9 @@ func SortActivitiesByStart(activities []Activity) []Activity {
 	sorted := make([]Activity, len(activities))
 	copy(sorted, activities)
 
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].StartTime.Before(sorted[j].StartTime) })
+	// Stable, so entries sharing a start time keep the repository order and get
+	// the same DATE-INDEX key everywhere.
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].StartTime.Before(sorted[j].StartTime) })
 	return sorted
 }
 
@@ -97,4 +99,50 @@ func ActivitySequenceIDs(activities []Activity) map[int64]string {
 		ids[activity.StartTime.UnixNano()] = fmt.Sprintf("%s-%02d", day, dayCounts[day])
 	}
 	return ids
+}
+
+// DayKeys returns the DATE-INDEX key of each target: its position among the
+// activities in all that start on the same day, as ActivityForSequence resolves
+// it. all must hold every activity of those days; a target missing from it gets "".
+func DayKeys(all, targets []Activity) []string {
+	byDay := make(map[string][]Activity)
+	for _, activity := range SortActivitiesByStart(all) {
+		day := activity.StartTime.Format(time.DateOnly)
+		byDay[day] = append(byDay[day], activity)
+	}
+
+	taken := make(map[string][]bool, len(byDay))
+	keys := make([]string, len(targets))
+	for i, target := range targets {
+		day := target.StartTime.Format(time.DateOnly)
+		if taken[day] == nil {
+			taken[day] = make([]bool, len(byDay[day]))
+		}
+		if index := claimActivity(byDay[day], taken[day], target); index >= 0 {
+			keys[i] = fmt.Sprintf("%s-%02d", day, index+1)
+		}
+	}
+	return keys
+}
+
+// claimActivity marks the first untaken activity equal to target and returns its
+// index, or -1. Taking each one once keeps identical entries on distinct keys.
+func claimActivity(day []Activity, taken []bool, target Activity) int {
+	for i, activity := range day {
+		if !taken[i] && sameEntry(activity, target) {
+			taken[i] = true
+			return i
+		}
+	}
+	return -1
+}
+
+func sameEntry(a, b Activity) bool {
+	if !a.StartTime.Equal(b.StartTime) || a.Project != b.Project || a.Description != b.Description {
+		return false
+	}
+	if a.EndTime == nil || b.EndTime == nil {
+		return a.EndTime == nil && b.EndTime == nil
+	}
+	return a.EndTime.Equal(*b.EndTime)
 }

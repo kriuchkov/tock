@@ -37,9 +37,34 @@ type ActivityFilter struct {
 }
 
 type Report struct {
-	Activities    []Activity
+	Activities []Activity
+	// Keys[i] is the DATE-INDEX key of Activities[i], numbered by the day the entry
+	// really started, so it resolves to the same entry in edit and remove.
+	Keys          []string
 	TotalDuration time.Duration
 	ByProject     map[string]ProjectReport
+}
+
+// ReportEntry is a report activity with its DATE-INDEX key.
+type ReportEntry struct {
+	Key      string
+	Activity Activity
+}
+
+// ProjectEntries returns the project's activities with their keys, in report order.
+func (r *Report) ProjectEntries(project string) []ReportEntry {
+	var entries []ReportEntry
+	for i, activity := range r.Activities {
+		if activity.Project != project {
+			continue
+		}
+		entry := ReportEntry{Activity: activity}
+		if i < len(r.Keys) {
+			entry.Key = r.Keys[i]
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 type ProjectReport struct {

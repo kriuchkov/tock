@@ -44,6 +44,34 @@ func TestRunReportCmdBuildsFilterAndWritesToCommandOutput(t *testing.T) {
 	assert.Equal(t, "1h 30m\n", out.String())
 }
 
+func TestRunReportCmdPrintsReportKeys(t *testing.T) {
+	start := time.Date(2026, time.November, 7, 9, 0, 0, 0, time.Local)
+	alphaEnd := start.Add(time.Hour)
+	betaEnd := start.Add(30 * time.Minute)
+	alpha := models.Activity{Project: "Day", Description: "alpha", StartTime: start, EndTime: &alphaEnd}
+	beta := models.Activity{Project: "Day", Description: "beta", StartTime: start, EndTime: &betaEnd}
+
+	service := &stubActivityResolver{
+		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
+			return &models.Report{
+				Activities: []models.Activity{alpha, beta},
+				Keys:       []string{"2026-11-07-02", "2026-11-07-03"},
+				ByProject: map[string]models.ProjectReport{
+					"Day": {ProjectName: "Day", Activities: []models.Activity{alpha, beta}},
+				},
+			}, nil
+		},
+	}
+
+	cmd := newTestCLICommand(service)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	require.NoError(t, runReportCmd(cmd, &reportOptions{}))
+	assert.Contains(t, out.String(), "[2026-11-07-02] 09:00 - 10:00 (1h 0m) | alpha")
+	assert.Contains(t, out.String(), "[2026-11-07-03] 09:00 - 09:30 (0h 30m) | beta")
+}
+
 func TestRunReportCmdJSONUsesCommandWriter(t *testing.T) {
 	end := time.Date(2026, time.March, 14, 11, 0, 0, 0, time.Local)
 	service := &stubActivityResolver{

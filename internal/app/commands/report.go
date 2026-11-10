@@ -99,9 +99,8 @@ func writeReportOutput(
 		return errors.Wrap(err, "write report header")
 	}
 
-	activityIDs := models.ActivitySequenceIDs(report.Activities)
 	for _, projectName := range sortedProjectNames(report.ByProject) {
-		if err := writeProjectSection(cmd, out, tf, report.ByProject[projectName], activityIDs, opt); err != nil {
+		if err := writeProjectSection(cmd, out, tf, report, projectName, opt); err != nil {
 			return err
 		}
 	}
@@ -162,10 +161,11 @@ func writeProjectSection(
 	cmd *cobra.Command,
 	out io.Writer,
 	tf *timeutil.Formatter,
-	projectReport models.ProjectReport,
-	activityIDs map[int64]string,
+	report *models.Report,
+	projectName string,
 	opt *reportOptions,
 ) error {
+	projectReport := report.ByProject[projectName]
 	hours := projectReport.Duration.Hours()
 	minutes := int(projectReport.Duration.Minutes()) % 60
 	if _, err := fmt.Fprintf(out, text(cmd, "report.project_line"), projectReport.ProjectName, int(hours), minutes); err != nil {
@@ -179,7 +179,7 @@ func writeProjectSection(
 		return nil
 	}
 
-	return writeProjectActivities(cmd, out, tf, projectReport.Activities, activityIDs)
+	return writeProjectActivities(cmd, out, tf, report.ProjectEntries(projectName))
 }
 
 func writeProjectDescriptionSummary(cmd *cobra.Command, out io.Writer, projectReport models.ProjectReport) error {
@@ -211,10 +211,10 @@ func writeProjectActivities(
 	cmd *cobra.Command,
 	out io.Writer,
 	tf *timeutil.Formatter,
-	activities []models.Activity,
-	activityIDs map[int64]string,
+	entries []models.ReportEntry,
 ) error {
-	for _, activity := range activities {
+	for _, entry := range entries {
+		activity := entry.Activity
 		startTime := activity.StartTime.Format(tf.GetDisplayFormat())
 		endTime := "--:--"
 		if activity.EndTime != nil {
@@ -224,12 +224,11 @@ func writeProjectActivities(
 		duration := activity.Duration()
 		hours := int(duration.Hours())
 		minutes := int(duration.Minutes()) % 60
-		id := activityIDs[activity.StartTime.UnixNano()]
 
 		if _, err := fmt.Fprintf(
 			out,
 			text(cmd, "report.activity_line"),
-			id,
+			entry.Key,
 			startTime,
 			endTime,
 			hours,

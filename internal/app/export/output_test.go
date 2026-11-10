@@ -36,6 +36,7 @@ func TestRenderTextReportIncludesTotals(t *testing.T) {
 	end := start.Add(90 * time.Minute)
 	report := &models.Report{
 		Activities:    []models.Activity{{Project: "tock", Description: "refactor", StartTime: start, EndTime: &end}},
+		Keys:          []string{"2026-03-14-02"},
 		TotalDuration: 90 * time.Minute,
 		ByProject: map[string]models.ProjectReport{
 			"tock": {
@@ -49,5 +50,5 @@ func TestRenderTextReportIncludesTotals(t *testing.T) {
 	content := exportapp.RenderTextReport(report, timeutil.NewFormatter("24"))
 	assert.Contains(t, content, "📁 tock: 1h 30m")
 	assert.Contains(t, content, "⏱️  Total: 1h 30m")
-	assert.Contains(t, content, "refactor")
+	assert.Contains(t, content, "[2026-03-14-02] 09:00 - 10:30 (1h 30m) | refactor")
 }

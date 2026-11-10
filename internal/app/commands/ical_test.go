@@ -45,10 +45,13 @@ func TestRunICalCmdSingleExportWritesSelectedActivity(t *testing.T) {
 			require.NotNil(t, filter.ToDate)
 			assert.Equal(t, time.Date(2026, time.March, 14, 0, 0, 0, 0, time.Local), *filter.FromDate)
 			assert.Equal(t, time.Date(2026, time.March, 15, 0, 0, 0, 0, time.Local), *filter.ToDate)
-			return &models.Report{Activities: []models.Activity{
-				{Project: "core", Description: "first", StartTime: startFirst, EndTime: &endFirst},
-				{Project: "ops", Description: "second", StartTime: startSecond, EndTime: &endSecond},
-			}}, nil
+			return &models.Report{
+				Activities: []models.Activity{
+					{Project: "core", Description: "first", StartTime: startFirst, EndTime: &endFirst},
+					{Project: "ops", Description: "second", StartTime: startSecond, EndTime: &endSecond},
+				},
+				Keys: []string{"2026-03-14-01", "2026-03-14-02"},
+			}, nil
 		},
 	}
 
@@ -64,17 +67,21 @@ func TestRunICalCmdSingleExportWritesSelectedActivity(t *testing.T) {
 }
 
 func TestRunICalCmdSingleExportSkipsEntriesFromThePreviousDay(t *testing.T) {
-	overnightStart := time.Date(2026, time.March, 13, 23, 0, 0, 0, time.Local)
-	overnightEnd := overnightStart.Add(2 * time.Hour)
+	// The report clips the overnight entry to 00:00, but its key stays on the day it started.
+	clippedStart := time.Date(2026, time.March, 14, 0, 0, 0, 0, time.Local)
+	overnightEnd := clippedStart.Add(time.Hour)
 	morningStart := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
 	morningEnd := morningStart.Add(time.Hour)
 
 	service := &stubActivityResolver{
 		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
-			return &models.Report{Activities: []models.Activity{
-				{Project: "core", Description: "overnight", StartTime: overnightStart, EndTime: &overnightEnd},
-				{Project: "ops", Description: "morning", StartTime: morningStart, EndTime: &morningEnd},
-			}}, nil
+			return &models.Report{
+				Activities: []models.Activity{
+					{Project: "core", Description: "overnight", StartTime: clippedStart, EndTime: &overnightEnd},
+					{Project: "ops", Description: "morning", StartTime: morningStart, EndTime: &morningEnd},
+				},
+				Keys: []string{"2026-03-13-01", "2026-03-14-01"},
+			}, nil
 		},
 	}
 

@@ -40,21 +40,6 @@ func RenderTextReport(report *models.Report, tf *timeutil.Formatter) string {
 	}
 	sort.Strings(projectNames)
 
-	sortedActivities := make([]models.Activity, len(report.Activities))
-	copy(sortedActivities, report.Activities)
-	sort.Slice(sortedActivities, func(i, j int) bool {
-		return sortedActivities[i].StartTime.Before(sortedActivities[j].StartTime)
-	})
-
-	activityIDs := make(map[int64]string)
-	dayCounts := make(map[string]int)
-	for _, act := range sortedActivities {
-		day := act.StartTime.Format(time.DateOnly)
-		dayCounts[day]++
-		id := fmt.Sprintf("%s-%02d", day, dayCounts[day])
-		activityIDs[act.StartTime.UnixNano()] = id
-	}
-
 	var b strings.Builder
 	b.WriteString("\n📊 Time Tracking Report\n")
 	b.WriteString("========================\n\n")
@@ -66,7 +51,8 @@ func RenderTextReport(report *models.Report, tf *timeutil.Formatter) string {
 
 		fmt.Fprintf(&b, "📁 %s: %dh %dm\n", projectReport.ProjectName, int(hours), minutes)
 
-		for _, activity := range projectReport.Activities {
+		for _, entry := range report.ProjectEntries(projectName) {
+			activity := entry.Activity
 			startTime := activity.StartTime.Format(tf.GetDisplayFormat())
 			endTime := "--:--"
 			if activity.EndTime != nil {
@@ -76,9 +62,8 @@ func RenderTextReport(report *models.Report, tf *timeutil.Formatter) string {
 			duration := activity.Duration()
 			actHours := int(duration.Hours())
 			actMinutes := int(duration.Minutes()) % 60
-			id := activityIDs[activity.StartTime.UnixNano()]
 
-			fmt.Fprintf(&b, "   [%s] %s - %s (%dh %dm) | %s\n", id, startTime, endTime, actHours, actMinutes, activity.Description)
+			fmt.Fprintf(&b, "   [%s] %s - %s (%dh %dm) | %s\n", entry.Key, startTime, endTime, actHours, actMinutes, activity.Description)
 		}
 		b.WriteString("\n")
 	}

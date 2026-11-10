@@ -61,3 +61,32 @@ func TestActivityForSequenceAndIDs(t *testing.T) {
 	assert.Equal(t, "2026-03-14-01", ids[start2.UnixNano()])
 	assert.Equal(t, "2026-03-14-02", ids[start1.UnixNano()])
 }
+
+func TestDayKeys(t *testing.T) {
+	at := func(day, hour, minute int) time.Time {
+		return time.Date(2026, time.November, day, hour, minute, 0, 0, time.Local)
+	}
+	entry := func(description string, start, end time.Time) models.Activity {
+		return models.Activity{Project: "p", Description: description, StartTime: start, EndTime: &end}
+	}
+
+	overnight := entry("overnight", at(6, 22, 0), at(7, 1, 0))
+	blip := entry("blip", at(7, 8, 0), at(7, 8, 0))
+	alpha := entry("alpha", at(7, 9, 0), at(7, 10, 0))
+	beta := entry("beta", at(7, 9, 0), at(7, 9, 30))
+	review := entry("review", at(7, 11, 0), at(7, 12, 0))
+	missing := entry("missing", at(7, 13, 0), at(7, 14, 0))
+	all := []models.Activity{review, alpha, beta, blip, entry("early", at(6, 9, 0), at(6, 10, 0)), overnight}
+
+	keys := models.DayKeys(all, []models.Activity{overnight, review, beta, alpha, missing})
+	assert.Equal(t, []string{"2026-11-06-02", "2026-11-07-04", "2026-11-07-03", "2026-11-07-02", ""}, keys)
+}
+
+func TestDayKeysGivesIdenticalEntriesDistinctKeys(t *testing.T) {
+	start := time.Date(2026, time.November, 7, 9, 0, 0, 0, time.Local)
+	end := start.Add(time.Hour)
+	dup := models.Activity{Project: "p", Description: "dup", StartTime: start, EndTime: &end}
+
+	keys := models.DayKeys([]models.Activity{dup, dup}, []models.Activity{dup, dup})
+	assert.Equal(t, []string{"2026-11-07-01", "2026-11-07-02"}, keys)
+}
