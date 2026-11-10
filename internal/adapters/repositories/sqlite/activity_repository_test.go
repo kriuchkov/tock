@@ -286,6 +286,83 @@ func TestSQLiteRepository_Find(t *testing.T) {
 	}
 }
 
+func TestSQLiteRepository_FindOverlapsDateRange(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+	yesterday := now.AddDate(0, 0, -1)
+	from := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, time.Local)
+	to := from.AddDate(0, 0, 1)
+	day := models.ActivityFilter{FromDate: &from, ToDate: &to}
+	future := models.ActivityFilter{FromDate: new(now.Add(time.Hour)), ToDate: new(now.Add(2 * time.Hour))}
+
+	tests := []struct {
+		name   string
+		start  time.Time
+		end    *time.Time
+		filter models.ActivityFilter
+		want   bool
+	}{
+		{name: "crosses range start", start: from.Add(-2 * time.Hour), end: new(from.Add(time.Hour)), filter: day, want: true},
+		{name: "crosses range end", start: to.Add(-time.Hour), end: new(to.Add(time.Hour)), filter: day, want: true},
+		{name: "fully inside", start: from.Add(time.Hour), end: new(from.Add(2 * time.Hour)), filter: day, want: true},
+		{name: "fully before", start: from.Add(-3 * time.Hour), end: new(from.Add(-time.Hour)), filter: day},
+		{name: "fully after", start: to.Add(time.Hour), end: new(to.Add(2 * time.Hour)), filter: day},
+		{name: "ends at range start", start: from.Add(-time.Hour), end: new(from), filter: day},
+		{name: "starts at range end", start: to, end: new(to.Add(time.Hour)), filter: day},
+		{name: "running since before range", start: from.Add(-time.Hour), filter: day, want: true},
+		{name: "running, range starts in the future", start: now.Add(-time.Hour), filter: future},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := setupTestDB(t)
+			require.NoError(t, repo.Save(ctx, models.Activity{Description: "D", Project: "P", StartTime: tt.start, EndTime: tt.end}))
+
+			acts, err := repo.Find(ctx, tt.filter)
+			require.NoError(t, err)
+
+			if !tt.want {
+				assert.Empty(t, acts)
+				return
+			}
+			require.Len(t, acts, 1)
+			assert.True(t, tt.start.Equal(acts[0].StartTime))
+		})
+	}
+}
+
+func TestSQLiteRepository_FindEndTimeWithOffset(t *testing.T) {
+	ctx := context.Background()
+	repo := setupTestDB(t)
+
+	// Rows as Save writes them: start_time in UTC, end_time with the writer's local offset.
+	rows := []struct{ desc, start, end string }{
+		{desc: "moscow overnight", start: "2026-11-06 19:00:00+00:00", end: "2026-11-07 01:00:00+03:00"},    // ends 22:00 UTC
+		{desc: "new york evening", start: "2026-11-06 20:00:00+00:00", end: "2026-11-06 17:00:00-05:00"},    // ends 22:00 UTC
+		{desc: "tokyo, before range", start: "2026-11-06 18:00:00+00:00", end: "2026-11-07 05:00:00+09:00"}, // ends 20:00 UTC
+	}
+	for _, row := range rows {
+		_, err := repo.DB.ExecContext(ctx,
+			`INSERT INTO activities (description, project, start_time, end_time) VALUES (?, 'P', ?, ?)`,
+			row.desc, row.start, row.end)
+		require.NoError(t, err)
+	}
+
+	from := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC) // 2026-11-07 00:00 in Moscow
+	to := from.AddDate(0, 0, 1)
+
+	acts, err := repo.Find(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+	require.NoError(t, err)
+
+	require.Len(t, acts, 2)
+	assert.Equal(t, "moscow overnight", acts[0].Description)
+	assert.Equal(t, "new york evening", acts[1].Description)
+	for _, a := range acts {
+		require.NotNil(t, a.EndTime)
+		assert.True(t, time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC).Equal(*a.EndTime))
+	}
+}
+
 func TestSQLiteRepository_Remove(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().Truncate(time.Second)
