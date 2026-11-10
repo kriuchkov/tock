@@ -61,21 +61,43 @@ func runICalCmd(cmd *cobra.Command, args []string, outputDir string, openApp boo
 		return errors.New(text(cmd, "ical.error.path_required"))
 	}
 
-	activities, err := getActivitiesForDate(cmd, ref.Date)
+	report, err := getReportForDate(cmd, ref.Date)
 	if err != nil {
 		return errors.Wrap(err, "get activities for date")
 	}
 
 	if ref.HasSequence {
-		started := models.ActivitiesStartingOn(activities, ref.Date)
-		activity, seqErr := models.ActivityForSequence(started, ref.Sequence)
-		if seqErr != nil {
-			return errors.New(text(cmd, "ical.error.activity_not_found", ref.Sequence, len(started)))
+		activity, started, found := reportEntryByKey(report, ref)
+		if !found {
+			return errors.New(text(cmd, "ical.error.activity_not_found", ref.Sequence, started))
 		}
 		return handleSingleExport(out, activity, keyOrDate, outputDir, openApp)
 	}
 
-	return handleBulkExport(out, activities, keyOrDate, outputDir, openApp)
+	return handleBulkExport(out, models.SortActivitiesByStart(report.Activities), keyOrDate, outputDir, openApp)
+}
+
+// reportEntryByKey returns the report entry whose DATE-INDEX key matches ref, and
+// how many report entries started on ref's day.
+func reportEntryByKey(report *models.Report, ref models.ActivityReference) (models.Activity, int, bool) {
+	day := ref.Date.Format(time.DateOnly)
+	key := fmt.Sprintf("%s-%02d", day, ref.Sequence)
+
+	started := 0
+	var match *models.Activity
+	for i, activityKey := range report.Keys {
+		if !strings.HasPrefix(activityKey, day+"-") {
+			continue
+		}
+		started++
+		if activityKey == key && i < len(report.Activities) {
+			match = &report.Activities[i]
+		}
+	}
+	if match == nil {
+		return models.Activity{}, started, false
+	}
+	return *match, started, true
 }
 
 func handleFullExport(cmd *cobra.Command, out io.Writer, outputDir string, openApp bool) error {
@@ -140,7 +162,7 @@ func handleFullExport(cmd *cobra.Command, out io.Writer, outputDir string, openA
 	return nil
 }
 
-func getActivitiesForDate(cmd *cobra.Command, date time.Time) ([]models.Activity, error) {
+func getReportForDate(cmd *cobra.Command, date time.Time) (*models.Report, error) {
 	service := getRuntime(cmd).ActivityService
 
 	start, end := timeutil.LocalDayBounds(date)
@@ -153,7 +175,7 @@ func getActivitiesForDate(cmd *cobra.Command, date time.Time) ([]models.Activity
 	if err != nil {
 		return nil, errors.Wrap(err, "generate report")
 	}
-	return models.SortActivitiesByStart(report.Activities), nil
+	return report, nil
 }
 
 func handleSingleExport(out io.Writer, activity models.Activity, key string, outputDir string, openApp bool) error {

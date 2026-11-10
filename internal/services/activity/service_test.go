@@ -352,17 +352,22 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayStart(t *testing.T) {
 	from := time.Date(2026, 3, 5, 0, 0, 0, 0, time.Local)
 	_, to := timeutil.LocalDayBounds(from)
 
+	overnight := models.Activity{
+		Project:     "ProjectA",
+		Description: "Design Database",
+		StartTime:   start,
+		EndTime:     &end,
+	}
 	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
 		return f.FromDate != nil && f.ToDate != nil &&
 			f.FromDate.Equal(from) && f.ToDate.Equal(to)
-	})).Return([]models.Activity{
-		{
-			Project:     "ProjectA",
-			Description: "Design Database",
-			StartTime:   start,
-			EndTime:     &end,
-		},
-	}, nil)
+	})).Return([]models.Activity{overnight}, nil)
+	// The key comes from the day the entry started, which the range doesn't cover.
+	prevDay := from.AddDate(0, 0, -1)
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+		return f.FromDate != nil && f.ToDate != nil &&
+			f.FromDate.Equal(prevDay) && f.ToDate.Equal(from)
+	})).Return([]models.Activity{overnight}, nil)
 
 	report, err := svc.GetReport(context.Background(), models.ActivityFilter{
 		FromDate: &from,
@@ -370,6 +375,7 @@ func TestService_GetReport_ClipsCrossDayActivityAtDayStart(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, report.Activities, 1)
+	assert.Equal(t, []string{"2026-03-04-01"}, report.Keys)
 
 	got := report.Activities[0]
 	assert.True(t, got.StartTime.Equal(from))
@@ -409,6 +415,59 @@ func TestService_GetReport_WithoutDateRangeKeepsFullDuration(t *testing.T) {
 	require.NotNil(t, got.EndTime)
 	assert.True(t, got.EndTime.Equal(end))
 	assert.Equal(t, end.Sub(start), report.TotalDuration)
+}
+
+func TestService_GetReport_KeysCountWholeDayDespiteFilter(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	svc := activity.NewService(repo, nil)
+
+	from := time.Date(2026, 11, 7, 0, 0, 0, 0, time.Local)
+	_, to := timeutil.LocalDayBounds(from)
+	at := func(hour, minute int) *time.Time {
+		ts := from.Add(time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute)
+		return &ts
+	}
+	blip := models.Activity{Project: "p", Description: "blip", StartTime: *at(8, 0), EndTime: at(8, 0)}
+	standup := models.Activity{Project: "p", Description: "standup", StartTime: *at(9, 0), EndTime: at(9, 30)}
+	review := models.Activity{Project: "p", Description: "review", StartTime: *at(11, 0), EndTime: at(12, 0)}
+
+	description := "review"
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+		return f.Description != nil
+	})).Return([]models.Activity{review}, nil)
+	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+		return f.Description == nil && f.FromDate != nil && f.FromDate.Equal(from) && f.ToDate != nil && f.ToDate.Equal(to)
+	})).Return([]models.Activity{blip, standup, review}, nil)
+
+	report, err := svc.GetReport(context.Background(), models.ActivityFilter{
+		FromDate:    &from,
+		ToDate:      &to,
+		Description: &description,
+	})
+	require.NoError(t, err)
+	require.Len(t, report.Activities, 1)
+	assert.Equal(t, []string{"2026-11-07-03"}, report.Keys)
+}
+
+func TestService_GetReport_KeysSkipDroppedZeroLengthEntries(t *testing.T) {
+	repo := portsmocks.NewMockActivityRepository(t)
+	svc := activity.NewService(repo, nil)
+
+	from := time.Date(2026, 11, 7, 0, 0, 0, 0, time.Local)
+	_, to := timeutil.LocalDayBounds(from)
+	blipAt := from.Add(8 * time.Hour)
+	standupEnd := from.Add(9*time.Hour + 30*time.Minute)
+	blip := models.Activity{Project: "p", Description: "blip", StartTime: blipAt, EndTime: &blipAt}
+	standup := models.Activity{Project: "p", Description: "standup", StartTime: from.Add(9 * time.Hour), EndTime: &standupEnd}
+
+	// The day is fully inside the range and unfiltered, so the first Find is reused.
+	repo.EXPECT().Find(mock.Anything, mock.Anything).Return([]models.Activity{blip, standup}, nil).Once()
+
+	report, err := svc.GetReport(context.Background(), models.ActivityFilter{FromDate: &from, ToDate: &to})
+	require.NoError(t, err)
+	require.Len(t, report.Activities, 1)
+	assert.Equal(t, "standup", report.Activities[0].Description)
+	assert.Equal(t, []string{"2026-11-07-02"}, report.Keys)
 }
 
 func TestService_Remove(t *testing.T) {

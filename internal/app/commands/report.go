@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 
 	ce "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
-	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
 
 	"github.com/spf13/cobra"
@@ -71,38 +69,7 @@ func runReportCmd(cmd *cobra.Command, opt *reportOptions) error {
 		return errors.Wrap(err, "generate report")
 	}
 
-	if len(report.ClippedStarts) > 0 {
-		report.ActivityIDs, err = reportActivityIDs(cmd.Context(), service, report)
-		if err != nil {
-			return err
-		}
-	}
-
 	return writeReportOutput(cmd, out, tf, report, opt)
-}
-
-// reportActivityIDs numbers entries by the day they really started on, as edit and
-// remove do. An entry cut to the report range belongs to an earlier day's numbering.
-func reportActivityIDs(ctx context.Context, service ports.ActivityResolver, report *models.Report) (map[int64]string, error) {
-	started := make([]models.Activity, 0, len(report.Activities))
-	for _, activity := range report.Activities {
-		if _, clipped := report.ClippedStarts[activity.StartTime.UnixNano()]; !clipped {
-			started = append(started, activity)
-		}
-	}
-	ids := models.ActivitySequenceIDs(started)
-
-	for clippedStart, realStart := range report.ClippedStarts {
-		from := time.Date(realStart.Year(), realStart.Month(), realStart.Day(), 0, 0, 0, 0, realStart.Location())
-		to := from.AddDate(0, 0, 1)
-		activities, err := service.List(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
-		if err != nil {
-			return nil, errors.Wrap(err, "list activities")
-		}
-		dayIDs := models.ActivitySequenceIDs(models.ActivitiesStartingOn(activities, from))
-		ids[clippedStart] = dayIDs[realStart.UnixNano()]
-	}
-	return ids, nil
 }
 
 func writeReportOutput(
@@ -132,12 +99,8 @@ func writeReportOutput(
 		return errors.Wrap(err, "write report header")
 	}
 
-	activityIDs := report.ActivityIDs
-	if activityIDs == nil {
-		activityIDs = models.ActivitySequenceIDs(report.Activities)
-	}
 	for _, projectName := range sortedProjectNames(report.ByProject) {
-		if err := writeProjectSection(cmd, out, tf, report.ByProject[projectName], activityIDs, opt); err != nil {
+		if err := writeProjectSection(cmd, out, tf, report, projectName, opt); err != nil {
 			return err
 		}
 	}
@@ -198,10 +161,11 @@ func writeProjectSection(
 	cmd *cobra.Command,
 	out io.Writer,
 	tf *timeutil.Formatter,
-	projectReport models.ProjectReport,
-	activityIDs map[int64]string,
+	report *models.Report,
+	projectName string,
 	opt *reportOptions,
 ) error {
+	projectReport := report.ByProject[projectName]
 	hours := projectReport.Duration.Hours()
 	minutes := int(projectReport.Duration.Minutes()) % 60
 	if _, err := fmt.Fprintf(out, text(cmd, "report.project_line"), projectReport.ProjectName, int(hours), minutes); err != nil {
@@ -215,7 +179,7 @@ func writeProjectSection(
 		return nil
 	}
 
-	return writeProjectActivities(cmd, out, tf, projectReport.Activities, activityIDs)
+	return writeProjectActivities(cmd, out, tf, report.ProjectEntries(projectName))
 }
 
 func writeProjectDescriptionSummary(cmd *cobra.Command, out io.Writer, projectReport models.ProjectReport) error {
@@ -247,10 +211,10 @@ func writeProjectActivities(
 	cmd *cobra.Command,
 	out io.Writer,
 	tf *timeutil.Formatter,
-	activities []models.Activity,
-	activityIDs map[int64]string,
+	entries []models.ReportEntry,
 ) error {
-	for _, activity := range activities {
+	for _, entry := range entries {
+		activity := entry.Activity
 		startTime := activity.StartTime.Format(tf.GetDisplayFormat())
 		endTime := "--:--"
 		if activity.EndTime != nil {
@@ -260,12 +224,11 @@ func writeProjectActivities(
 		duration := activity.Duration()
 		hours := int(duration.Hours())
 		minutes := int(duration.Minutes()) % 60
-		id := activityIDs[activity.StartTime.UnixNano()]
 
 		if _, err := fmt.Fprintf(
 			out,
 			text(cmd, "report.activity_line"),
-			id,
+			entry.Key,
 			startTime,
 			endTime,
 			hours,

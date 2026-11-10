@@ -163,19 +163,15 @@ func (s *service) GetReport(ctx context.Context, filter models.ActivityFilter) (
 	}
 
 	now := time.Now()
+	var kept []models.Activity
 	for _, a := range activities {
 		clipped, ok := clipActivityByRange(a, filter, now)
 		if !ok {
 			continue
 		}
 
+		kept = append(kept, a)
 		report.Activities = append(report.Activities, clipped)
-		if !clipped.StartTime.Equal(a.StartTime) {
-			if report.ClippedStarts == nil {
-				report.ClippedStarts = make(map[int64]time.Time)
-			}
-			report.ClippedStarts[clipped.StartTime.UnixNano()] = a.StartTime
-		}
 		duration := clipped.Duration()
 		report.TotalDuration += duration
 
@@ -192,7 +188,57 @@ func (s *service) GetReport(ctx context.Context, filter models.ActivityFilter) (
 		projectReport.Activities = append(projectReport.Activities, clipped)
 		report.ByProject[clipped.Project] = projectReport
 	}
+
+	if report.Keys, err = s.reportKeys(ctx, filter, activities, kept); err != nil {
+		return nil, err
+	}
 	return report, nil
+}
+
+// reportKeys numbers the kept entries the way edit and remove resolve a DATE-INDEX
+// key: among everything that started on the same day, whatever the report filtered
+// or clipped away. found is reused when it already holds those whole days.
+func (s *service) reportKeys(ctx context.Context, filter models.ActivityFilter, found, kept []models.Activity) ([]string, error) {
+	if len(kept) == 0 {
+		return nil, nil
+	}
+
+	from, to := startDaySpan(kept)
+	if !holdsWholeDays(filter, from, to) {
+		var err error
+		found, err = s.repo.Find(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+		if err != nil {
+			return nil, errors.Wrap(err, "find activities by start day")
+		}
+	}
+	return models.DayKeys(found, kept), nil
+}
+
+// startDaySpan returns the bounds of the local days the activities started on.
+func startDaySpan(activities []models.Activity) (time.Time, time.Time) {
+	from, to := timeutil.LocalDayBounds(activities[0].StartTime)
+	for _, activity := range activities[1:] {
+		dayStart, dayEnd := timeutil.LocalDayBounds(activity.StartTime)
+		if dayStart.Before(from) {
+			from = dayStart
+		}
+		if dayEnd.After(to) {
+			to = dayEnd
+		}
+	}
+	return from, to
+}
+
+// holdsWholeDays reports whether a Find with filter returns every activity that
+// started within [from, to).
+func holdsWholeDays(filter models.ActivityFilter, from, to time.Time) bool {
+	if filter.IsRunning != nil ||
+		(filter.Project != nil && *filter.Project != "") ||
+		(filter.Description != nil && *filter.Description != "") {
+		return false
+	}
+	return (filter.FromDate == nil || !filter.FromDate.After(from)) &&
+		(filter.ToDate == nil || !filter.ToDate.Before(to))
 }
 
 func clipActivityByRange(

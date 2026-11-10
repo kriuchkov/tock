@@ -44,28 +44,22 @@ func TestRunReportCmdBuildsFilterAndWritesToCommandOutput(t *testing.T) {
 	assert.Equal(t, "1h 30m\n", out.String())
 }
 
-func TestRunReportCmdNumbersOvernightEntryByItsStartDay(t *testing.T) {
-	realStart := time.Date(2026, time.November, 6, 22, 0, 0, 0, time.Local)
-	clippedStart := time.Date(2026, time.November, 7, 0, 0, 0, 0, time.Local)
-	overnightEnd := time.Date(2026, time.November, 7, 1, 0, 0, 0, time.Local)
-	standupStart := time.Date(2026, time.November, 7, 9, 0, 0, 0, time.Local)
-	standupEnd := time.Date(2026, time.November, 7, 10, 0, 0, 0, time.Local)
-	overnight := models.Activity{Project: "Night", StartTime: clippedStart, EndTime: &overnightEnd}
-	standup := models.Activity{Project: "Day", StartTime: standupStart, EndTime: &standupEnd}
+func TestRunReportCmdPrintsReportKeys(t *testing.T) {
+	start := time.Date(2026, time.November, 7, 9, 0, 0, 0, time.Local)
+	alphaEnd := start.Add(time.Hour)
+	betaEnd := start.Add(30 * time.Minute)
+	alpha := models.Activity{Project: "Day", Description: "alpha", StartTime: start, EndTime: &alphaEnd}
+	beta := models.Activity{Project: "Day", Description: "beta", StartTime: start, EndTime: &betaEnd}
 
 	service := &stubActivityResolver{
 		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
 			return &models.Report{
-				Activities: []models.Activity{overnight, standup},
+				Activities: []models.Activity{alpha, beta},
+				Keys:       []string{"2026-11-07-02", "2026-11-07-03"},
 				ByProject: map[string]models.ProjectReport{
-					"Night": {ProjectName: "Night", Activities: []models.Activity{overnight}},
-					"Day":   {ProjectName: "Day", Activities: []models.Activity{standup}},
+					"Day": {ProjectName: "Day", Activities: []models.Activity{alpha, beta}},
 				},
-				ClippedStarts: map[int64]time.Time{clippedStart.UnixNano(): realStart},
 			}, nil
-		},
-		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
-			return []models.Activity{{Project: "Night", StartTime: realStart, EndTime: &overnightEnd}}, nil
 		},
 	}
 
@@ -74,9 +68,8 @@ func TestRunReportCmdNumbersOvernightEntryByItsStartDay(t *testing.T) {
 	cmd.SetOut(&out)
 
 	require.NoError(t, runReportCmd(cmd, &reportOptions{}))
-	assert.Contains(t, out.String(), "2026-11-06-01")
-	assert.Contains(t, out.String(), "2026-11-07-01")
-	assert.NotContains(t, out.String(), "2026-11-07-02")
+	assert.Contains(t, out.String(), "[2026-11-07-02] 09:00 - 10:00 (1h 0m) | alpha")
+	assert.Contains(t, out.String(), "[2026-11-07-03] 09:00 - 09:30 (0h 30m) | beta")
 }
 
 func TestRunReportCmdJSONUsesCommandWriter(t *testing.T) {
