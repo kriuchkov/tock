@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/go-faster/errors"
@@ -98,11 +99,14 @@ func (r *ActivityRepository) Find(ctx context.Context, filter models.ActivityFil
 		Select("description", "project", "start_time", "end_time", "notes", "tags").
 		Order(goqu.I("start_time").Asc())
 
+	// Keep entries overlapping the range, like the file backends; a running entry ends now.
+	// start_time is stored in UTC, but end_time keeps the writer's offset, so compare it as a julian day.
 	if filter.FromDate != nil {
-		dataset = dataset.Where(goqu.I("start_time").Gte(filter.FromDate.UTC()))
+		endTime := goqu.COALESCE(goqu.I("end_time"), time.Now())
+		dataset = dataset.Where(goqu.Func("julianday", endTime).Gt(goqu.Func("julianday", filter.FromDate.UTC())))
 	}
 	if filter.ToDate != nil {
-		dataset = dataset.Where(goqu.I("start_time").Lte(filter.ToDate.UTC()))
+		dataset = dataset.Where(goqu.I("start_time").Lt(filter.ToDate.UTC()))
 	}
 	if filter.Project != nil && *filter.Project != "" {
 		dataset = dataset.Where(goqu.Ex{"project": *filter.Project})
