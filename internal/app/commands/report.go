@@ -33,6 +33,7 @@ func NewReportCmd() *cobra.Command {
 		Use:   "report",
 		Short: "Generate time tracking report",
 		Long:  defaultText("report.long"),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			err := runReportCmd(cmd, &opt)
 			if errors.Is(err, ce.ErrCancelled) {

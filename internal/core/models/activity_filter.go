@@ -8,13 +8,16 @@ import (
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
+// CurrentPeriod is the ActivityFilterOptions.Month/Quarter value that selects the period containing Now.
+const CurrentPeriod = -1
+
 type ActivityFilterOptions struct {
 	Now         time.Time
 	Today       bool
 	Yesterday   bool
 	Week        bool
-	Month       bool
-	Quarter     bool
+	Month       int // 0 = unset, CurrentPeriod, or 1-12 for the most recent such month
+	Quarter     int // 0 = unset, CurrentPeriod, or 1-4 for the most recent such quarter
 	Year        bool
 	Date        string
 	From        string
@@ -73,11 +76,19 @@ func resolveDateRange(opts ActivityFilterOptions) (*time.Time, *time.Time, error
 	case opts.Week:
 		start, end := timeutil.LocalWeekBounds(now)
 		return &start, &end, nil
-	case opts.Month:
-		start, end := timeutil.LocalMonthBounds(now)
+	case opts.Month != 0:
+		ref, err := monthReference(now, opts.Month)
+		if err != nil {
+			return nil, nil, err
+		}
+		start, end := timeutil.LocalMonthBounds(ref)
 		return &start, &end, nil
-	case opts.Quarter:
-		start, end := timeutil.LocalQuarterBounds(now)
+	case opts.Quarter != 0:
+		ref, err := quarterReference(now, opts.Quarter)
+		if err != nil {
+			return nil, nil, err
+		}
+		start, end := timeutil.LocalQuarterBounds(ref)
 		return &start, &end, nil
 	case opts.Year:
 		start, end := timeutil.LocalYearBounds(now)
@@ -98,10 +109,10 @@ func validateDateFilters(opts ActivityFilterOptions) error {
 	if opts.Week {
 		dateFilters++
 	}
-	if opts.Month {
+	if opts.Month != 0 {
 		dateFilters++
 	}
-	if opts.Quarter {
+	if opts.Quarter != 0 {
 		dateFilters++
 	}
 	if opts.Year {
@@ -148,4 +159,32 @@ func buildDateRange(from, to string) (*time.Time, *time.Time, error) {
 	}
 
 	return fromDate, toDate, nil
+}
+
+// monthReference returns a time in the most recent month numbered month that is not in the future.
+func monthReference(now time.Time, month int) (time.Time, error) {
+	if month == CurrentPeriod {
+		return now, nil
+	}
+	if month < 1 || month > 12 {
+		return time.Time{}, errors.New("invalid --month value, use 1-12")
+	}
+	local := now.In(time.Local)
+	year := local.Year()
+	if time.Month(month) > local.Month() {
+		year--
+	}
+	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local), nil
+}
+
+// quarterReference returns a time in the most recent quarter numbered quarter that is not in the future.
+func quarterReference(now time.Time, quarter int) (time.Time, error) {
+	if quarter == CurrentPeriod {
+		return now, nil
+	}
+	if quarter < 1 || quarter > 4 {
+		return time.Time{}, errors.New("invalid --quarter value, use 1-4")
+	}
+	// A quarter starts in the future exactly when its first month does.
+	return monthReference(now, 3*quarter-2)
 }

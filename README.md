@@ -731,6 +731,8 @@ tock report --today
 tock report --yesterday
 tock report --week                             # This week (Monday to Sunday)
 tock report --month                            # This calendar month
+tock report --month=9                          # Most recent September
+tock report --quarter=2                        # Most recent Q2 (April to June)
 tock report --date 2025-12-01
 tock report --from 2026-04-01 --to 2026-04-15  # Report an inclusive date range
 tock report --from 2026-04-01                  # Report from date onward
@@ -746,8 +748,8 @@ tock report --summary --json # Project totals as JSON
 - `--today`: Report for today
 - `--yesterday`: Report for yesterday
 - `--week`: Report for this week (Monday to Sunday)
-- `--month`: Report for this month
-- `--quarter`: Report for this quarter
+- `--month[=N]`: Report for this month, or for the most recent month N (1-12)
+- `--quarter[=N]`: Report for this quarter, or for the most recent quarter N (1-4)
 - `--year`: Report for this year
 - `--date`: Report for specific date (YYYY-MM-DD)
 - `--from`: Start date for report range (YYYY-MM-DD)
@@ -779,8 +781,8 @@ tock export --today -o ./exports               # Write the export file to a spec
 - `--today`: Export data for today
 - `--yesterday`: Export data for yesterday
 - `--week`: Export data for this week (Monday to Sunday)
-- `--month`: Export data for this month
-- `--quarter`: Export data for this quarter
+- `--month[=N]`: Export data for this month, or for the most recent month N (1-12)
+- `--quarter[=N]`: Export data for this quarter, or for the most recent quarter N (1-4)
 - `--year`: Export data for this year
 - `--date`: Export data for a specific date (YYYY-MM-DD)
 - `--from`: Start date for export range (YYYY-MM-DD)
