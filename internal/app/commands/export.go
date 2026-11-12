@@ -32,6 +32,7 @@ func NewExportCmd() *cobra.Command {
 		Aliases: []string{"e"},
 		Short:   "Export report data to file",
 		Long:    defaultText("export.long"),
+		Args:    cobra.NoArgs,
 		RunE:    func(cmd *cobra.Command, _ []string) error { return runExportCmd(cmd, &opt) },
 	}
 

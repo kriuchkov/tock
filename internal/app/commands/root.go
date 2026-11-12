@@ -28,7 +28,7 @@ func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     appName,
 		Short:   "A simple timetracker for the command line",
-		Version: version,
+		Version: version + " (" + commit + ", " + date + ")",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			if shouldSkipRuntimeContext(cmd) {
 				return nil

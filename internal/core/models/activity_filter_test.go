@@ -47,7 +47,7 @@ func TestBuildActivityFilter(t *testing.T) {
 	})
 
 	t.Run("builds month filter", func(t *testing.T) {
-		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Month: true})
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Month: models.CurrentPeriod})
 		require.NoError(t, err)
 
 		require.NotNil(t, filter.FromDate)
@@ -56,14 +56,69 @@ func TestBuildActivityFilter(t *testing.T) {
 		assert.Equal(t, time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local), *filter.ToDate)
 	})
 
+	t.Run("builds given month filter", func(t *testing.T) {
+		tests := []struct {
+			month      int
+			start, end time.Time
+		}{
+			{1, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local), time.Date(2026, time.February, 1, 0, 0, 0, 0, time.Local)},
+			{3, time.Date(2026, time.March, 1, 0, 0, 0, 0, time.Local), time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local)},
+			{9, time.Date(2025, time.September, 1, 0, 0, 0, 0, time.Local), time.Date(2025, time.October, 1, 0, 0, 0, 0, time.Local)},
+			{12, time.Date(2025, time.December, 1, 0, 0, 0, 0, time.Local), time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local)},
+		}
+		for _, tt := range tests {
+			filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Month: tt.month})
+			require.NoError(t, err)
+			require.NotNil(t, filter.FromDate)
+			require.NotNil(t, filter.ToDate)
+			assert.Equal(t, tt.start, *filter.FromDate, "month %d", tt.month)
+			assert.Equal(t, tt.end, *filter.ToDate, "month %d", tt.month)
+		}
+	})
+
+	t.Run("rejects invalid month", func(t *testing.T) {
+		for _, month := range []int{-2, 13} {
+			_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Month: month})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid --month value")
+		}
+	})
+
 	t.Run("builds quarter filter", func(t *testing.T) {
-		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Quarter: true})
+		filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Quarter: models.CurrentPeriod})
 		require.NoError(t, err)
 
 		require.NotNil(t, filter.FromDate)
 		require.NotNil(t, filter.ToDate)
 		assert.Equal(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local), *filter.FromDate)
 		assert.Equal(t, time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local), *filter.ToDate)
+	})
+
+	t.Run("builds given quarter filter", func(t *testing.T) {
+		tests := []struct {
+			quarter    int
+			start, end time.Time
+		}{
+			{1, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local), time.Date(2026, time.April, 1, 0, 0, 0, 0, time.Local)},
+			{2, time.Date(2025, time.April, 1, 0, 0, 0, 0, time.Local), time.Date(2025, time.July, 1, 0, 0, 0, 0, time.Local)},
+			{4, time.Date(2025, time.October, 1, 0, 0, 0, 0, time.Local), time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local)},
+		}
+		for _, tt := range tests {
+			filter, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Quarter: tt.quarter})
+			require.NoError(t, err)
+			require.NotNil(t, filter.FromDate)
+			require.NotNil(t, filter.ToDate)
+			assert.Equal(t, tt.start, *filter.FromDate, "quarter %d", tt.quarter)
+			assert.Equal(t, tt.end, *filter.ToDate, "quarter %d", tt.quarter)
+		}
+	})
+
+	t.Run("rejects invalid quarter", func(t *testing.T) {
+		for _, quarter := range []int{-2, 5} {
+			_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Quarter: quarter})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid --quarter value")
+		}
 	})
 
 	t.Run("builds year filter", func(t *testing.T) {
@@ -77,7 +132,7 @@ func TestBuildActivityFilter(t *testing.T) {
 	})
 
 	t.Run("rejects conflicting week and month filters", func(t *testing.T) {
-		_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Week: true, Month: true})
+		_, err := models.BuildActivityFilter(models.ActivityFilterOptions{Now: now, Week: true, Month: models.CurrentPeriod})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cannot specify multiple date filters")
 	})
