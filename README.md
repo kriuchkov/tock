@@ -89,6 +89,9 @@ go install github.com/kriuchkov/tock/cmd/tock@latest
 
 ```bash
 go build -o tock ./cmd/tock
+
+# Or build and install to ~/.local/bin (override with GOBIN=/path)
+make install
 ```
 
 #### Install Script (Linux & macOS)
