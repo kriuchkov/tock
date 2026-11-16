@@ -7,3 +7,5 @@ packages:
       ActivityResolver:
       ActivityRepository:
       NotesRepository:
+      ReminderResolver:
+      ReminderRepository:
