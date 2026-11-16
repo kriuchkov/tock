@@ -55,6 +55,7 @@ Features include:
 - **Multiple Backends** - Support for flat files, TodoTXT, TimeWarrior, and SQLite databases
 - **Notes & Tags** - Attach detailed notes and tags to activities
 - **Fix mistakes fast** - Correct any entry with `tock edit`, by flags or in an interactive editor
+- **Reminders** - One-off or repeating things to do on a day or at a time, shown in the calendar and the macOS menu bar, and tracked as activities in one keypress
 - **Interactive TUI** - Beautiful terminal calendar view using Bubble Tea
 - **Fast & Lightweight** - Single binary, no dependencies
 - **Compatible** - Reads/writes Bartib file format, TodoTXT-compatible lines, and TimeWarrior data files
@@ -163,7 +164,17 @@ Calendar controls:
 - `Arrow Keys` / `h,j,k,l`: Navigate days
 - `n`: Next month
 - `p`: Previous month
+- `Tab`: Focus the day's reminders (`Space` done, `s` start tracking, `z` snooze, `e` edit, `x` delete)
+- `a`: Add a reminder on the selected day
 - `q` / `Esc`: Quit
+
+Keep track of things to do on a day or at a time:
+
+```bash
+tock remind add "Team sync" -p Work --on mon --at 17:30 --every weekly --notify 10m
+tock remind list    # overdue reminders and the next 7 days
+tock remind         # interactive list
+```
 
 
 ## Configuration
@@ -238,6 +249,8 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 - `TOCK_FILE_PATH`: Path to activity log
 - `TOCK_TODOTXT_PATH`: Path to TodoTXT activity log
 - `TOCK_TIME_FORMAT`: Time display format (`12` or `24`)
+- `TOCK_REMINDERS_NOTIFICATIONS`: Reminder notifications from the menu bar icon (default: `true`)
+- `TOCK_REMINDERS_SNOOZE`: Default snooze for reminders (default: `10m`)
 Notes are stored as individual files in `~/.tock/notes/` (or relative to your configured file path).
 
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
@@ -395,6 +408,7 @@ export TOCK_COLOR_SECONDARY="196" # Red
 export TOCK_COLOR_TEXT="255"     # White
 export TOCK_COLOR_SUBTEXT="248"  # Light Grey
 export TOCK_COLOR_TAG="34"       # Green
+export TOCK_COLOR_REMINDER="81"  # Sky Blue
 ```
 
 ### Per-Tag Colors
@@ -495,6 +509,7 @@ Available Commands:
   list        List activities: daily calendar view, or a weekly/monthly/yearly summary
   note        Append a note to an existing activity
   tag         Append tags to an existing activity
+  remind      Manage reminders: things to do on a day or at a time
   remove      Remove an activity
   report      Generate time tracking report
   start       Start a new activity
@@ -840,9 +855,37 @@ tock analyze --days 7
 
 - `-n, --days`: Number of days to analyze (default 30)
 
+### Reminders
+
+Reminders are things to do on a day or at a time, once or on a repeat. A reminder can be started as a tracked activity: its project and title become the activity's project and description, and the occurrence is marked done.
+
+```bash
+tock remind add "Send invoice" -p Admin --on 2026-12-16 --at 13:00 --every monthly
+tock remind add "Standup" -p Work --at 09:30 --every weekdays --notify 5m
+tock remind add "Renew domain" --on 2027-03-01 --every yearly   # no --at: all-day
+tock remind add                       # interactive form
+tock remind list                      # overdue + the next 7 days (--today, --overdue, --all, --json)
+tock remind done 3                    # mark the current occurrence done (--undo, --date)
+tock remind snooze 4 15m              # or a time of day: snooze 4 17:45
+tock remind start 4                   # track it as an activity and mark it done
+tock remind edit 4 --at 18:00         # no flags: interactive form
+tock remind rm 4 --date 2026-12-21    # skip one occurrence; without --date remove the reminder
+tock remind                           # interactive list
+```
+
+`--on` takes `YYYY-MM-DD`, `today`, `tomorrow` or a weekday (`mon`); `--every` takes `daily`, `weekdays`, `weekly[:mon,thu]`, `monthly[:16|:last|:2-tue|:last-fri]`, `yearly`, or an interval such as `3d`, `2w`, `6m`, `1y`, bounded by `--until DATE` or `--count N`.
+
+Only the latest missed occurrence of a repeating reminder counts as overdue; older ones are shown as missed. An all-day reminder becomes overdue when its day ends, and a snooze only ever moves an alert later. `tock start` prints a one-line hint when reminders are overdue.
+
+Reminders are stored in `.tock/reminders.yaml` next to the activity log for the file, TodoTXT and TimeWarrior backends, and in a `reminders` table for SQLite.
+
+Notifications are plain macOS banners sent by the menu bar icon (below), so they only go out while it runs. Turn them off with `reminders.notifications: false`; the default snooze is `reminders.snooze` (`10m`).
+
 ### Menu Bar Icon (macOS)
 
 Run a menu bar (status bar) icon that shows a live timer for the running activity, with menu actions to start the last activity, pick from the last 10 recent activities, or stop the current one. macOS only.
+
+It also shows the next reminder and a **Reminders** submenu for today and tomorrow, where each reminder can be started, marked done or snoozed; the icon gets a badge while a reminder is overdue, and banners go out when reminders come due.
 
 Enable it in your config, then run it:
 

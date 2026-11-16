@@ -26,6 +26,11 @@ const (
 	trayBarRadius   = 3.0
 	trayBarStroke   = 2.0
 	trayArrowStroke = 2.4
+
+	trayBadgeCenterX     = 37.0
+	trayBadgeCenterY     = 7.0
+	trayBadgeRadius      = 6.0
+	trayBadgeClearRadius = 8.5
 )
 
 // trayBarCentersY are the vertical centers of the three stacked bars.
@@ -34,6 +39,12 @@ var trayBarCentersY = [...]float64{9.0, 22.0, 35.0}
 // trayIconPNG renders the monochrome Tock mark used as the menu bar template
 // icon. Drawn pixels are black with coverage-based alpha for smooth edges.
 func trayIconPNG() []byte {
+	return trayIcon(false)
+}
+
+// trayIcon renders the menu bar icon, with a badge dot in the top-right corner
+// when badge is set (overdue reminders).
+func trayIcon(badge bool) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, trayIconSize, trayIconSize))
 
 	plot := func(x, y int, coverage float64) {
@@ -60,11 +71,29 @@ func trayIconPNG() []byte {
 	drawTraySegment(plot, trayBarCenterX, 37.0, trayBarCenterX-5.5, 31.5, trayArrowStroke)
 	drawTraySegment(plot, trayBarCenterX, 37.0, trayBarCenterX+5.5, 31.5, trayArrowStroke)
 
+	if badge {
+		drawTrayBadge(img, plot)
+	}
+
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return nil
 	}
 	return buf.Bytes()
+}
+
+// drawTrayBadge clears a ring in the top-right corner and fills a dot inside it,
+// so the badge reads apart from the bars it overlaps.
+func drawTrayBadge(img *image.NRGBA, plot func(x, y int, coverage float64)) {
+	for y := range trayIconSize {
+		for x := range trayIconSize {
+			d := math.Hypot(float64(x)-trayBadgeCenterX, float64(y)-trayBadgeCenterY)
+			if d <= trayBadgeClearRadius {
+				img.SetNRGBA(x, y, color.NRGBA{})
+			}
+			plot(x, y, trayBadgeRadius-d+trayAAFeather)
+		}
+	}
 }
 
 // drawRoundedRectOutline strokes the outline of a rounded rectangle using its

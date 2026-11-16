@@ -33,3 +33,34 @@ type NotesRepository interface {
 	Get(ctx context.Context, activityID string, date time.Time) (string, []string, error)
 	Delete(ctx context.Context, activityID string, date time.Time) error
 }
+
+// ReminderResolver is the reminder API used by the delivery layer.
+type ReminderResolver interface {
+	Add(ctx context.Context, req models.AddReminderRequest) (*models.Reminder, error)
+	Get(ctx context.Context, id int) (*models.Reminder, error)
+	List(ctx context.Context) ([]models.Reminder, error)
+	Update(ctx context.Context, id int, req models.UpdateReminderRequest) (*models.Reminder, error)
+	Remove(ctx context.Context, id int) error
+	// Occurrences returns the occurrences of all reminders due in [from, to), in due order.
+	Occurrences(ctx context.Context, from, to, now time.Time) ([]models.ReminderOccurrence, error)
+	// Overdue returns the occurrences past due and not done at now, in due order. It includes ones
+	// snoozed past their due time, so they stay listed; callers counting alerts check Status.
+	Overdue(ctx context.Context, now time.Time) ([]models.ReminderOccurrence, error)
+	// Current returns the occurrence to act on when none is named: the overdue one, else the next one not done.
+	Current(ctx context.Context, id int, now time.Time) (*models.ReminderOccurrence, error)
+	SetDone(ctx context.Context, ref models.OccurrenceRef, done bool, at time.Time) (*models.ReminderOccurrence, error)
+	// Snooze moves the occurrence's alert to until; a zero until clears the snooze.
+	Snooze(ctx context.Context, ref models.OccurrenceRef, until time.Time) (*models.ReminderOccurrence, error)
+	// Skip drops one occurrence of a repeating reminder; for a one-off reminder it removes the reminder.
+	Skip(ctx context.Context, ref models.OccurrenceRef) error
+	// Track starts an activity from the occurrence and marks it done.
+	Track(ctx context.Context, ref models.OccurrenceRef, req models.TrackReminderRequest) (*models.Activity, error)
+}
+
+// ReminderRepository stores reminders.
+type ReminderRepository interface {
+	List(ctx context.Context) ([]models.Reminder, error)
+	// Save inserts a reminder with ID 0 under a new ID, or replaces the one with its ID.
+	Save(ctx context.Context, reminder models.Reminder) (*models.Reminder, error)
+	Remove(ctx context.Context, id int) error
+}

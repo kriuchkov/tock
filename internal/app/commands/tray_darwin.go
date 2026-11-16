@@ -33,6 +33,8 @@ const (
 type trayController struct {
 	service ports.ActivityResolver
 	loc     *localization.Localizer
+	// rem is nil when reminders are unavailable.
+	rem *trayReminders
 
 	// untilIdle quits the tray once an activity that was running goes away — set
 	// when `tock start` auto-spawns the tray.
@@ -85,7 +87,7 @@ func runTray(cmd *cobra.Command) error {
 		fmt.Fprintln(cmd.ErrOrStderr(), text(cmd, "tray.running"))
 	}
 
-	c := &trayController{service: rt.ActivityService, loc: rt.Localizer, untilIdle: untilIdle}
+	c := &trayController{service: rt.ActivityService, loc: rt.Localizer, untilIdle: untilIdle, rem: newTrayReminders(cmd)}
 	systray.Run(func() { c.onReady(ctx) }, func() {})
 	return nil
 }
@@ -104,6 +106,9 @@ func (c *trayController) onReady(ctx context.Context) {
 		slot.Disable()
 		slot.Hide()
 		c.todaySlots[i] = slot
+	}
+	if c.rem != nil {
+		c.rem.addMenu()
 	}
 	systray.AddSeparator()
 
@@ -139,6 +144,12 @@ func (c *trayController) loop(ctx context.Context) {
 	ticker := time.NewTicker(trayRefreshInterval)
 	defer ticker.Stop()
 
+	// A nil channel never delivers, so without reminders that case stays idle.
+	var reminderClick chan trayReminderClick
+	if c.rem != nil {
+		reminderClick = c.rem.click
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -155,6 +166,9 @@ func (c *trayController) loop(ctx context.Context) {
 		case <-c.mStop.ClickedCh:
 			c.stopCurrent(ctx)
 			c.refreshAll(ctx)
+		case click := <-reminderClick:
+			c.rem.handle(ctx, click)
+			c.refreshAll(ctx)
 		case <-c.mQuit.ClickedCh:
 			systray.Quit()
 			return
@@ -167,6 +181,9 @@ func (c *trayController) loop(ctx context.Context) {
 func (c *trayController) refresh(ctx context.Context) {
 	running := c.runningActivity(ctx)
 	c.syncStoreMenus(ctx, running)
+	if c.rem != nil {
+		c.rem.tick(ctx, time.Now())
+	}
 
 	if running == nil {
 		// In auto-spawn mode the tray exists only for the activity that launched
@@ -197,9 +214,16 @@ func (c *trayController) refresh(ctx context.Context) {
 // submenu and today summary. Used after a menu action so the change shows
 // immediately instead of at the next tick.
 func (c *trayController) refreshAll(ctx context.Context) {
+	c.refreshReminders(ctx)
 	c.refresh(ctx)
 	c.refreshRecent(ctx)
 	c.refreshToday(ctx)
+}
+
+func (c *trayController) refreshReminders(ctx context.Context) {
+	if c.rem != nil {
+		c.rem.load(ctx, time.Now())
+	}
 }
 
 // syncStoreMenus keeps the recent list and today summary in step with the store
@@ -219,6 +243,7 @@ func (c *trayController) syncStoreMenus(ctx context.Context, running *models.Act
 		c.syncTick = 0
 		c.refreshRecent(ctx)
 		c.refreshToday(ctx)
+		c.refreshReminders(ctx)
 	}
 }
 

@@ -102,9 +102,12 @@ func confirmRemoval(out io.Writer, in io.Reader, activity models.Activity) (bool
 	if _, err := fmt.Fprint(out, defaultText("remove.confirm.prompt")); err != nil {
 		return false, errors.Wrap(err, "write confirmation prompt")
 	}
+	return readConfirmation(out, in)
+}
 
-	reader := bufio.NewReader(in)
-	response, err := reader.ReadString('\n')
+// readConfirmation reads a yes/no answer; anything but y/yes is no.
+func readConfirmation(out io.Writer, in io.Reader) (bool, error) {
+	response, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil {
 		return false, errors.Wrap(err, "read input")
 	}
@@ -114,7 +117,6 @@ func confirmRemoval(out io.Writer, in io.Reader, activity models.Activity) (bool
 		fmt.Fprintln(out, defaultText("remove.aborted"))
 		return false, nil
 	}
-
 	return true, nil
 }
 

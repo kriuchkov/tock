@@ -22,6 +22,7 @@ type Theme struct {
 	Faint     lipgloss.Color
 	Highlight lipgloss.Color
 	Tag       lipgloss.Color
+	Reminder  lipgloss.Color
 	TagColors map[string]TagColorStyle
 }
 
@@ -41,6 +42,8 @@ type Styles struct {
 	Sidebar       lipgloss.Style
 	Dot           lipgloss.Style
 	Line          lipgloss.Style
+	Reminder      lipgloss.Style
+	Overdue       lipgloss.Style
 }
 
 // DarkTheme returns the standard 256-color theme for dark backgrounds.
@@ -53,6 +56,7 @@ func DarkTheme() Theme {
 		Faint:     lipgloss.Color("240"), // Dark Grey
 		Highlight: lipgloss.Color("214"), // Orange/Gold
 		Tag:       lipgloss.Color("120"), // Light Green
+		Reminder:  lipgloss.Color("81"),  // Sky Blue
 	}
 }
 
@@ -66,6 +70,7 @@ func LightTheme() Theme {
 		Faint:     lipgloss.Color("250"), // Light Grey
 		Highlight: lipgloss.Color("166"), // Orange (Darker than 214)
 		Tag:       lipgloss.Color("28"),  // Dark Green
+		Reminder:  lipgloss.Color("31"),  // Deep Sky Blue
 	}
 }
 
@@ -79,6 +84,7 @@ func ANSIDarkTheme() Theme {
 		Faint:     lipgloss.Color("8"),  // Dark Grey
 		Highlight: lipgloss.Color("3"),  // Yellow
 		Tag:       lipgloss.Color("2"),  // Green
+		Reminder:  lipgloss.Color("6"),  // Cyan
 	}
 }
 
@@ -92,6 +98,7 @@ func ANSILightTheme() Theme {
 		Faint:     lipgloss.Color("7"), // Light Grey
 		Highlight: lipgloss.Color("5"), // Magenta (Yellow is often invisible on white)
 		Tag:       lipgloss.Color("2"), // Green
+		Reminder:  lipgloss.Color("6"), // Cyan
 	}
 }
 
@@ -120,6 +127,9 @@ func CustomTheme(cfg config.ThemeConfig) Theme {
 	}
 	if cfg.Tag != "" {
 		t.Tag = lipgloss.Color(cfg.Tag)
+	}
+	if cfg.Reminder != "" {
+		t.Reminder = lipgloss.Color(cfg.Reminder)
 	}
 	if len(cfg.TagColors) > 0 {
 		t.TagColors = make(map[string]TagColorStyle, len(cfg.TagColors))
@@ -238,6 +248,8 @@ func InitStyles(t Theme) Styles {
 
 	s.Dot = lipgloss.NewStyle().Foreground(t.Highlight)
 	s.Line = lipgloss.NewStyle().Foreground(t.Faint)
+	s.Reminder = lipgloss.NewStyle().Foreground(t.Reminder)
+	s.Overdue = lipgloss.NewStyle().Foreground(t.Secondary).Bold(true)
 
 	return s
 }
