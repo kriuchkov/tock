@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -88,8 +89,8 @@ func resolveDoneTarget(
 	}
 	tomorrow := now.AddDate(0, 0, 1)
 	occurrences := reminder.Occurrences(reminder.Due.AddDate(0, 0, -1), tomorrow, now)
-	for i := len(occurrences) - 1; i >= 0; i-- {
-		if occurrences[i].State.DoneAt != nil {
+	for i, occurrence := range slices.Backward(occurrences) {
+		if occurrence.State.DoneAt != nil {
 			return &occurrences[i], nil
 		}
 	}

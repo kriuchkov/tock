@@ -215,7 +215,7 @@ func TestTrackStartsAnActivityAndMarksTheOccurrenceDone(t *testing.T) {
 	state := stored.State(start)
 	require.NotNil(t, state.DoneAt)
 	require.NotNil(t, state.ActivityStart)
-	assert.Equal(t, start, *state.ActivityStart)
+	assert.True(t, start.Equal(*state.ActivityStart), "read back from the store, so compare instants")
 }
 
 func TestTrackNeedsAProject(t *testing.T) {
