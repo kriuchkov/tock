@@ -37,6 +37,15 @@ func (m *calendarModel) renderSidebar() string {
 	}
 	remaining := m.height - 2 - productivityLines
 
+	// Upcoming reminders take what is left once the weekly activity has its 17 lines.
+	upcomingBudget := remaining
+	if remaining >= 17+calendarUpcomingMinLines {
+		upcomingBudget = remaining - 17
+	}
+	upcoming, upcomingLines := m.renderUpcoming(min(upcomingBudget, calendarUpcomingMaxLines))
+	b.WriteString(upcoming)
+	remaining -= upcomingLines
+
 	if remaining >= 17 { // 17 lines for weekly activity
 		b.WriteString(m.renderWeeklyActivity())
 		remaining -= 17

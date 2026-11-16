@@ -7,4 +7,6 @@ const (
 	keyRight = "right"
 	keyDown  = "down"
 	keyEsc   = "esc"
+	keyEnter = "enter"
+	keyDel   = "delete"
 )

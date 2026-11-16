@@ -11,6 +11,7 @@ import (
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/file"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/notes"
+	"github.com/kriuchkov/tock/internal/adapters/repositories/reminders"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/sqlite"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/timewarrior"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/todotxt"
@@ -19,6 +20,7 @@ import (
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/services/activity"
+	"github.com/kriuchkov/tock/internal/services/reminder"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
@@ -39,6 +41,7 @@ type contextKey struct{}
 
 type Runtime struct {
 	ActivityService ports.ActivityResolver
+	ReminderService ports.ReminderResolver
 	Backend         string
 	DataPath        string
 	Config          *config.Config
@@ -79,13 +82,15 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 	}
 
 	filePath := resolveFilePath(backend, req.FilePath, cfg)
-	repo, notesRepo, err := initRepositories(ctx, backend, filePath)
+	repos, err := initRepositories(ctx, backend, filePath)
 	if err != nil {
 		return nil, err
 	}
 
+	activityService := activity.NewService(repos.activities, repos.notes)
 	rt := &Runtime{
-		ActivityService: activity.NewService(repo, notesRepo),
+		ActivityService: activityService,
+		ReminderService: reminder.NewService(repos.reminders, activityService),
 		Backend:         backend,
 		DataPath:        filePath,
 		Config:          cfg,
@@ -158,26 +163,38 @@ func LoadCompletionService(ctx context.Context, req Request) (ports.ActivityReso
 	return deps.ActivityService, nil
 }
 
-func initRepositories(ctx context.Context, backend, filePath string) (ports.ActivityRepository, ports.NotesRepository, error) {
-	notesBase := filePath
-	if notesBase == "" {
-		notesBase, _ = os.UserHomeDir()
+type repositories struct {
+	activities ports.ActivityRepository
+	notes      ports.NotesRepository
+	reminders  ports.ReminderRepository
+}
+
+func initRepositories(ctx context.Context, backend, filePath string) (repositories, error) {
+	sidecarBase := filePath
+	if sidecarBase == "" {
+		sidecarBase, _ = os.UserHomeDir()
 	}
-	notesPath := filepath.Join(filepath.Dir(notesBase), ".tock", "notes")
+	sidecarDir := filepath.Join(filepath.Dir(sidecarBase), ".tock")
+	notesRepo := notes.NewRepository(filepath.Join(sidecarDir, "notes"))
+	remindersRepo := reminders.NewRepository(filepath.Join(sidecarDir, "reminders.yaml"))
 
 	switch backend {
 	case backendTodoTXT:
-		return todotxt.NewRepository(filePath), notes.NewRepository(notesPath), nil
+		return repositories{activities: todotxt.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
 	case backendTimewarrior:
-		return timewarrior.NewRepository(filePath), notes.NewRepository(notesPath), nil
+		return repositories{activities: timewarrior.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
 	case backendSqlite:
 		repo, err := sqlite.NewSQLiteActivityRepository(ctx, filePath)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "init sqlite repo")
+			return repositories{}, errors.Wrap(err, "init sqlite repo")
 		}
-		return repo, sqlite.NewNotesRepository(repo.DB), nil
+		reminderRepo, err := sqlite.NewReminderRepository(ctx, repo.DB)
+		if err != nil {
+			return repositories{}, errors.Wrap(err, "init sqlite reminders repo")
+		}
+		return repositories{activities: repo, notes: sqlite.NewNotesRepository(repo.DB), reminders: reminderRepo}, nil
 	default:
-		return file.NewRepository(filePath), notes.NewRepository(notesPath), nil
+		return repositories{activities: file.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
 	}
 }
 

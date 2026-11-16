@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,7 +44,11 @@ func NewCalendarCmd() *cobra.Command {
 
 func runCalendarCmd(cmd *cobra.Command) error {
 	rt := getRuntime(cmd)
-	return runCalendarProgram(initialCalendarModel(rt.ActivityService, rt.Config, rt.TimeFormatter, getLocalizer(cmd), rt.TagColors))
+	model := initialCalendarModel(rt.ActivityService, rt.Config, rt.TimeFormatter, getLocalizer(cmd), rt.TagColors)
+	if rt.ReminderService != nil {
+		model.withReminders(rt.ReminderService, defaultSnooze(cmd))
+	}
+	return runCalendarProgram(model)
 }
 
 type calendarModel struct {
@@ -64,6 +67,7 @@ type calendarModel struct {
 	styles       Styles
 	theme        Theme
 	loc          *localization.Localizer
+	rem          calendarReminders
 }
 
 func initialCalendarModel(
@@ -146,6 +150,7 @@ func (m *calendarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case monthDataMsg:
 		m.monthReports = msg.monthReports
 		m.dailyReports = msg.dailyReports
+		m.rem.data = msg.reminders
 		m.updateViewportContent()
 
 	case errMsg:
@@ -164,6 +169,9 @@ func (m *calendarModel) View() string {
 	}
 	if !m.ready {
 		return m.loc.Format("calendar.initializing")
+	}
+	if m.rem.form != nil {
+		return m.rem.form.view(m.rem.env, reminderNow(), m.width)
 	}
 
 	detailsView := m.renderDetails()
@@ -218,7 +226,6 @@ func (m *calendarModel) renderCalendar() string {
 			hasActivity = true
 		}
 
-		str := strconv.Itoa(day)
 		var cellStyle lipgloss.Style
 
 		switch {
@@ -239,7 +246,7 @@ func (m *calendarModel) renderCalendar() string {
 			cellStyle = cellStyle.Underline(true)
 		}
 
-		b.WriteString(cellStyle.Render(str))
+		b.WriteString(m.renderDayCell(cellStyle, date, now))
 
 		weekday++
 		if weekday > 6 {
@@ -248,11 +255,7 @@ func (m *calendarModel) renderCalendar() string {
 		}
 	}
 	b.WriteString("\n\n")
-	b.WriteString(
-		lipgloss.NewStyle().
-			Foreground(m.styles.Weekday.GetForeground()).
-			Render(m.loc.Format("calendar.help")),
-	)
+	b.WriteString(m.calendarHelp())
 
 	return m.styles.Wrapper.Render(b.String())
 }
@@ -286,6 +289,12 @@ func (m *calendarModel) updateViewportContent() {
 	dateStr := formatLocalizedLongDate(m.loc, m.currentDate)
 	b.WriteString(m.styles.DetailsHeader.Render(dateStr) + "\n\n")
 
+	var dayActivities []models.Activity
+	if ok && report != nil {
+		dayActivities = report.Activities
+	}
+	hasReminders := m.writeReminderSection(&b, dayActivities)
+
 	if !ok || report == nil || report.TotalDuration == 0 {
 		b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(m.loc.Text("calendar.no_events")))
 		m.viewport.SetContent(b.String())
@@ -297,6 +306,11 @@ func (m *calendarModel) updateViewportContent() {
 	sort.Slice(activities, func(i, j int) bool {
 		return activities[i].StartTime.Before(activities[j].StartTime)
 	})
+
+	if hasReminders {
+		b.WriteString(m.styles.Header.UnsetWidth().UnsetAlign().Render(m.loc.Text("calendar.tracked")) + "  " +
+			lipgloss.NewStyle().Foreground(m.theme.SubText).Render(m.trackedEntries(len(activities))) + "\n\n")
+	}
 
 	for i, act := range activities {
 		m.renderActivityEntry(&b, act, i == len(activities)-1)
@@ -553,6 +567,7 @@ func wrapText(text string, maxWidth int) []string {
 type monthDataMsg struct {
 	monthReports map[int]*models.Report
 	dailyReports map[string]*models.Report
+	reminders    reminderData
 }
 
 type errMsg struct{ err error }
@@ -581,8 +596,13 @@ func (m *calendarModel) fetchMonthData() tea.Msg {
 		return errMsg{errors.Wrap(err, "get report")}
 	}
 
+	reminders, err := m.fetchReminders(context.Background(), fetchStart, fetchEnd)
+	if err != nil {
+		return errMsg{err}
+	}
+
 	data := insights.BuildMonthData(report.Activities, year, month, time.Now())
-	return monthDataMsg{monthReports: data.MonthReports, dailyReports: data.DailyReports}
+	return monthDataMsg{monthReports: data.MonthReports, dailyReports: data.DailyReports, reminders: reminders}
 }
 
 func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
@@ -593,6 +613,9 @@ func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
 // getWeeklyDuration calculates the total duration for the current week (Monday to Sunday)
 // based on the selected date. Fetches directly from service to handle cross-month weeks.
 func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
+	if cmd, handled := m.handleReminderKey(msg); handled {
+		return cmd, true
+	}
 	switch msg.String() {
 	case "q", keyCtrlC, keyEsc:
 		return tea.Quit, true

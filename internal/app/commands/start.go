@@ -134,5 +134,6 @@ func runStartCmd(cmd *cobra.Command, args []string, opts *startOptions) error {
 		activity.Description,
 		activity.StartTime.Format(tf.GetDisplayFormat()),
 	)
+	printOverdueReminders(cmd)
 	return err
 }

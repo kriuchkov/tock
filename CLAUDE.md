@@ -54,9 +54,17 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
     `StartTime` (`"150405"`), not a stored field, so two activities in the same second collide.
   - `ports/` — the interfaces that wire the layers: `ActivityResolver` (the full service API used by
     commands — start/stop/list/report plus notes & tags mutation), `ActivityRepository` and
-    `NotesRepository` (implemented by adapters). Mocks live in `ports/mocks/` (regenerate with
+    `NotesRepository` (implemented by adapters), and `ReminderResolver`/`ReminderRepository` for reminders. Mocks live in `ports/mocks/` (regenerate with
     `mockery`; the committed mocks use the v3 `testify` template — do not downgrade with a v2 binary).
   - `errors/` — sentinel errors (`ErrNoActiveActivity`, `ErrNotesUnavailable`, etc.).
+
+- **Reminders** — `models.Reminder` holds the recurrence engine (`reminder_repeat.go`: `ParseRepeat`/`Spec`,
+  day-by-day `eachOccurrence`) and occurrence states keyed by `YYYY-MM-DD`; only the latest past undone
+  occurrence is overdue, older ones are `Missed`. `internal/services/reminder` validates/normalizes (moves `Due`
+  to the first day the rule falls on) and `Track` starts an activity through `ActivityResolver`. Storage:
+  `adapters/repositories/reminders` (YAML sidecar `.tock/reminders.yaml`), `reminderrecord` (the storage form shared with sqlite) and
+  `sqlite.ReminderRepository`. UI: `remind*.go` commands, `calendar_reminders.go`, `tray_reminders_darwin.go`;
+  notifications are `osascript` banners sent only by the tray (`remind_notify.go` decides what is due).
 
 - **`internal/services/activity`** — the business logic. `NewService(repo, notesRepo)` returns an
   `ActivityResolver`. All activity rules live here: start/stop/continue (e.g. starting an activity
@@ -65,7 +73,8 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
 
 - **`internal/adapters/repositories`** — one subpackage per backend, each implementing
   `ActivityRepository`: `file` (default, Bartib format), `todotxt`, `timewarrior`, `sqlite`, plus
-  `notes` (sidecar notes/tags store for the non-sqlite backends). Sqlite provides its own notes repo.
+  `notes` (sidecar notes/tags store for the non-sqlite backends), `reminders` (sidecar reminder store).
+  Sqlite provides its own notes and reminder repos.
 
 - **`internal/app`** — the delivery layer.
   - `runtime/` — the composition root / DI, and the **only** package that imports concrete adapters.

@@ -127,4 +127,19 @@ func TestSQLiteIntegration(t *testing.T) {
 
 	// We expect the original activity from today to still be there
 	assert.Contains(t, stdout, "\"project\": \"IntegrationProject\"")
+
+	// 11. Reminders live in the same database
+	stdout, stderr, err = runTock("remind", "add", "Renew domain", "--on", "2020-01-01", "--every", "yearly")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "Added reminder 1: Renew domain")
+
+	stdout, stderr, err = runTock("remind", "done", "1", "--date", "2020-01-01", "--json")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "\"status\": \"done\"")
+
+	stdout, stderr, err = runTock("remind", "list", "--all")
+	require.NoError(t, err, stderr)
+	assert.Contains(t, stdout, "yearly on 1 Jan")
+	_, err = os.Stat(filepath.Join(tempDir, ".tock", "reminders.yaml"))
+	assert.True(t, os.IsNotExist(err), "sqlite keeps reminders in the database, not a sidecar file")
 }

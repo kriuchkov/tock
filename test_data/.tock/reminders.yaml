@@ -1,0 +1,72 @@
+next_id: 11
+reminders:
+    - id: 1
+      title: Standup
+      project: Work
+      due: 2026-05-04 09:30
+      every: weekdays
+      notify: 5m0s
+      created: 2026-05-01T10:00:00+03:00
+    - id: 2
+      title: Coding practice
+      project: Learning
+      due: 2026-05-09 09:00
+      every: daily
+      created: 2026-05-09T08:00:00+03:00
+      occurrences:
+        "2026-05-14":
+            done: 2026-05-14T08:56:00+03:00
+            activity: 2026-05-14T08:56:00+03:00
+    - id: 3
+      title: Send invoice
+      project: Admin
+      due: 2026-05-16 13:00
+      every: monthly
+      notify: 30m0s
+      tags:
+        - money
+      created: 2026-05-10T12:00:00+03:00
+    - id: 4
+      title: Renew domain
+      due: "2026-05-16"
+      all_day: true
+      every: yearly
+      notes: tock.dev, before the registrar's grace period ends
+      created: 2026-05-10T12:00:00+03:00
+    - id: 5
+      title: Team sync
+      project: Work
+      due: 2026-05-02 17:30
+      every: weekly
+      notify: 10m0s
+      created: 2026-05-01T10:00:00+03:00
+    - id: 6
+      title: Dentist
+      due: 2026-05-17 15:00
+      notify: 1h0m0s
+      created: 2026-05-12T19:00:00+03:00
+    - id: 7
+      title: Release v1.9
+      project: Tock
+      due: 2026-05-20 10:00
+      created: 2026-05-12T19:00:00+03:00
+    - id: 8
+      title: Water plants
+      due: "2026-05-10"
+      all_day: true
+      every: 3d
+      count: 6
+      created: 2026-05-10T09:00:00+03:00
+      occurrences:
+        "2026-05-13":
+            done: 2026-05-13T08:30:00+03:00
+    - id: 9
+      title: Pay rent
+      due: "2026-04-30"
+      all_day: true
+      every: monthly:last
+      created: 2026-05-10T12:00:00+03:00
+    - id: 10
+      title: Late call
+      due: 2026-05-16 23:30
+      created: 2026-05-15T18:00:00+03:00

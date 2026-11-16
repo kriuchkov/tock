@@ -12,6 +12,8 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`remove`](#remove-alias-rm)
   - [`continue`](#continue-alias-c)
   - [`watch`](#watch)
+- [Reminders](#reminders)
+  - [`remind`](#remind-alias-reminders)
 - [Viewing & Reporting](#viewing--reporting)
   - [`calendar`](#calendar)
   - [`list`](#list-alias-ls)
@@ -321,6 +323,85 @@ tock watch [flags]
 
 ---
 
+## Reminders
+
+### `remind` (alias: `reminders`)
+
+Manage reminders: things to do on a day or at a time, once or repeatedly. Without a subcommand it opens the interactive list.
+
+**Usage:**
+
+```bash
+tock remind [command]
+```
+
+**Interactive list controls:**
+
+- `Tab` / `Shift+Tab`: Switch between Day, Week, Overdue and All
+- `Left` / `Right`: Previous / next day or week
+- `a`: Add, `e` / `Enter`: Edit
+- `Space`: Mark done (again to undo)
+- `s`: Start tracking as an activity
+- `z`: Snooze (`reminders.snooze`, default 10m)
+- `x` / `Delete`: Delete after `y`; for a repeating reminder `o` removes only the selected occurrence
+- `q` / `Esc`: Quit
+
+#### `remind add`
+
+Add a reminder. Without a title the interactive form opens, filled in from the flags.
+
+```bash
+tock remind add "Team sync" -p Work --on mon --at 17:30 --every weekly:mon,thu --until 2026-12-31 --notify 10m
+tock remind add "Water plants" --every 3d --count 10
+```
+
+**Flags** (shared with `remind edit`):
+
+- `-p, --project`: Project used when the reminder is started as an activity
+- `--on`: Day: `YYYY-MM-DD`, `today`, `tomorrow` or a weekday like `mon` (default today)
+- `--at`: Time of day; without it the reminder is all-day
+- `--every`: Repeat: `daily`, `weekdays`, `weekly[:mon,thu]`, `monthly[:16|:last|:2-tue|:last-fri]`, `yearly`, or an interval like `3d`, `2w`, `6m`, `1y`
+- `--until`: Last day of the repeat (`none` removes it)
+- `--count`: Stop the repeat after this many occurrences
+- `--notify`: Notify this long before it is due (e.g. `10m`, `1h`; at most a week); all-day reminders notify at 09:00
+- `--tag`, `--note`: Tags and notes
+- `--json`: Output in JSON format
+
+A date that does not fall on the repeat rule moves to the first day that does (`--on 2026-11-18 --every monthly:last-wed` starts on 25 Nov).
+
+#### `remind list` (alias: `ls`)
+
+List overdue reminders and the next 7 days.
+
+- `--today`: Overdue and today's
+- `--week`: Overdue and the next 7 days (default)
+- `--overdue`: Only overdue
+- `--all`: Every reminder with its next occurrence
+- `--json`: Output in JSON format
+
+#### `remind done`, `remind snooze`, `remind start`
+
+Act on the current occurrence: the overdue one (or one from an earlier day still snoozed), else the next one from today. `--date YYYY-MM-DD` picks another.
+
+```bash
+tock remind done 3          # --undo marks it not done again
+tock remind snooze 4        # reminders.snooze (default 10m)
+tock remind snooze 4 1h     # or a time of day: 17:45
+tock remind start 4         # -p overrides the project, -t the start time
+```
+
+`start` starts an activity from the reminder (stopping a running one) and marks the occurrence done.
+
+#### `remind edit`
+
+Edit a reminder. Without flags the interactive form opens; with flags the change applies at once. `--on` keeps the time of day, `--at` sets it, `--all-day` drops it, `--title` renames.
+
+#### `remind remove` (alias: `rm`)
+
+Remove a reminder after a confirmation (`-y` skips it), or with `--date` only that occurrence of a repeating one.
+
+---
+
 ## Viewing & Reporting
 
 ### `calendar`
@@ -346,7 +427,11 @@ This is the full TUI experience for Tock. Depending on your terminal size, it di
 - `n`: Jump to next month
 - `p`: Jump to previous month
 - `j` / `k`: Scroll through the activity list (if it overflows)
+- `Tab`: Focus the selected day's reminders; then `Up`/`Down` select one, `Space` marks it done, `s` starts tracking it, `z` snoozes it, `e` edits it, `x` deletes it, `Tab`/`Esc` go back
+- `a`: Add a reminder on the selected day
 - `q` / `Esc`: Quit
+
+Days with reminders get a dot (red while one is overdue). Daily and weekday repeats are left out, or every day would be marked. The sidebar lists overdue and upcoming reminders.
 
 ---
 

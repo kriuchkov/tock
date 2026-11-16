@@ -18,6 +18,7 @@ type Config struct {
 	Sqlite          SqliteConfig       `mapstructure:"sqlite"`
 	WorkingHours    WorkingHoursConfig `mapstructure:"working_hours"`
 	Tray            TrayConfig         `mapstructure:"tray"`
+	Reminders       RemindersConfig    `mapstructure:"reminders"`
 	Theme           ThemeConfig        `mapstructure:"theme"`
 	Calendar        CalendarConfig     `mapstructure:"calendar"`
 	TimeFormat      string             `mapstructure:"time_format"`
@@ -79,6 +80,13 @@ type TrayConfig struct {
 	AutoStart bool `mapstructure:"auto_start"`
 }
 
+// RemindersConfig controls reminders. Notifications are sent by the macOS menu bar
+// icon (`tock tray`), so they only go out while it runs.
+type RemindersConfig struct {
+	Notifications bool          `mapstructure:"notifications"`
+	Snooze        time.Duration `mapstructure:"snooze"`
+}
+
 type ThemeConfig struct {
 	Name      string            `mapstructure:"name"`
 	Primary   string            `mapstructure:"primary"`
@@ -88,6 +96,7 @@ type ThemeConfig struct {
 	Faint     string            `mapstructure:"faint"`
 	Highlight string            `mapstructure:"highlight"`
 	Tag       string            `mapstructure:"tag"`
+	Reminder  string            `mapstructure:"reminder"`
 	TagColors map[string]string `mapstructure:"tag_colors"`
 }
 
@@ -143,6 +152,8 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("working_hours.weekdays", "mon,tue,wed,thu,fri")
 	v.SetDefault("tray.enabled", false)
 	v.SetDefault("tray.auto_start", false)
+	v.SetDefault("reminders.notifications", true)
+	v.SetDefault("reminders.snooze", "10m")
 	v.SetDefault("timewarrior.use_tock_tag_colors", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_calendar", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_weekly_activity", false)
@@ -173,11 +184,14 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("theme.sub_text", "TOCK_COLOR_SUBTEXT")
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
+	_ = v.BindEnv("theme.reminder", "TOCK_COLOR_REMINDER")
 	_ = v.BindEnv("working_hours.enabled", "TOCK_WORKING_HOURS_ENABLED")
 	_ = v.BindEnv("working_hours.stop_at", "TOCK_WORKING_HOURS_STOP_AT")
 	_ = v.BindEnv("working_hours.weekdays", "TOCK_WORKING_HOURS_WEEKDAYS")
 	_ = v.BindEnv("tray.enabled", "TOCK_TRAY_ENABLED")
 	_ = v.BindEnv("tray.auto_start", "TOCK_TRAY_AUTO_START")
+	_ = v.BindEnv("reminders.notifications", "TOCK_REMINDERS_NOTIFICATIONS")
+	_ = v.BindEnv("reminders.snooze", "TOCK_REMINDERS_SNOOZE")
 	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 	_ = v.BindEnv("check_updates", "TOCK_CHECK_UPDATES")
 

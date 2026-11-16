@@ -13,6 +13,7 @@ ROOT = Path(__file__).parent.parent
 TXT = ROOT / "test_data/test_tock_data.txt"
 CFG = ROOT / "test_data/test_config.yaml"
 NOTES = ROOT / "test_data/.tock/notes"
+REMINDERS = ROOT / "test_data/.tock/reminders.yaml"
 TW_DIR = ROOT / "test_data/timewarrior"
 
 parser = argparse.ArgumentParser()
@@ -49,6 +50,10 @@ if txt_dates:
         for d in sorted(NOTES.iterdir()):
             if re.match(r"\d{4}-\d{2}-\d{2}", d.name):
                 d.rename(d.parent / (datetime.date.fromisoformat(d.name) + delta_txt).strftime("%Y-%m-%d"))
+
+    # --- Reminders: same shift, so "today" in them stays the day after the latest activity ---
+    if REMINDERS.is_file():
+        REMINDERS.write_text(re.sub(r"\d{4}-\d{2}-\d{2}", make_shift_ymd(delta_txt), REMINDERS.read_text()))
 
 # --- Timewarrior ---
 if TW_DIR.is_dir():

@@ -100,6 +100,17 @@ tray:
   # Default: false
   auto_start: false
 
+# Reminders (`tock remind`).
+reminders:
+  # Notification banners when reminders come due. They are sent by the menu bar
+  # icon (`tock tray`), so they only go out while it runs.
+  # Default: true
+  notifications: true
+
+  # How long `tock remind snooze` and the snooze keys push a reminder back.
+  # Default: 10m
+  snooze: 10m
+
 # Export settings
 export:
   ical:
@@ -173,6 +184,7 @@ theme:
   # faint: "240"
   # highlight: "214"
   # tag: "34"
+  # reminder: "81"
 
   # Per-tag foreground colors (all backends).
   # Keys are tag names; values are hex codes or ANSI color numbers.
