@@ -1,13 +1,22 @@
-# Sourced by demo/demo.tape: builds tock into a temp dir and seeds sample data there.
-# HOME points at the temp dir, so the recording never reads or writes real data.
+# Sourced by demo/*.tape: builds tock into a temp dir and seeds sample data there.
+# HOME points at the temp dir before anything runs, so even a failed build never lets
+# another tock on PATH read or write real data.
+
+# Go keeps its caches and settings from the real HOME.
+GOPATH="$(go env GOPATH)" GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)" GOENV="$(go env GOENV)"
+export GOPATH GOMODCACHE GOCACHE GOENV
 
 DEMO_DIR="$(mktemp -d)"
-go build -o "$DEMO_DIR/tock" ./cmd/tock || return 1
-
 export HOME="$DEMO_DIR"
 export PATH="$DEMO_DIR:$PATH"
 export TOCK_FILE="$DEMO_DIR/tock.txt"
 export TOCK_CHECK_UPDATES=false
+
+# -mod=mod: a stale local vendor/ (it is gitignored) must not break the build.
+if ! go build -mod=mod -o "$DEMO_DIR/tock" ./cmd/tock; then
+  echo "demo: go build failed" >&2
+  return 1
+fi
 
 day() { date -v"$1"d +%F 2>/dev/null || date -d "$1 day" +%F; }
 
