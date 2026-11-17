@@ -146,3 +146,17 @@ func formatLocalizedLongDateShortMonth(loc *localization.Localizer, date time.Ti
 		date.Year(),
 	)
 }
+
+// formatDayRange is "16 – 22 Nov", or "30 Nov – 6 Dec" across months; the year follows when
+// it is not now's.
+func formatDayRange(loc *localization.Localizer, from, to, now time.Time) string {
+	text := fmt.Sprintf("%d – %d %s", from.Day(), to.Day(), localizedMonthShortName(loc, to.Month()))
+	if from.Month() != to.Month() || from.Year() != to.Year() {
+		text = fmt.Sprintf("%d %s – %d %s", from.Day(), localizedMonthShortName(loc, from.Month()), to.Day(),
+			localizedMonthShortName(loc, to.Month()))
+	}
+	if to.Year() != now.Year() {
+		text += fmt.Sprintf(" %d", to.Year())
+	}
+	return text
+}

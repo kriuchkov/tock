@@ -29,23 +29,22 @@ Type "tock remind list" Sleep 300ms Enter
 Sleep 4s
 
 Ctrl+L
-Type "tock remind" Sleep 300ms Enter
-Sleep 2.5s
-Down Sleep 700ms
-Down Sleep 700ms
-Space Sleep 1.5s
-Tab Sleep 2s
-Tab Sleep 2s
-Type "q" Sleep 500ms
-
 Type "tock calendar" Sleep 300ms Enter
 Sleep 3s
 Tab Sleep 1.5s
 Down Sleep 700ms
 Space Sleep 1.5s
-Tab Sleep 700ms
+Escape Sleep 700ms
 Right Sleep 1.5s
 Right Sleep 2s
+Type "2" Sleep 2.5s
+Down Sleep 700ms
+Down Sleep 700ms
+Tab Sleep 2s
+Type "3" Sleep 2.5s
+Down Sleep 700ms
+Tab Sleep 2s
+Type "4" Sleep 3s
 Type "q" Sleep 500ms
 
 Type "tock stop" Sleep 300ms Enter

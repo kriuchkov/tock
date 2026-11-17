@@ -121,6 +121,7 @@ export:
 # Calendar view configuration
 calendar:
   # Format for duration display (time spent)
+  # Default: unset, durations read "45m", "2h45m".
   # Uses Go's standard time formatting syntax, or the special keyword "decimal" / "decimal:N".
   # https://github.com/golang/go/blob/go1.25.0/src/time/format.go#L132
   # Reference time key: Mon Jan 2 15:04:05 -0700 MST 2006
@@ -147,8 +148,9 @@ calendar:
 
   # Format for end time display (appended after duration).
   # Uses Go's standard time formatting syntax.
-  # This string is appended directly, so include any separators you want.
-  # Defaults to " • " + global time_format
+  # This string is appended directly, so include any separators you want;
+  # the time column then shows only the start.
+  # Default: unset, the end follows the start: "10:00–12:45"
   # Example: " 🏁 15:04" results in " ... 01:30 🏁 17:00"
   # time_end_format: " • 15:04"
 
@@ -157,13 +159,14 @@ calendar:
   # Also supports "decimal" and "decimal:N" (see time_spent_format above).
   # time_total_format: "15:04"
 
-  # Align duration to the left side
-  # true:  04:01 Total
-  #        02:13 Project
-  # false: Total: 04:01
-  #        - Project: 02:13
+  # Put the duration of each activity before its project instead of at the end of the row
   # Default: false
   # align_duration_left: false
+
+  # How many days the Upcoming block covers, today included (1-31).
+  # Today's reminders get a line each, every later day one line with their titles.
+  # Default: 7
+  # upcoming_days: 7
 
 # Time format configuration
 # time_format: "24"  # 24-hour format (default): 15:04
@@ -171,11 +174,12 @@ calendar:
 
 # Theme configuration
 theme:
-  # Theme name: dark, light, or custom
-  # Default: dark
+  # Theme name: dark, light, ansi_dark, ansi_light, mocha, or custom
+  # Default: picked from the terminal (dark, light or their 16-color versions)
   name: dark
-  
-  # Custom colors (only used if name is "custom")
+
+  # Custom colors (only used if name is "custom"); colors left out come from base
+  # base: dark  # dark, light, ansi_dark, ansi_light or mocha
   # Can be hex codes (#ff0000) or ANSI color numbers (1-255)
   # primary: "63"
   # secondary: "196"
@@ -185,6 +189,9 @@ theme:
   # highlight: "214"
   # tag: "34"
   # reminder: "81"
+  # surface: "236"  # selected row background; empty reverses the row
+  # ok: "120"
+  # warn: "208"
 
   # Per-tag foreground colors (all backends).
   # Keys are tag names; values are hex codes or ANSI color numbers.

@@ -2,10 +2,12 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,51 +45,21 @@ func TestParseListPeriod(t *testing.T) {
 	}
 }
 
-func TestRunListCmdDispatchesDailyToListProgram(t *testing.T) {
-	restore := runListProgram
-	t.Cleanup(func() { runListProgram = restore })
-	restorePeriod := runListPeriodProgram
-	t.Cleanup(func() { runListPeriodProgram = restorePeriod })
-
-	dailyCalled := false
-	runListProgram = func(listModel) error { dailyCalled = true; return nil }
-	periodCalled := false
-	runListPeriodProgram = func(listPeriodModel) error { periodCalled = true; return nil }
-
-	service := &stubActivityResolver{
-		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
-			return []models.Activity{}, nil
-		},
-	}
-	cmd := newTestCLICommand(service)
-
-	require.NoError(t, runListCmd(cmd, nil))
-	assert.True(t, dailyCalled)
-	assert.False(t, periodCalled)
-}
-
-func TestRunListCmdDispatchesMonthlyToPeriodProgram(t *testing.T) {
-	restore := runListPeriodProgram
-	t.Cleanup(func() { runListPeriodProgram = restore })
-
-	called := false
-	runListPeriodProgram = func(model listPeriodModel) error {
-		called = true
-		assert.Equal(t, periodMonthly, model.period)
-		assert.NotNil(t, model.service)
-		assert.NotNil(t, model.loc)
-		return nil
-	}
-
+func TestRunListCmdOpensTheMonthlyView(t *testing.T) {
 	service := &stubActivityResolver{
 		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
 			return &models.Report{}, nil
 		},
 	}
 	cmd := newTestCLICommand(service)
+	shell := captureShell(t, func() error { return runListCmd(cmd, []string{periodArgMonthly}) })
 
-	require.NoError(t, runListCmd(cmd, []string{periodArgMonthly}))
-	assert.True(t, called)
+	screen, ok := shell.current().(*listScreen)
+	require.True(t, ok)
+	assert.Equal(t, periodMonthly, screen.period)
+	assert.Nil(t, screen.day, "the day view is built only when shown")
+	assert.NotNil(t, screen.periods.service)
+	assert.NotNil(t, screen.periods.loc)
 }
 
 func TestRunListCmdRejectsInvalidPeriod(t *testing.T) {
@@ -169,7 +141,9 @@ func TestListPeriodModelReloadResetsCursor(t *testing.T) {
 
 	// Empty period: nothing to select.
 	model.reload()
-	assert.Equal(t, -1, model.table.Cursor())
+	assert.Empty(t, model.rows)
+	model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 0, model.cursor)
 
 	// Rows appear: the first row must be highlighted without pressing down.
 	activities = []models.Activity{
@@ -177,30 +151,44 @@ func TestListPeriodModelReloadResetsCursor(t *testing.T) {
 		{Project: "core", StartTime: day2, EndTime: &day2End},
 	}
 	model.reload()
-	assert.Equal(t, 0, model.table.Cursor())
+	assert.Equal(t, 0, model.cursor)
 
 	// Moving within a period and switching to another one starts at the top again.
-	model.table.MoveDown(1)
-	require.Equal(t, 1, model.table.Cursor())
+	model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	require.Equal(t, 1, model.cursor)
 	model.reload()
-	assert.Equal(t, 0, model.table.Cursor())
+	assert.Equal(t, 0, model.cursor)
 }
 
-func TestListPeriodModelWindowSizeResizesTable(t *testing.T) {
+func TestListPeriodModelScrollsToTheSelectedRow(t *testing.T) {
+	var activities []models.Activity
+	for day := 1; day <= 20; day++ {
+		start := time.Date(2026, time.July, day, 9, 0, 0, 0, time.Local)
+		end := start.Add(time.Duration(day) * time.Minute)
+		activities = append(activities, models.Activity{Project: fmt.Sprintf("p%02d", day), StartTime: start, EndTime: &end})
+	}
 	service := &stubActivityResolver{
 		getReportFn: func(context.Context, models.ActivityFilter) (*models.Report, error) {
-			return &models.Report{}, nil
+			return &models.Report{Activities: activities}, nil
 		},
 	}
 	model := newTestPeriodModel(service, periodMonthly)
+	model.anchor = time.Date(2026, time.July, 15, 0, 0, 0, 0, time.Local)
+	model.reload()
 
-	model.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
-	// 30 terminal lines minus the chrome around the table (header, blanks, total, help) minus the
-	// table's own header rows gives the visible data rows.
-	assert.Equal(t, 30-periodViewChromeLines-2, model.table.Height())
+	model.Update(tea.WindowSizeMsg{Width: 100, Height: 12})
+	assert.Equal(t, 12, lipgloss.Height(model.View()))
+	assert.NotContains(t, model.View(), "p20")
 
-	model.Update(tea.WindowSizeMsg{Width: 100, Height: 5})
-	assert.Equal(t, minTableHeight-2, model.table.Height())
+	for range 19 {
+		model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	}
+	view := model.View()
+	assert.Equal(t, 12, lipgloss.Height(view))
+	assert.Contains(t, view, "p20")
+	assert.NotContains(t, view, "p01")
+	assert.Contains(t, view, "DATE")
 }
 
 func TestListPeriodModelBuildsBucketsAndRows(t *testing.T) {
@@ -229,20 +217,12 @@ func TestListPeriodModelBuildsBucketsAndRows(t *testing.T) {
 
 	// Day 1: two projects (core before ops) + a subtotal row = 3 rows.
 	// Day 2: one project, no subtotal = 1 row.
-	rows := model.table.Rows()
-	require.Len(t, rows, 4)
-
-	assert.Equal(t, "Mo 06 Jul", rows[0][0])
-	assert.Equal(t, "core", rows[0][1])
-	assert.Equal(t, "3h", rows[0][2])
-	assert.Empty(t, rows[1][0]) // continuation row has no date label
-	assert.Equal(t, "ops", rows[1][1])
-	assert.Equal(t, "1h", rows[1][2])
-	assert.Equal(t, "4h", rows[2][2]) // subtotal row
-
-	assert.Equal(t, "We 08 Jul", rows[3][0])
-	assert.Equal(t, "core", rows[3][1])
-	assert.Equal(t, "2h", rows[3][2])
+	assert.Equal(t, []periodRow{
+		{label: "Mo 06 Jul", project: "core", duration: 3 * time.Hour},
+		{project: "ops", duration: time.Hour}, // continuation row has no date label
+		{duration: 4 * time.Hour, subtotal: true},
+		{label: "We 08 Jul", project: "core", duration: 2 * time.Hour},
+	}, model.rows)
 }
 
 func TestListPeriodModelYearlyBucketsByMonth(t *testing.T) {
@@ -264,10 +244,9 @@ func TestListPeriodModelYearlyBucketsByMonth(t *testing.T) {
 	model.reload()
 
 	require.Len(t, model.buckets, 2)
-	rows := model.table.Rows()
-	require.Len(t, rows, 2)
-	assert.Equal(t, "January", rows[0][0])
-	assert.Equal(t, "March", rows[1][0])
+	require.Len(t, model.rows, 2)
+	assert.Equal(t, "January", model.rows[0].label)
+	assert.Equal(t, "March", model.rows[1].label)
 }
 
 func TestListPeriodModelViewLocalizesHeaderTotalAndHelp(t *testing.T) {
@@ -284,10 +263,12 @@ func TestListPeriodModelViewLocalizesHeaderTotalAndHelp(t *testing.T) {
 	model.anchor = time.Date(2026, time.July, 15, 0, 0, 0, 0, time.Local)
 	model.reload()
 
+	model.Update(tea.WindowSizeMsg{Width: 120, Height: 20})
 	view := model.View()
-	assert.Contains(t, view, "July 2026")
-	assert.Contains(t, view, "Total: 2h")
-	assert.Contains(t, view, "left/right to change period")
+	assert.Contains(t, view, "July 2026 ←→")
+	assert.Contains(t, view, "total 2h")
+	assert.Contains(t, view, "←→ month   ↑↓ row   tab view   q quit")
+	assert.Regexp(t, `Mo 06 Jul\s+core\s+▇+\s+2h`, view)
 }
 
 func TestListPeriodModelViewEmptyState(t *testing.T) {

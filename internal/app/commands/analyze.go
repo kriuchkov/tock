@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -13,7 +14,17 @@ import (
 	"github.com/kriuchkov/tock/internal/app/insights"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
+)
+
+const (
+	// analyzeDefaultDays is the window of tock analyze and of the analyze tab.
+	analyzeDefaultDays = 30
+	deepWorkGood       = 70
+	deepWorkFair       = 40
+	switchesHigh       = 10
+	switchesModerate   = 5
 )
 
 func NewAnalyzeCmd() *cobra.Command {
@@ -30,7 +41,7 @@ func NewAnalyzeCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVarP(&days, "days", "n", 30, defaultText("analyze.flag.days"))
+	cmd.Flags().IntVarP(&days, "days", "n", analyzeDefaultDays, defaultText("analyze.flag.days"))
 
 	return cmd
 }
@@ -41,16 +52,12 @@ func runAnalyzeCmd(cmd *cobra.Command, days int) error {
 	out := cmd.OutOrStdout()
 
 	if days <= 0 {
-		days = 30
+		days = analyzeDefaultDays
 	}
 
-	end := time.Now()
-	start := end.AddDate(0, 0, -days)
-	filter := models.ActivityFilter{FromDate: &start, ToDate: &end}
-
-	report, err := service.GetReport(cmd.Context(), filter)
+	report, err := analysisReport(cmd.Context(), service, days, time.Now())
 	if err != nil {
-		return errors.Wrap(err, "generate report")
+		return err
 	}
 
 	if len(report.Activities) == 0 {
@@ -60,6 +67,54 @@ func runAnalyzeCmd(cmd *cobra.Command, days int) error {
 
 	stats := insights.AnalyzeActivities(report.Activities)
 	return renderAnalysis(out, stats, rt.Config, rt.TimeFormatter, getLocalizer(cmd))
+}
+
+// analysisReport reads the activities of the days days up to now.
+func analysisReport(ctx context.Context, service ports.ActivityResolver, days int, now time.Time) (*models.Report, error) {
+	start := now.AddDate(0, 0, -days)
+	report, err := service.GetReport(ctx, models.ActivityFilter{FromDate: &start, ToDate: &now})
+	if err != nil {
+		return nil, errors.Wrap(err, "generate report")
+	}
+	return report, nil
+}
+
+// deepWorkColor grades a deep work score: ok above 70%, warn above 40%, danger below.
+func deepWorkColor(theme Theme, score float64) lipgloss.TerminalColor {
+	switch {
+	case score > deepWorkGood:
+		return theme.OK
+	case score > deepWorkFair:
+		return theme.Warn
+	}
+	return theme.Secondary
+}
+
+// switchVerdictKey is the verdict on the context switches a day.
+func switchVerdictKey(perDay float64) string {
+	switch {
+	case perDay > switchesHigh:
+		return "analyze.verdict.high"
+	case perDay > switchesModerate:
+		return "analyze.verdict.moderate"
+	}
+	return "analyze.verdict.excellent"
+}
+
+// focusDistributionColor is the color of a session length: deep ok, flow info, fragmented faint.
+func focusDistributionColor(theme Theme, key string) lipgloss.TerminalColor {
+	switch key {
+	case insights.FocusDistributionDeep:
+		return theme.OK
+	case insights.FocusDistributionFlow:
+		return theme.Primary
+	}
+	return theme.Faint
+}
+
+// focusDistributionKeys are the session lengths, shortest first.
+func focusDistributionKeys() []string {
+	return []string{insights.FocusDistributionFragmented, insights.FocusDistributionFlow, insights.FocusDistributionDeep}
 }
 
 //nolint:funlen // render function is inherently long for output formatting
@@ -74,7 +129,7 @@ func renderAnalysis(
 
 	// Custom styles for analysis
 	titleStyle := lipgloss.NewStyle().
-		Foreground(theme.Highlight).
+		Foreground(theme.Text).
 		Bold(true).
 		Padding(1, 0).
 		Border(lipgloss.DoubleBorder(), false, false, true, false).
@@ -83,7 +138,7 @@ func renderAnalysis(
 		Align(lipgloss.Center)
 
 	sectionStyle := lipgloss.NewStyle().
-		Foreground(theme.Primary).
+		Foreground(theme.Text).
 		Bold(true).
 		MarginTop(1)
 
@@ -100,24 +155,18 @@ func renderAnalysis(
 	// 1. Deep Work Score
 	fmt.Fprintln(out, sectionStyle.Render(loc.Format("analyze.section.focus")))
 
-	scoreColor := theme.Secondary // Red (bad)
-	if stats.DeepWorkScore > 70 {
-		scoreColor = lipgloss.Color("76") // Green
-	} else if stats.DeepWorkScore > 40 {
-		scoreColor = theme.Highlight // Yellow/Orange
-	}
+	scoreColor := deepWorkColor(theme, stats.DeepWorkScore)
 
-	//nolint:wastedassign // scoreBar is used below
-	scoreBar := ""
 	width := int(stats.DeepWorkScore / 2) // Scale to 50 chars
-	scoreBar = strings.Repeat("█", width) + strings.Repeat("░", 50-width)
+	scoreBar := lipgloss.NewStyle().Foreground(scoreColor).Render(strings.Repeat("█", width)) +
+		lipgloss.NewStyle().Foreground(theme.Faint).Render(strings.Repeat("░", 50-width))
 
 	if _, err := fmt.Fprintf(out, "%s %s\n",
 		labelStyle.Render(loc.Format("analyze.label.deep_work")),
 		lipgloss.NewStyle().Foreground(scoreColor).Render(fmt.Sprintf("%.1f%%", stats.DeepWorkScore))); err != nil {
 		return errors.Wrap(err, "write deep work score")
 	}
-	fmt.Fprintln(out, lipgloss.NewStyle().Foreground(scoreColor).Render(scoreBar))
+	fmt.Fprintln(out, scoreBar)
 
 	if _, err := fmt.Fprintf(
 		out,
@@ -172,12 +221,7 @@ func renderAnalysis(
 		return errors.Wrap(err, "write context switches")
 	}
 
-	switchMsg := loc.Format("analyze.verdict.excellent")
-	if stats.AvgSwitchesPerDay > 10 {
-		switchMsg = loc.Format("analyze.verdict.high")
-	} else if stats.AvgSwitchesPerDay > 5 {
-		switchMsg = loc.Format("analyze.verdict.moderate")
-	}
+	switchMsg := loc.Format(switchVerdictKey(stats.AvgSwitchesPerDay))
 	if _, err := fmt.Fprintf(
 		out,
 		"%s %s\n",
@@ -199,8 +243,7 @@ func renderAnalysis(
 		}
 	}
 
-	keys := []string{insights.FocusDistributionFragmented, insights.FocusDistributionFlow, insights.FocusDistributionDeep}
-	for _, key := range keys {
+	for _, key := range focusDistributionKeys() {
 		count := stats.FocusDistribution[key]
 		barLen := 0
 		if maxCount > 0 {
@@ -208,13 +251,7 @@ func renderAnalysis(
 		}
 		bar := strings.Repeat("█", barLen)
 
-		color := theme.Faint
-		switch key {
-		case insights.FocusDistributionDeep:
-			color = lipgloss.Color("76") // Green
-		case insights.FocusDistributionFlow:
-			color = theme.Primary
-		}
+		color := focusDistributionColor(theme, key)
 
 		label := localizeFocusDistributionLabel(loc, key)
 

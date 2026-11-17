@@ -20,6 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 	// Check defaults
 	assert.Equal(t, "file", cfg.Backend)
 	assert.Equal(t, "eng", cfg.Language)
+	assert.Equal(t, 7, cfg.Calendar.UpcomingDays)
 	assert.FileExists(t, configFile)
 }
 
@@ -73,6 +74,7 @@ func TestEnvironmentOverrides(t *testing.T) {
 	// Use the alias TOCK_FILE instead of TOCK_FILE_PATH to verify alias binding
 	t.Setenv("TOCK_FILE", "/env/path/tock.txt")
 	t.Setenv("TOCK_THEME", "light")
+	t.Setenv("TOCK_CALENDAR_UPCOMING_DAYS", "3")
 
 	// Create a config file with conflicting values
 	tmpDir := t.TempDir()
@@ -96,6 +98,7 @@ theme:
 	assert.Equal(t, "eng", cfg.Language)
 	assert.Equal(t, "/env/path/tock.txt", cfg.File.Path)
 	assert.Equal(t, "light", cfg.Theme.Name)
+	assert.Equal(t, 3, cfg.Calendar.UpcomingDays)
 }
 
 func TestInitialCreationFromEnv(t *testing.T) {
@@ -204,4 +207,23 @@ func TestTimewarriorUseTockTagColorsScopedEnvOverrides(t *testing.T) {
 	assert.True(t, cfg.Timewarrior.UseTockTagColorsCalendar)
 	assert.True(t, cfg.Timewarrior.UseTockTagColorsWeeklyActivity)
 	assert.False(t, cfg.Timewarrior.UseTockTagColorsTopProjects)
+}
+
+func TestThemeColorEnvironment(t *testing.T) {
+	t.Setenv("TOCK_THEME", "custom")
+	t.Setenv("TOCK_THEME_BASE", "mocha")
+	t.Setenv("TOCK_COLOR_TAG", "34")
+	t.Setenv("TOCK_COLOR_SURFACE", "236")
+	t.Setenv("TOCK_COLOR_OK", "120")
+	t.Setenv("TOCK_COLOR_WARN", "208")
+
+	cfg, _, err := Load(WithConfigFile(filepath.Join(t.TempDir(), "tock.yaml")))
+	require.NoError(t, err)
+
+	assert.Equal(t, "custom", cfg.Theme.Name)
+	assert.Equal(t, "mocha", cfg.Theme.Base)
+	assert.Equal(t, "34", cfg.Theme.Tag)
+	assert.Equal(t, "236", cfg.Theme.Surface)
+	assert.Equal(t, "120", cfg.Theme.OK)
+	assert.Equal(t, "208", cfg.Theme.Warn)
 }

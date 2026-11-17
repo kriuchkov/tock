@@ -17,23 +17,19 @@ import (
 )
 
 const (
-	calendarUpcomingDays     = 7
-	calendarUpcomingMinLines = 5
-	calendarUpcomingMaxLines = 12
-	calendarSidebarWidth     = 40
-	calendarReminderGlyphW   = 2
-	calendarReminderClockW   = 8
-	calendarReminderRepeatW  = 16
-	calendarReminderProjectW = 10
-	calendarReminderStatusW  = 16
-	calendarReminderTitleMin = 12
-	calendarReminderTitleMax = 30
-	// calendarReminderBaseW is what a reminder row takes besides its title, repeat and project:
-	// glyph, clock, status and the gaps; calendarReminderMetaW is what repeat and project add.
-	calendarReminderBaseW = calendarReminderGlyphW + calendarReminderClockW + 1 + 1 + calendarReminderStatusW
-	calendarReminderMetaW = calendarReminderRepeatW + 1 + calendarReminderProjectW + 2
-	tableSelectedFG       = lipgloss.Color("229")
-	tableSelectedBG       = lipgloss.Color("57")
+	// calendarUpcomingDays is how many days Upcoming covers, today included, unless
+	// calendar.upcoming_days says otherwise; calendarUpcomingMaxDays is the most it takes.
+	calendarUpcomingDays    = 7
+	calendarUpcomingMaxDays = 31
+	// calendarUpcomingMinLines is the least room Upcoming needs: its title and a line.
+	calendarUpcomingMinLines = 2
+	// Columns of Upcoming: the day ("thu 19") and today's times ("05:30 PM"), a space
+	// narrower each below upcomingNarrowW; and the least room a title keeps before the
+	// countdown is left out.
+	upcomingDayW      = 8
+	upcomingClockW    = 10
+	upcomingNarrowW   = 36
+	upcomingTitleMinW = 8
 )
 
 // calendarReminders is the calendar's reminder state: what is shown and the focused list.
@@ -43,12 +39,12 @@ type calendarReminders struct {
 	snooze time.Duration
 
 	data reminderData
+	next nextMemo
 
-	focused       bool
-	cursor        int
 	form          *reminderForm
 	pendingDelete *models.ReminderOccurrence
 	status        string
+	statusErr     bool
 }
 
 // reminderData is what the calendar loads with each month.
@@ -69,6 +65,14 @@ func (m *calendarModel) remindersEnabled() bool {
 	return m.rem.svc != nil
 }
 
+// upcomingDays is how many days Upcoming covers: calendar.upcoming_days, 7 when unset.
+func (m *calendarModel) upcomingDays() int {
+	if days := m.config.Calendar.UpcomingDays; days > 0 {
+		return min(days, calendarUpcomingMaxDays)
+	}
+	return calendarUpcomingDays
+}
+
 // fetchReminders loads the reminders of [from, to) plus the upcoming and overdue ones.
 func (m *calendarModel) fetchReminders(ctx context.Context, from, to time.Time) (reminderData, error) {
 	if !m.remindersEnabled() {
@@ -81,7 +85,7 @@ func (m *calendarModel) fetchReminders(ctx context.Context, from, to time.Time) 
 		return reminderData{}, errors.Wrap(err, "list reminders")
 	}
 	today, _ := timeutil.LocalDayBounds(now)
-	upcoming, err := m.rem.svc.Occurrences(ctx, today, today.AddDate(0, 0, calendarUpcomingDays), now)
+	upcoming, err := m.rem.svc.Occurrences(ctx, today, today.AddDate(0, 0, m.upcomingDays()), now)
 	if err != nil {
 		return reminderData{}, errors.Wrap(err, "list reminders")
 	}
@@ -106,8 +110,15 @@ func (m *calendarModel) dayReminders() []models.ReminderOccurrence {
 	return day
 }
 
-// reminderMark is the dot a calendar day gets for its reminders, if any.
-func (m *calendarModel) reminderMark(date time.Time, now time.Time) (lipgloss.Color, bool) {
+// calendarMark is the mark a day of the month grid gets for its reminders.
+type calendarMark struct {
+	glyph string
+	style lipgloss.Style
+}
+
+// reminderMark marks a day with reminders: ◆ when one is overdue, • while some are to do,
+// a faint • when all are done or missed.
+func (m *calendarModel) reminderMark(date time.Time, now time.Time) (calendarMark, bool) {
 	marked, pending := false, false
 	for _, occurrence := range m.rem.data.month {
 		if !sameDay(occurrence.Due, date) || !marksCalendarDay(occurrence.Reminder) {
@@ -116,170 +127,19 @@ func (m *calendarModel) reminderMark(date time.Time, now time.Time) (lipgloss.Co
 		marked = true
 		switch occurrence.Status(now) {
 		case models.ReminderOverdue:
-			return m.theme.Secondary, true
+			return calendarMark{glyph: glyphOverdue, style: m.ui.accent}, true
 		case models.ReminderPending, models.ReminderSnoozed:
 			pending = true
 		case models.ReminderDone, models.ReminderMissed:
 		}
 	}
-	if !marked {
-		return "", false
-	}
-	if !pending {
-		return m.theme.Faint, true
-	}
-	return m.theme.Reminder, true
-}
-
-// renderDayCell draws a day number; a day with reminders gets a dot right after the number,
-// in the space the centered number leaves.
-func (m *calendarModel) renderDayCell(style lipgloss.Style, date, now time.Time) string {
-	number := strconv.Itoa(date.Day())
-	color, ok := m.reminderMark(date, now)
-	if !m.remindersEnabled() || !ok {
-		return style.Render(number)
-	}
-
-	inline := style.UnsetWidth().UnsetAlign()
-	plain := inline.UnsetUnderline()
-	rest := max(style.GetWidth()-1-len(number)-1, 0)
-	return plain.Render(" ") + inline.Render(number) + plain.Foreground(color).Render("•") + plain.Render(strings.Repeat(" ", rest))
-}
-
-// calendarHelp is the help under the month, with the reminder keys and legend when they apply.
-func (m *calendarModel) calendarHelp() string {
-	faint := lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground())
-	if !m.remindersEnabled() {
-		return faint.Render(m.loc.Format("calendar.help"))
-	}
-	legend := m.styles.Reminder.Render("•") + faint.Render(" "+m.loc.Text("calendar.legend.reminders"))
-	return faint.Render(m.loc.Text("calendar.help.reminders")) + "\n\n" + legend
-}
-
-// writeReminderSection writes the selected day's reminders above its activities.
-func (m *calendarModel) writeReminderSection(b *strings.Builder, activities []models.Activity) bool {
-	if !m.remindersEnabled() {
-		return false
-	}
-	occurrences := m.dayReminders()
-	if len(occurrences) == 0 {
-		m.rem.focused = false
-		return false
-	}
-	m.rem.cursor = min(m.rem.cursor, len(occurrences)-1)
-	now := reminderNow()
-
-	done := 0
-	for _, occurrence := range occurrences {
-		if occurrence.Status(now) == models.ReminderDone {
-			done++
-		}
-	}
-	faint := lipgloss.NewStyle().Foreground(m.theme.SubText)
-	b.WriteString(m.styles.Reminder.Bold(true).Render(m.loc.Text("calendar.reminders")) + "  " +
-		faint.Render(m.loc.Format("calendar.reminders.done", done, len(occurrences))) + "\n\n")
-
-	for i, occurrence := range occurrences {
-		b.WriteString(m.renderReminderRow(occurrence, activities, now, m.rem.focused && i == m.rem.cursor) + "\n")
-	}
-	b.WriteString("\n")
-
 	switch {
-	case m.rem.pendingDelete != nil:
-		m.writeWrapped(b, m.reminderDeletePromptStyle(), m.reminderDeletePrompt())
-		b.WriteString("\n")
-	case m.rem.focused:
-		m.writeWrapped(b, faint, m.loc.Format("calendar.reminders.help", formatNotifyValue(m.rem.snooze)))
-		if m.rem.status != "" {
-			m.writeWrapped(b, m.styles.Duration, m.rem.status)
-		}
-		b.WriteString("\n")
-	case m.rem.status != "":
-		m.writeWrapped(b, m.styles.Duration, m.rem.status)
-		b.WriteString("\n")
+	case !marked:
+		return calendarMark{}, false
+	case !pending:
+		return calendarMark{glyph: glyphMark, style: m.ui.faint}, true
 	}
-	return true
-}
-
-// writeWrapped writes text word-wrapped to the details pane, one styled line at a time.
-func (m *calendarModel) writeWrapped(b *strings.Builder, style lipgloss.Style, text string) {
-	for _, line := range wrapText(text, m.viewport.Width-2) {
-		b.WriteString(style.Render(line) + "\n")
-	}
-}
-
-func (m *calendarModel) renderReminderRow(
-	occurrence models.ReminderOccurrence,
-	activities []models.Activity,
-	now time.Time,
-	selected bool,
-) string {
-	loc, tf := m.loc, m.timeFormat
-	reminder := occurrence.Reminder
-	status := occurrence.Status(now)
-
-	// Narrow details drop the repeat and project columns before squeezing the title.
-	showMeta := m.viewport.Width >= calendarReminderBaseW+calendarReminderMetaW+calendarReminderTitleMin
-	titleWidth := m.viewport.Width - calendarReminderBaseW
-	if showMeta {
-		titleWidth -= calendarReminderMetaW
-	}
-	titleWidth = min(max(titleWidth, calendarReminderTitleMin), calendarReminderTitleMax)
-
-	clock := formatReminderClock(loc, tf, occurrence.Due, reminder.AllDay)
-	if !sameDay(occurrence.Due, m.currentDate) {
-		// An overdue one from an earlier day shows its day: "Sun 15".
-		clock = fmt.Sprintf("%s %d", localizedWeekdayAbbr(loc, occurrence.Due.Weekday()), occurrence.Due.Day())
-	}
-	repeat := ""
-	if reminder.IsRepeating() {
-		repeat = "↻ " + formatRepeat(loc, reminder)
-	}
-
-	glyphStyle, titleStyle, statusStyle := m.reminderRowStyles(status)
-	if selected {
-		glyphStyle = glyphStyle.Background(tableSelectedBG)
-		titleStyle = titleStyle.Foreground(tableSelectedFG).Background(tableSelectedBG)
-	}
-
-	cells := []string{
-		glyphStyle.Width(calendarReminderGlyphW).Render(reminderStatusGlyph(status)),
-		titleStyle.Width(calendarReminderClockW + 1).Render(truncateText(clock, calendarReminderClockW)),
-		titleStyle.Width(titleWidth + 1).Render(truncateText(reminder.Title, titleWidth)),
-	}
-	if showMeta {
-		cells = append(cells,
-			lipgloss.NewStyle().Foreground(m.theme.SubText).Width(calendarReminderRepeatW+1).
-				Render(truncateText(repeat, calendarReminderRepeatW)),
-			m.styles.Project.Width(calendarReminderProjectW+2).Render(truncateText(reminder.Project, calendarReminderProjectW)),
-		)
-	}
-	statusText := formatReminderStatus(loc, tf, occurrence, now, trackedDuration(occurrence, activities))
-	cells = append(cells, statusStyle.Render(truncateText(statusText, calendarReminderStatusW)))
-	return strings.Join(cells, "")
-}
-
-// reminderRowStyles colors a reminder by its status: overdue red, done struck through.
-func (m *calendarModel) reminderRowStyles(status models.ReminderStatus) (lipgloss.Style, lipgloss.Style, lipgloss.Style) {
-	glyph := lipgloss.NewStyle().Foreground(m.theme.Reminder)
-	title := lipgloss.NewStyle().Foreground(m.theme.Text)
-	statusStyle := lipgloss.NewStyle().Foreground(m.theme.SubText)
-
-	switch status {
-	case models.ReminderOverdue:
-		glyph = m.styles.Overdue
-		statusStyle = m.styles.Overdue
-	case models.ReminderDone:
-		glyph = lipgloss.NewStyle().Foreground(m.theme.Tag)
-		title = title.Foreground(m.theme.SubText).Strikethrough(true)
-	case models.ReminderMissed:
-		glyph = lipgloss.NewStyle().Foreground(m.theme.Faint)
-		title = title.Foreground(m.theme.SubText)
-	case models.ReminderSnoozed:
-		statusStyle = m.styles.Duration
-	case models.ReminderPending:
-	}
-	return glyph, title, statusStyle
+	return calendarMark{glyph: glyphMark, style: m.ui.reminder}, true
 }
 
 func (m *calendarModel) reminderDeletePrompt() string {
@@ -291,32 +151,8 @@ func (m *calendarModel) reminderDeletePrompt() string {
 	return m.loc.Format(key, occurrence.Reminder.ID, occurrence.Reminder.Title)
 }
 
-func (m *calendarModel) reminderDeletePromptStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("203"))
-}
-
-// trackedEntries is "1 entry" or "4 entries".
-func (m *calendarModel) trackedEntries(n int) string {
-	if n == 1 {
-		return m.loc.Text("calendar.tracked.entry")
-	}
-	return m.loc.Format("calendar.tracked.entries", n)
-}
-
-// truncateText cuts s to width runes, ending it with "…" when cut.
-func truncateText(s string, width int) string {
-	runes := []rune(s)
-	if len(runes) <= width {
-		return s
-	}
-	if width <= 1 {
-		return string(runes[:width])
-	}
-	return string(runes[:width-1]) + "…"
-}
-
-// handleReminderKey handles the keys of the reminder form, the delete prompt and the
-// focused reminder list; handled is false for keys the calendar should take.
+// handleReminderKey handles the reminder form, the delete prompt, "a" and the keys that act
+// on the selected reminder; handled is false for keys the calendar should take.
 func (m *calendarModel) handleReminderKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	if !m.remindersEnabled() {
 		return nil, false
@@ -326,41 +162,25 @@ func (m *calendarModel) handleReminderKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return m.updateReminderForm(msg), true
 	case m.rem.pendingDelete != nil:
 		return m.confirmReminderDelete(msg), true
+	case m.monthOpen:
+		return nil, false
 	}
 
-	switch msg.String() {
-	case "tab":
-		m.rem.focused = !m.rem.focused && len(m.dayReminders()) > 0
-		m.rem.status = ""
-		m.updateViewportContent()
-		return nil, true
-	case "a":
+	if msg.String() == "a" {
 		day := time.Date(m.currentDate.Year(), m.currentDate.Month(), m.currentDate.Day(), 0, 0, 0, 0, time.Local)
 		m.rem.form = newReminderFormFromRequest(m.timeFormat, models.AddReminderRequest{Due: day, AllDay: true})
 		return nil, true
 	}
-	if !m.rem.focused {
+	selected, ok := m.selectedReminder()
+	if !ok {
 		return nil, false
 	}
-	return m.handleFocusedReminderKey(msg)
+	return m.handleSelectedReminderKey(msg, selected)
 }
 
-func (m *calendarModel) handleFocusedReminderKey(msg tea.KeyMsg) (tea.Cmd, bool) {
-	occurrences := m.dayReminders()
-	if len(occurrences) == 0 {
-		m.rem.focused = false
-		return nil, false
-	}
-	selected := occurrences[min(m.rem.cursor, len(occurrences)-1)]
-
+func (m *calendarModel) handleSelectedReminderKey(msg tea.KeyMsg, selected models.ReminderOccurrence) (tea.Cmd, bool) {
 	switch msg.String() {
-	case keyEsc:
-		m.rem.focused = false
-	case "up", "k":
-		m.rem.cursor = max(m.rem.cursor-1, 0)
-	case keyDown, "j":
-		m.rem.cursor = min(m.rem.cursor+1, len(occurrences)-1)
-	case " ", "space":
+	case " ", keySpace:
 		return m.reminderAction(func(ctx context.Context) (string, error) {
 			return m.toggleReminderDone(ctx, selected)
 		}), true
@@ -405,10 +225,9 @@ func (m *calendarModel) toggleReminderDone(ctx context.Context, occurrence model
 // reminderAction runs a change and reloads the month, showing its outcome under the reminders.
 func (m *calendarModel) reminderAction(action func(ctx context.Context) (string, error)) tea.Cmd {
 	status, err := action(context.Background())
+	m.rem.status, m.rem.statusErr = status, err != nil
 	if err != nil {
 		m.rem.status = reminderErrorText(m.loc, err)
-	} else {
-		m.rem.status = status
 	}
 	m.updateViewportContent()
 	return m.fetchMonthData
@@ -456,7 +275,7 @@ func (m *calendarModel) updateReminderForm(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 		m.rem.form = nil
-		m.rem.status = m.loc.Format("remind.tui.saved", reminderLabel(*saved))
+		m.rem.status, m.rem.statusErr = m.loc.Format("remind.tui.saved", reminderLabel(*saved)), false
 		m.updateViewportContent()
 		return m.fetchMonthData
 	case formContinue:
@@ -464,79 +283,121 @@ func (m *calendarModel) updateReminderForm(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-// renderUpcoming is the sidebar block with the overdue count and what comes next, in at most
-// maxLines lines; empty when there is nothing to show.
-func (m *calendarModel) renderUpcoming(maxLines int) (string, int) {
+// upcomingLines lists the reminders still to do in the next days in at most maxLines lines of
+// width columns: today's one per line with its time and the time left, each later day on one
+// line with its reminders' titles. The selected day is left out: its reminders are in the day.
+func (m *calendarModel) upcomingLines(width, maxLines int) []string {
 	if !m.remindersEnabled() || maxLines < calendarUpcomingMinLines {
-		return "", 0
+		return nil
 	}
 	now := reminderNow()
-	faint := lipgloss.NewStyle().Foreground(m.theme.SubText)
-
-	lines := make([]string, 0, maxLines)
-	if overdue := overdueOnly(m.rem.data.overdue, now); len(overdue) > 0 {
-		text := m.loc.Format("calendar.upcoming.overdue", len(overdue), overdue[0].Reminder.Title)
-		lines = append(
-			lines,
-			m.styles.Overdue.Render("! ")+m.styles.Overdue.UnsetBold().Render(truncateText(text, calendarSidebarWidth-2)),
-			"",
-		)
-	}
-
-	var day time.Time
-	first := true
+	var items []models.ReminderOccurrence
 	for _, occurrence := range m.rem.data.upcoming {
 		status := occurrence.Status(now)
-		if status != models.ReminderPending && status != models.ReminderSnoozed {
-			continue
+		if (status == models.ReminderPending || status == models.ReminderSnoozed) && !sameDay(occurrence.Due, m.currentDate) {
+			items = append(items, occurrence)
 		}
-		if !sameDay(occurrence.Due, day) {
-			if len(lines)+2 > maxLines-2 {
-				break
-			}
-			day = occurrence.Due
-			lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.upcomingDayLabel(day, now)))
-		} else if len(lines)+1 > maxLines-2 {
-			break
-		}
-		lines = append(lines, m.renderUpcomingItem(occurrence, now, first, faint))
-		first = false
 	}
-	if len(lines) == 0 {
-		return "", 0
+	if len(items) == 0 {
+		return nil
 	}
 
-	header := m.styles.Header.Width(calendarSidebarWidth).Render(m.loc.Text("calendar.sidebar.upcoming"))
-	block := header + "\n\n" + strings.Join(lines, "\n") + "\n\n"
-	return block, len(lines) + 3
+	lines := []string{m.ui.renderSection(m.loc.Text("calendar.upcoming"), strconv.Itoa(len(items)))}
+	for start := 0; start < len(items) && len(lines) < maxLines; {
+		end := start + 1
+		for end < len(items) && sameDay(items[end].Due, items[start].Due) {
+			end++
+		}
+		if sameDay(items[start].Due, now) {
+			lines = append(lines, m.upcomingToday(items[start:end], now, width)...)
+		} else {
+			lines = append(lines, m.upcomingDay(items[start:end], now, width))
+		}
+		start = end
+	}
+	return lines[:min(len(lines), maxLines)]
 }
 
+// upcomingToday is a line per reminder of today: "today   05:30 PM  Team sync ↻   in 2h13m",
+// the nearest countdown in the text color.
+func (m *calendarModel) upcomingToday(day []models.ReminderOccurrence, now time.Time, width int) []string {
+	lines := make([]string, 0, len(day))
+	nearest := true
+	for i, occurrence := range day {
+		label := ""
+		if i == 0 {
+			label = m.upcomingDayLabel(occurrence.Due, now)
+		}
+		when, whenStyle := "", m.ui.muted
+		if !occurrence.Reminder.AllDay {
+			when = m.loc.Format("remind.status.in", formatSpan(occurrence.DueBy().Sub(now)))
+			if nearest {
+				whenStyle, nearest = m.ui.text, false
+			}
+		}
+		clock := formatReminderClock(m.loc, m.timeFormat, occurrence.Due, occurrence.Reminder.AllDay)
+		lines = append(lines, m.upcomingTodayRow([2]string{label, clock}, occurrence.Reminder, when, whenStyle, width))
+	}
+	return lines
+}
+
+// upcomingTodayRow is the day and the time (lead), the title and the countdown at the right
+// end, which is left out when it would leave the title too little room.
+func (m *calendarModel) upcomingTodayRow(
+	lead [2]string,
+	reminder models.Reminder,
+	when string,
+	whenStyle lipgloss.Style,
+	width int,
+) string {
+	repeat := ""
+	if reminder.IsRepeating() {
+		repeat = " " + glyphRepeat
+	}
+	dayW, clockW := upcomingColumns(width)
+	room := width - dayW - clockW - lipgloss.Width(repeat)
+	if room-lipgloss.Width(when)-1 < upcomingTitleMinW {
+		when = ""
+	}
+	whenW := lipgloss.Width(when)
+	if whenW > 0 {
+		whenW++
+	}
+	title := cutText(reminder.Title, max(room-whenW, 1))
+	gap := strings.Repeat(" ", max(room-lipgloss.Width(title)-lipgloss.Width(when), 0))
+	if when == "" {
+		gap = ""
+	}
+	prefix := padText(cutText(lead[0], dayW-1), dayW, false) + padText(lead[1], clockW, false)
+	return m.ui.muted.Render(prefix) + m.ui.text.Render(title) + m.ui.muted.Render(repeat) + gap + whenStyle.Render(when)
+}
+
+// upcomingDay is a later day on one line: "thu 19  Coding practice, Standup".
+func (m *calendarModel) upcomingDay(day []models.ReminderOccurrence, now time.Time, width int) string {
+	titles := make([]string, 0, len(day))
+	for _, occurrence := range day {
+		titles = append(titles, occurrence.Reminder.Title)
+	}
+	dayW, _ := upcomingColumns(width)
+	label := padText(cutText(m.upcomingDayLabel(day[0].Due, now), dayW-1), dayW, false)
+	return m.ui.muted.Render(label) + m.ui.text.Render(cutText(strings.Join(titles, ", "), width-dayW))
+}
+
+// upcomingColumns are the widths of the day and time columns of Upcoming in width columns.
+func upcomingColumns(width int) (int, int) {
+	if width < upcomingNarrowW {
+		return upcomingDayW - 1, upcomingClockW - 1
+	}
+	return upcomingDayW, upcomingClockW
+}
+
+// upcomingDayLabel is "today", "tmrw" or "thu 19".
 func (m *calendarModel) upcomingDayLabel(day, now time.Time) string {
 	switch {
 	case sameDay(day, now):
-		return m.loc.Text("calendar.upcoming.today")
+		return strings.ToLower(m.loc.Text("calendar.upcoming.today"))
 	case sameDay(day, now.AddDate(0, 0, 1)):
-		return m.loc.Text("calendar.upcoming.tomorrow")
+		return m.loc.Text("calendar.upcoming.tmrw")
 	}
-	return fmt.Sprintf("%s %d", localizedWeekdayAbbr(m.loc, day.Weekday()), day.Day())
-}
-
-func (m *calendarModel) renderUpcomingItem(occurrence models.ReminderOccurrence, now time.Time, next bool, faint lipgloss.Style) string {
-	reminder := occurrence.Reminder
-	clock := formatReminderClock(m.loc, m.timeFormat, occurrence.Due, reminder.AllDay)
-	title := reminder.Title
-	if reminder.IsRepeating() {
-		title += " ↻"
-	}
-
-	suffix := ""
-	if next {
-		suffix = formatReminderStatus(m.loc, m.timeFormat, occurrence, now, 0)
-	}
-	titleWidth := calendarSidebarWidth - calendarReminderClockW - 2 - len([]rune(suffix))
-	line := faint.Width(calendarReminderClockW).Render(clock) + " " + truncateText(title, titleWidth)
-	if suffix != "" {
-		line += " " + m.styles.Duration.Render(suffix)
-	}
-	return line
+	return strings.ToLower(fmt.Sprintf("%s %d", localizedWeekdayAbbr(m.loc, day.Weekday()), day.Day()))
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -37,15 +36,13 @@ const (
 	periodArgYearly  = "yearly"
 )
 
-// Vertical layout of the period view, used to size the table from the terminal height.
+// Columns of the period rows.
 const (
-	// defaultPeriodTableHeight is used until the first tea.WindowSizeMsg arrives.
-	defaultPeriodTableHeight = 15
-	// periodViewChromeLines counts the lines View renders around the table:
-	// title, blank, blank, total line, and the two-line help text.
-	periodViewChromeLines = 6
-	// periodViewHorizontalPadding is the width reserved around the table.
-	periodViewHorizontalPadding = 4
+	periodLabelW   = 14 // "Mon 16 Nov", "September"
+	periodProjectW = 22
+	periodTimeW    = 8
+	// periodBarMaxW keeps the bars short of the times on a wide terminal.
+	periodBarMaxW = 48
 )
 
 // parseListPeriod maps the optional CLI argument to a period; an empty argument defaults to daily.
@@ -64,12 +61,13 @@ func parseListPeriod(arg string) (listPeriod, bool) {
 	}
 }
 
-var runListPeriodProgram = func(model listPeriodModel) error {
-	program := tea.NewProgram(&model, tea.WithAltScreen())
-	if _, err := program.Run(); err != nil {
-		return errors.Wrap(err, "run program")
-	}
-	return nil
+// periodRow is a line of the period view: a project's time in a bucket, or the bucket's subtotal.
+// The first line of a bucket carries its label.
+type periodRow struct {
+	label    string
+	project  string
+	duration time.Duration
+	subtotal bool
 }
 
 // periodBucket holds the per-project breakdown for one sub-unit of a period
@@ -87,8 +85,12 @@ type listPeriodModel struct {
 	anchor  time.Time // A date within the currently displayed period.
 	buckets []periodBucket
 	total   time.Duration
-	table   table.Model
-	styles  Styles
+	rows    []periodRow
+	cursor  int
+	offset  int
+	page    int // the rows on screen at the last view
+	ui      chromeStyles
+	tabs    tabStrip
 	err     error
 	width   int
 	height  int
@@ -100,14 +102,25 @@ func initialListPeriodModel(
 	loc *localization.Localizer,
 	period listPeriod,
 ) listPeriodModel {
+	return newListPeriodModel(service, cfg, loc, period, time.Now())
+}
+
+// newListPeriodModel sums up the week, the month or the year around anchor.
+func newListPeriodModel(
+	service ports.ActivityResolver,
+	cfg *config.Config,
+	loc *localization.Localizer,
+	period listPeriod,
+	anchor time.Time,
+) listPeriodModel {
 	m := listPeriodModel{
 		service: service,
 		loc:     loc,
 		period:  period,
-		anchor:  time.Now(),
-		styles:  InitStyles(GetTheme(cfg.Theme)),
+		anchor:  anchor,
+		ui:      newChromeStyles(GetTheme(cfg.Theme)),
+		tabs:    singleTab(loc.Text("tui.tab.list")),
 	}
-	m.initTable()
 	m.reload()
 	return m
 }
@@ -116,8 +129,16 @@ func (m *listPeriodModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *listPeriodModel) setTabs(tabs tabStrip) { m.tabs = tabs }
+
+func (m *listPeriodModel) modal() bool { return false }
+
+func (m *listPeriodModel) refresh() tea.Cmd {
+	m.reload()
+	return nil
+}
+
 func (m *listPeriodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -129,15 +150,12 @@ func (m *listPeriodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keyRight, "l":
 			m.anchor = shiftPeriod(m.period, m.anchor, 1)
 			m.reload()
-		case "up", "k", keyDown, "j":
-			m.table, cmd = m.table.Update(msg)
-			return m, cmd
+		default:
+			m.cursor, _ = moveCursor(msg.String(), m.cursor, len(m.rows), m.page)
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.table.SetWidth(msg.Width - periodViewHorizontalPadding)
-		m.table.SetHeight(fitTableHeight(m.height, periodViewChromeLines, defaultPeriodTableHeight))
 	}
 	return m, nil
 }
@@ -147,49 +165,89 @@ func (m *listPeriodModel) View() string {
 		return fmt.Sprintf("Error: %v", m.err)
 	}
 
-	header := m.styles.Header.Render(m.loc.Format("list.period.header", m.periodTitle()))
-	help := "\n" + m.loc.Text("list.period.help")
+	top := m.ui.renderHeader(m.header(), m.width) + "\n" + listViewLine(m.ui, m.loc, m.period) + "\n"
+	bottom := "\n" + m.footer()
+	return renderScreen(top, m.body(m.height-lipgloss.Height(top)-lipgloss.Height(bottom)), bottom, m.width, m.height)
+}
 
-	if len(m.buckets) == 0 {
-		empty := lipgloss.NewStyle().Faint(true).Render(m.loc.Text("list.period.empty"))
-		return lipgloss.JoinVertical(lipgloss.Left, header, "", empty, help)
+// body is the line of column names and the rows, scrolled to the selected one.
+func (m *listPeriodModel) body(height int) string {
+	if len(m.rows) == 0 {
+		return " " + m.ui.muted.Render(m.loc.Text("list.period.empty"))
 	}
-
-	totalLine := lipgloss.NewStyle().Bold(true).Render(m.loc.Format("list.period.total", formatDurationCompact(m.total)))
-	return lipgloss.JoinVertical(lipgloss.Left, header, "", m.table.View(), "", totalLine, help)
-}
-
-func (m *listPeriodModel) initTable() {
-	t := table.New(
-		table.WithColumns(m.columns()),
-		table.WithFocused(true),
-		table.WithHeight(defaultPeriodTableHeight),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(true)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-	m.table = t
-}
-
-func (m *listPeriodModel) columns() []table.Column {
-	first := m.loc.Text("list.period.table.date")
+	first := "list.period.table.date"
 	if m.period == periodYearly {
-		first = m.loc.Text("list.period.table.month")
+		first = "list.period.table.month"
 	}
-	return []table.Column{
-		{Title: first, Width: 16},
-		{Title: m.loc.Text("list.table.project"), Width: 28},
-		{Title: m.loc.Text("list.table.duration"), Width: 12},
+	head := func(key string, w int, right bool) rowCell {
+		return rowCell{text: strings.ToUpper(m.loc.Text(key)), style: m.ui.muted, width: w, right: right}
 	}
+	lines := []string{m.ui.renderRow("", m.ui.muted, []rowCell{
+		head(first, periodLabelW, false), head("list.table.project", periodProjectW, false), {},
+		head("list.table.time", periodTimeW, true),
+	}, false, m.width)}
+
+	var longest time.Duration
+	for _, row := range m.rows {
+		if !row.subtotal {
+			longest = max(longest, row.duration)
+		}
+	}
+	rowsH := len(m.rows)
+	if height > 1 {
+		rowsH = height - 1
+	}
+	m.offset, m.page = scrollOffset(m.offset, m.cursor, rowsH, len(m.rows)), rowsH
+	for i := m.offset; i < min(len(m.rows), m.offset+rowsH); i++ {
+		lines = append(lines, m.renderPeriodRow(m.rows[i], i == m.cursor, longest))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderPeriodRow is a project's time with a bar against the longest one, or a muted subtotal.
+func (m *listPeriodModel) renderPeriodRow(row periodRow, selected bool, longest time.Duration) string {
+	label := rowCell{text: row.label, style: m.ui.text, width: periodLabelW}
+	if row.subtotal {
+		return m.ui.renderRow("", m.ui.muted, []rowCell{
+			label, {text: m.loc.Text("list.period.subtotal"), style: m.ui.muted, width: periodProjectW}, {},
+			{text: formatHM(row.duration), style: m.ui.mutedBold, width: periodTimeW, right: true},
+		}, selected, m.width)
+	}
+	barW := min(m.width-rowGutterW-periodLabelW-periodProjectW-periodTimeW-1, periodBarMaxW)
+	bar := ""
+	if barW > 0 {
+		bar = m.ui.info.Render(strings.Repeat(glyphBar, max(barLength(row.duration, longest, barW), 1)))
+	}
+	return m.ui.renderRow("", m.ui.muted, []rowCell{
+		label, {text: row.project, style: m.ui.text, width: periodProjectW}, {styled: bar},
+		{text: formatHM(row.duration), style: m.ui.text, width: periodTimeW, right: true},
+	}, selected, m.width)
+}
+
+// header names the period; the ruler has its total.
+func (m *listPeriodModel) header() screenHeader {
+	total := m.ui.muted.Render(m.loc.Format("list.period.total", formatHM(m.total)))
+	return screenHeader{
+		tabs:    m.tabs.names,
+		active:  m.tabs.active,
+		title:   m.periodTitle(),
+		hint:    "←→",
+		summary: []rulerItem{{long: total, short: total}},
+	}
+}
+
+func (m *listPeriodModel) footer() string {
+	key := func(k, action string) footerKey { return footerKey{key: k, action: m.loc.Text(action)} }
+	step := "tui.key.month"
+	switch m.period {
+	case periodWeekly:
+		step = "tui.key.week"
+	case periodYearly:
+		step = "tui.key.year"
+	case periodDaily, periodMonthly:
+	}
+	keys := []footerKey{key("←→", step), key("↑↓", "tui.key.row"), key(keyTab, "tui.key.view"), key("q", "tui.key.quit")}
+	return m.ui.renderFooter(m.tabs.withTabs(keys, m.loc.Text("tui.key.tabs")), "", m.width)
 }
 
 // reload fetches the activities for the current period and rebuilds the table.
@@ -203,23 +261,23 @@ func (m *listPeriodModel) reload() {
 
 	m.err = nil
 	m.buckets, m.total = buildPeriodBuckets(m.period, m.anchor, report.Activities, time.Now())
-	m.table.SetRows(m.buildRows())
-	m.table.SetCursor(0)
+	m.rows = m.buildRows()
+	m.cursor, m.offset = 0, 0
 }
 
-func (m *listPeriodModel) buildRows() []table.Row {
-	var rows []table.Row
+func (m *listPeriodModel) buildRows() []periodRow {
+	var rows []periodRow
 	for _, bucket := range m.buckets {
 		label := m.bucketLabel(bucket.date)
 		for i, project := range bucket.projects {
-			cell := ""
+			row := periodRow{project: project.Name, duration: project.Duration}
 			if i == 0 {
-				cell = label
+				row.label = label
 			}
-			rows = append(rows, table.Row{cell, project.Name, formatDurationCompact(project.Duration)})
+			rows = append(rows, row)
 		}
 		if len(bucket.projects) > 1 {
-			rows = append(rows, table.Row{"", m.loc.Text("list.period.subtotal"), formatDurationCompact(bucket.total)})
+			rows = append(rows, periodRow{duration: bucket.total, subtotal: true})
 		}
 	}
 	return rows
@@ -237,10 +295,7 @@ func (m *listPeriodModel) periodTitle() string {
 	switch m.period {
 	case periodWeekly:
 		start, end := periodRange(m.period, m.anchor)
-		last := end.AddDate(0, 0, -1)
-		return m.loc.Format("list.period.week_of", fmt.Sprintf("%02d %s – %02d %s %d",
-			start.Day(), localizedMonthShortName(m.loc, start.Month()),
-			last.Day(), localizedMonthShortName(m.loc, last.Month()), last.Year()))
+		return formatDayRange(m.loc, start, end.AddDate(0, 0, -1), time.Now())
 	case periodYearly:
 		return strconv.Itoa(m.anchor.Year())
 	case periodDaily, periodMonthly:

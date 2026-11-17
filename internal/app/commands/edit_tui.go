@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-faster/errors"
@@ -29,6 +28,9 @@ const (
 	editFieldNotes
 	editFieldCount
 )
+
+// editFormLabelW is the label column of the edit form.
+const editFormLabelW = 13
 
 // Notes are edited on a single-line field, so newlines are escaped on the way
 // in and out; a literal backslash survives the round trip.
@@ -63,7 +65,7 @@ func runEditForm(cmd *cobra.Command, activity models.Activity) error {
 
 func newEditModelForCmd(cmd *cobra.Command) *editModel {
 	rt := getRuntime(cmd)
-	return newEditModel(cmd.Context(), rt.ActivityService, rt.TimeFormatter, getLocalizer(cmd))
+	return newEditModel(cmd.Context(), rt.ActivityService, rt.TimeFormatter, getLocalizer(cmd), GetTheme(rt.Config.Theme))
 }
 
 // runEditModel runs the editor and repeats its last result on the terminal,
@@ -84,16 +86,18 @@ type editModel struct {
 	service        ports.ActivityResolver
 	timeFormat     *timeutil.Formatter
 	loc            *localization.Localizer
+	ui             chromeStyles
 	selectedDate   time.Time
-	activities     []models.Activity
 	allActivities  []models.Activity
-	table          table.Model
+	list           activityList
 	form           editForm
 	formOpen       bool
 	closeAfterSave bool
 	status         string
 	formErr        string
 	err            error
+	width          int
+	height         int
 }
 
 type editFormField struct {
@@ -112,27 +116,18 @@ func newEditModel(
 	service ports.ActivityResolver,
 	tf *timeutil.Formatter,
 	loc *localization.Localizer,
+	theme Theme,
 ) *editModel {
-	m := &editModel{
+	ui := newChromeStyles(theme)
+	return &editModel{
 		ctx:          ctx,
 		service:      service,
 		timeFormat:   tf,
 		loc:          loc,
+		ui:           ui,
 		selectedDate: time.Now(),
+		list:         newActivityList(ui, loc, tf),
 	}
-	m.initTable()
-	return m
-}
-
-func (m *editModel) initTable() {
-	m.table = newActivityTable([]table.Column{
-		{Title: m.loc.Text("list.table.key"), Width: 13},
-		{Title: m.loc.Text("list.table.time"), Width: 20},
-		{Title: m.loc.Text("list.table.project"), Width: 20},
-		{Title: m.loc.Text("list.table.description"), Width: 32},
-		{Title: m.loc.Text("list.table.duration"), Width: 10},
-		{Title: m.loc.Text("list.table.tags"), Width: 15},
-	}, defaultDailyTableHeight)
 }
 
 // loadHistory reads the log once, so navigating days does not scan it again,
@@ -148,33 +143,12 @@ func (m *editModel) loadHistory() {
 	if len(activitiesOnDay(activities, m.selectedDate)) == 0 {
 		m.selectedDate = adjacentActivityDay(activities, m.selectedDate, -1)
 	}
-	m.renderTable()
+	m.list.set(activitiesOnDay(activities, m.selectedDate))
 }
 
 func (m *editModel) navigate(dir int) {
 	m.selectedDate = adjacentActivityDay(m.allActivities, m.selectedDate, dir)
-	m.renderTable()
-}
-
-func (m *editModel) renderTable() {
-	m.activities = activitiesOnDay(m.allActivities, m.selectedDate)
-	rows := make([]table.Row, 0, len(m.activities))
-	for i, activity := range m.activities {
-		rows = append(rows, table.Row{
-			activityDayKey(activity, i),
-			formatActivityTimeRange(m.timeFormat, activity),
-			activity.Project,
-			activity.Description,
-			formatActivityDuration(activity),
-			formatActivityTags(activity),
-		})
-	}
-	m.table.SetRows(rows)
-
-	cursor := m.table.Cursor()
-	if cursor < 0 || cursor >= len(rows) {
-		m.table.SetCursor(0)
-	}
+	m.list.set(activitiesOnDay(m.allActivities, m.selectedDate))
 }
 
 func (m *editModel) openForm(activity models.Activity) {
@@ -207,6 +181,88 @@ func newEditForm(activity models.Activity, tf *timeutil.Formatter) editForm {
 	return editForm{original: activity, fields: fields}
 }
 
+// update applies a key to the form: tab and the arrows move between the fields, the others edit
+// the value of the current one.
+func (f *editForm) update(msg tea.KeyMsg) formOutcome {
+	field := &f.fields[f.cursor]
+	//nolint:exhaustive // bubbletea key types are an open set; unlisted keys are ignored on purpose
+	switch msg.Type {
+	case tea.KeyEsc:
+		return formCancel
+	case tea.KeyEnter:
+		return formSave
+	case tea.KeyTab, tea.KeyDown:
+		f.cursor = (f.cursor + 1) % len(f.fields)
+	case tea.KeyShiftTab, tea.KeyUp:
+		f.cursor = (f.cursor - 1 + len(f.fields)) % len(f.fields)
+	case tea.KeyBackspace, tea.KeyDelete:
+		if runes := []rune(field.value); len(runes) > 0 {
+			field.value = string(runes[:len(runes)-1])
+		}
+	case tea.KeyCtrlU:
+		field.value = ""
+	case tea.KeySpace:
+		field.value += " "
+	case tea.KeyRunes:
+		field.value += string(msg.Runes)
+	}
+	return formContinue
+}
+
+// lines are the fields of the form, tags in the tag color, and the hint under them.
+func (f *editForm) lines(ui chromeStyles, loc *localization.Localizer, width int) []string {
+	lines := make([]string, 0, len(f.fields)+2)
+	for i, field := range f.fields {
+		line := formField{
+			label: loc.Text(field.label), labelW: editFormLabelW, value: field.value, valueStyle: ui.text, active: i == f.cursor,
+		}
+		switch {
+		case i == editFieldTags && field.value != "":
+			line.valueStyle = ui.tag
+		case line.active:
+			line.valueStyle = ui.bold
+		}
+		lines = append(lines, ui.renderFormField(line, width))
+	}
+	hint := loc.Text("edit.form.hint")
+	if width > 0 {
+		hint = cutText(hint, width-1)
+	}
+	return append(lines, "", " "+ui.muted.Render(hint))
+}
+
+// summary names what the form edits: "Tock · Mon 16 Nov".
+func (f *editForm) summary(ui chromeStyles, loc *localization.Localizer) []rulerItem {
+	day := formatReminderDay(loc, f.original.StartTime, time.Now())
+	long := ui.muted.Render(f.original.Project + " · " + day)
+	return []rulerItem{{long: long, short: ui.muted.Render(day)}}
+}
+
+// editFormKeys are the keys of the edit form; esc goes back with the action given.
+func editFormKeys(loc *localization.Localizer, back string) []footerKey {
+	key := func(k, action string) footerKey { return footerKey{key: k, action: loc.Text(action)} }
+	return []footerKey{key(keyTab, "tui.key.next_field"), key("enter", "tui.key.save"), key("ctrl+u", "tui.key.clear"), key("esc", back)}
+}
+
+// saveEditForm applies the form through the service: the updated activity, or the error to show.
+func saveEditForm(
+	ctx context.Context,
+	service ports.ActivityResolver,
+	tf *timeutil.Formatter,
+	loc *localization.Localizer,
+	form editForm,
+) (*models.Activity, string) {
+	req, err := buildFormRequest(tf, form)
+	if err != nil {
+		return nil, editErrorText(loc, err)
+	}
+	updated, err := service.Update(ctx, form.original, req)
+	if err != nil {
+		return nil, editErrorText(loc, err)
+	}
+	return updated, ""
+}
+
 func (m *editModel) Init() tea.Cmd { return nil }
 
 func (m *editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -217,9 +273,7 @@ func (m *editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.updateList(msg)
 	case tea.WindowSizeMsg:
-		// The picker renders the daily view's chrome plus a status line.
-		m.table.SetWidth(msg.Width - dailyViewHorizontalPadding)
-		m.table.SetHeight(fitTableHeight(msg.Height, dailyViewChromeLines+1, defaultDailyTableHeight))
+		m.width, m.height = msg.Width, msg.Height
 	}
 	return m, nil
 }
@@ -233,68 +287,36 @@ func (m *editModel) updateList(msg tea.KeyMsg) tea.Cmd {
 	case keyRight, "l":
 		m.navigate(1)
 	case "enter":
-		if selected, ok := m.selectedActivity(); ok {
+		if selected, ok := m.list.selected(); ok {
 			m.openForm(selected)
 		}
 	default:
-		var cmd tea.Cmd
-		m.table, cmd = m.table.Update(msg)
-		return cmd
+		m.list.move(msg.String())
 	}
 	return nil
 }
 
-// selectedActivity returns the activity under the table cursor, if any.
-func (m *editModel) selectedActivity() (models.Activity, bool) {
-	cursor := m.table.Cursor()
-	if cursor < 0 || cursor >= len(m.activities) {
-		return models.Activity{}, false
-	}
-	return m.activities[cursor], true
-}
-
 func (m *editModel) updateForm(msg tea.KeyMsg) tea.Cmd {
-	//nolint:exhaustive // bubbletea key types are an open set; unlisted keys are ignored on purpose
-	switch msg.Type {
-	case tea.KeyCtrlC:
+	if msg.Type == tea.KeyCtrlC {
 		return tea.Quit
-	case tea.KeyEsc:
+	}
+	switch m.form.update(msg) {
+	case formCancel:
 		m.formOpen = false
 		if m.closeAfterSave {
 			return tea.Quit
 		}
-		return nil
-	case tea.KeyEnter:
+	case formSave:
 		return m.save()
-	case tea.KeyTab, tea.KeyDown:
-		m.form.cursor = (m.form.cursor + 1) % len(m.form.fields)
-	case tea.KeyShiftTab, tea.KeyUp:
-		m.form.cursor = (m.form.cursor - 1 + len(m.form.fields)) % len(m.form.fields)
-	case tea.KeyBackspace, tea.KeyDelete:
-		field := &m.form.fields[m.form.cursor]
-		if runes := []rune(field.value); len(runes) > 0 {
-			field.value = string(runes[:len(runes)-1])
-		}
-	case tea.KeyCtrlU:
-		m.form.fields[m.form.cursor].value = ""
-	case tea.KeySpace:
-		m.form.fields[m.form.cursor].value += " "
-	case tea.KeyRunes:
-		m.form.fields[m.form.cursor].value += string(msg.Runes)
+	case formContinue:
 	}
 	return nil
 }
 
 func (m *editModel) save() tea.Cmd {
-	req, err := buildFormRequest(m.timeFormat, m.form)
-	if err != nil {
-		m.formErr = editErrorText(m.loc, err)
-		return nil
-	}
-
-	updated, err := m.service.Update(m.ctx, m.form.original, req)
-	if err != nil {
-		m.formErr = editErrorText(m.loc, err)
+	updated, errText := saveEditForm(m.ctx, m.service, m.timeFormat, m.loc, m.form)
+	if updated == nil {
+		m.formErr = errText
 		return nil
 	}
 
@@ -399,45 +421,51 @@ func (m *editModel) View() string {
 	return m.listView()
 }
 
+// listView is the picker: the entries of a day under the header naming it.
 func (m *editModel) listView() string {
-	header := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).
-		Render(m.loc.Format("edit.list.header", formatLocalizedLongDateShortMonth(m.loc, m.selectedDate)))
-
-	body := m.table.View()
-	if len(m.activities) == 0 {
-		body = m.loc.Text("edit.list.empty")
+	summary := m.ui.muted.Render(fmt.Sprintf("%d · %s", len(m.list.activities), formatHM(m.list.total())))
+	header := screenHeader{
+		tabs:    []string{m.loc.Text("tui.tab.edit")},
+		title:   formatLocalizedLongDateShortMonth(m.loc, m.selectedDate),
+		hint:    "←→",
+		summary: []rulerItem{{long: summary, short: summary}},
 	}
-
-	sections := []string{header, "", body, "", m.loc.Text("edit.list.help")}
-	if m.status != "" {
-		sections = append(sections, lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Render(m.status))
+	top := m.ui.renderHeader(header, m.width) + "\n"
+	key := func(k, action string) footerKey { return footerKey{key: k, action: m.loc.Text(action)} }
+	keys := []footerKey{key("←→", "tui.key.day"), key("↑↓", "tui.key.entry")}
+	if len(m.list.activities) > 0 {
+		keys = append(keys, key("enter", "tui.key.edit"))
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	keys = append(keys, key("q", "tui.key.quit"))
+	bottom := "\n" + m.ui.renderFooter(keys, m.ui.renderStatus(m.status, false), m.width)
+	bodyH := m.height - lipgloss.Height(top) - lipgloss.Height(bottom)
+	return renderScreen(top, m.list.view(m.width, bodyH, m.loc.Text("list.empty")), bottom, m.width, m.height)
 }
 
+// formView is the form of the picked entry under the header naming it.
 func (m *editModel) formView() string {
-	header := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).
-		Render(m.loc.Format("edit.form.title", m.form.original.StartTime.Format(time.DateOnly)))
+	back := "tui.key.back"
+	if m.closeAfterSave {
+		back = "tui.key.cancel"
+	}
+	header := screenHeader{
+		tabs:    []string{m.loc.Text("tui.tab.edit")},
+		title:   m.formTitle(),
+		summary: m.form.summary(m.ui, m.loc),
+	}
+	top := m.ui.renderHeader(header, m.width) + "\n"
+	body := strings.Join(m.form.lines(m.ui, m.loc, m.width), "\n")
+	bottom := "\n" + m.ui.renderFooter(editFormKeys(m.loc, back), m.ui.renderStatus(m.formErr, true), m.width)
+	return renderScreen(top, body, bottom, m.width, m.height)
+}
 
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("248")).Width(14)
-	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
-
-	lines := make([]string, 0, len(m.form.fields)+4)
-	lines = append(lines, header, "")
-
-	for i, field := range m.form.fields {
-		marker := "  "
-		value := field.value
-		if i == m.form.cursor {
-			marker = "> "
-			value = activeStyle.Render(value + "█")
+// formTitle is the key of the edited entry, "2026-03-14-02", or its day when the log was not read.
+func (m *editModel) formTitle() string {
+	original := m.form.original
+	for i, activity := range activitiesOnDay(m.allActivities, original.StartTime) {
+		if activity.StartTime.Equal(original.StartTime) {
+			return activityDayKey(activity, i)
 		}
-		lines = append(lines, marker+labelStyle.Render(m.loc.Text(field.label))+value)
 	}
-
-	lines = append(lines, "", m.loc.Text("edit.form.help"))
-	if m.formErr != "" {
-		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(m.formErr))
-	}
-	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+	return original.StartTime.Format(time.DateOnly)
 }
