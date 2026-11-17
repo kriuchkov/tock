@@ -140,7 +140,7 @@ tock continue --note "Resuming work" --tag "resumed" # Continue last activity wi
 List activities for a day, or as a weekly/monthly/yearly summary:
 
 ```bash
-tock list          # Interactive table for a single day (default)
+tock list          # The activities of a single day (default)
 tock list weekly   # Time per project for each day of the week
 tock list monthly  # Time per project for each day of the month
 tock list yearly   # Time per project for each month of the year
@@ -149,9 +149,19 @@ tock list yearly   # Time per project for each month of the year
 List controls:
 
 - `Left` / `h`, `Right` / `l`: Previous / next day (or week, month, year)
-- `Up` / `k`, `Down` / `j`: Move through the table
+- `Up` / `k`, `Down` / `j`: Move through the rows; `PgUp` / `PgDn` a screen, `Ctrl+U` / `Ctrl+D` half
+  a screen, `Home` / `g` and `End` / `G` to the first and last row
+- `Tab` / `Shift+Tab`: Switch between the day, week, month and year views, keeping the date
+- `e` / `Enter`: Edit the selected activity in a form (daily view)
+- `c`: Continue the selected activity, as `tock continue` does (daily view)
 - `x` / `Delete`: Delete the selected activity after a `y` confirmation (daily view)
 - `q` / `Ctrl+C`: Quit (`Esc` also works in period views)
+
+`tock calendar`, `tock remind` and `tock list` open one TUI, each on its own tab:
+calendar, reminders, list and analyze. Keys `1`–`4` switch tabs, and a tab keeps where you
+were in it; reminders done on one tab show on the others. The analyze tab shows what
+`tock analyze` prints, next to the time per project and per weekday, over the last 7, 30, 90
+or 365 days (`Tab` switches them). `tock analyze` itself prints the same text as before.
 
 View activities in the interactive calendar:
 
@@ -159,13 +169,21 @@ View activities in the interactive calendar:
 tock calendar
 ```
 
+The calendar fits the terminal: from 140 columns it shows the month with its totals, the day,
+and upcoming reminders with the last 7 days and top projects; narrower, the totals move into the
+line under the header, then the month column goes and `m` opens the month over the day.
+
 Calendar controls:
 
-- `Arrow Keys` / `h,j,k,l`: Navigate days
-- `n`: Next month
-- `p`: Previous month
-- `Tab`: Focus the day's reminders (`Space` done, `s` start tracking, `z` snooze, `e` edit, `x` delete)
+- `Left` / `Right` (`h` / `l`): Previous / next day; `Up` / `Down`: previous / next week
+- `n` / `p`: Next / previous month (`m` shows the month on narrow terminals)
+- `j` / `k`: Select a reminder or an activity of the day; then `Up` / `Down` move the selection too,
+  and the notes and tags of the selected one show at the bottom
+- `Tab`: Jump between the day's reminders and its tracked time; `Esc` clears the selection
+- On a selected reminder: `Space` done, `s` start tracking, `z` snooze, `e` edit, `x` delete
 - `a`: Add a reminder on the selected day
+- `Ctrl+D` / `Ctrl+U`: Scroll the day
+- `1`–`4`: Switch tabs
 - `q` / `Esc`: Quit
 
 Keep track of things to do on a day or at a time:
@@ -173,8 +191,13 @@ Keep track of things to do on a day or at a time:
 ```bash
 tock remind add "Team sync" -p Work --on mon --at 17:30 --every weekly --notify 10m
 tock remind list    # overdue reminders and the next 7 days
-tock remind         # interactive list
+tock remind         # interactive list: the reminders tab
 ```
+
+The reminders tab lists them by day, overdue ones first, with the selected one's ID, notes and next
+occurrence in a box at the bottom: `Space` done, `s` start tracking, `z` snooze, `e` edit, `a` add,
+`x` delete, `Left` / `Right` the day or week, `Tab` the view (day, week, overdue, all); the rows
+move as in the list.
 
 
 ## Configuration
@@ -253,7 +276,7 @@ All settings can be overridden with environment variables (prefix `TOCK_`).
 - `TOCK_REMINDERS_SNOOZE`: Default snooze for reminders (default: `10m`)
 Notes are stored as individual files in `~/.tock/notes/` (or relative to your configured file path).
 
-- `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `custom`)
+- `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `ansi_dark`, `ansi_light`, `mocha`, `custom`)
 - `TOCK_WEEKLY_TARGET`: Weekly workload target as a duration (e.g., `40h`, `37h30m`)
 - `TOCK_CHECK_UPDATES`: Check for updates (default: `true`)
 
@@ -342,16 +365,17 @@ Customize the time format in the calendar view (`tock calendar`).
 ```yaml
 calendar:
   # Format for duration display (Go time syntax, or "decimal" for decimal hours)
-  time_spent_format: "15:04" # Default
+  # Default: unset, durations read "45m", "2h45m"
+  time_spent_format: "15:04"
   # time_spent_format: "decimal" # Decimal hours: 2h15m → "2.25", 5h45m → "5.75"
 
   # Format for start time (Go time syntax)
   # Default: uses global time_format
   time_start_format: "15:04"
 
-  # Format for end time (appended to duration)
+  # Format for end time, appended to the duration; the time column then shows only the start.
   # Includes separators or icons.
-  # Default: " • " + global time_format
+  # Default: unset, the end follows the start: "10:00–12:45"
   # Example: " 🏁 15:04"
   time_end_format: " • 15:04"
 
@@ -359,15 +383,17 @@ calendar:
   # Defaults to time_spent_format.
   time_total_format: "15:04"
 
-  # Align duration to the left side in the details view
-  # true:  "01:30 Project Name"
-  # false: "- Project Name: 01:30" (Default)
+  # Put the duration of each activity before its project instead of at the end of the row
   align_duration_left: false
+
+  # Days the Upcoming block covers, today included (1-31): today's reminders a line each,
+  # every later day one line with their titles
+  upcoming_days: 7
 ```
 
 ## Theming
 
-Tock supports customizable color themes for the calendar view.
+Tock supports customizable color themes for its interactive views (calendar, list, edit, reminders, watch) and the colored output of `analyze`.
 
 You can configure the theme in `tock.yaml`:
 
@@ -387,7 +413,8 @@ Set `TOCK_THEME_NAME` (or `theme.name` in config) to one of:
 - `light`: Standard 256-color light theme
 - `ansi_dark`: 16-color dark theme
 - `ansi_light`: 16-color light theme
-- `custom`: Use custom colors defined by environment variables
+- `mocha`: [Catppuccin Mocha](https://catppuccin.com/palette) palette, one yellow accent on a dark terminal; terminals without true color get the nearest 256 or 16 colors
+- `custom`: Custom colors on top of `theme.base` (`dark` unless set)
 
 ### Auto-detection
 
@@ -399,7 +426,22 @@ If `theme.name` is not set, Tock automatically selects the best theme:
 
 ### Custom Colors
 
-When `theme.name` is `custom`, you can override specific colors using these variables (accepts ANSI color codes or hex values):
+When `theme.name` is `custom`, you can override specific colors (ANSI color codes or hex values). Colors you leave out come from `theme.base`, which is `dark` unless set:
+
+| Key | Variable | Colors |
+| --- | --- | --- |
+| `base` | `TOCK_THEME_BASE` | the built-in theme a custom one starts from |
+| `primary` | `TOCK_COLOR_PRIMARY` | bars and charts |
+| `secondary` | `TOCK_COLOR_SECONDARY` | errors and delete prompts |
+| `text` | `TOCK_COLOR_TEXT` | main text |
+| `sub_text` | `TOCK_COLOR_SUBTEXT` | times, labels, hints |
+| `faint` | `TOCK_COLOR_FAINT` | borders and lines |
+| `highlight` | `TOCK_COLOR_HIGHLIGHT` | accent: today, overdue reminders, the selected row's bar, active field and view |
+| `tag` | `TOCK_COLOR_TAG` | tags |
+| `reminder` | `TOCK_COLOR_REMINDER` | reminders |
+| `surface` | `TOCK_COLOR_SURFACE` | background of the selected row; empty reverses it |
+| `ok` | `TOCK_COLOR_OK` | running activity, success messages, deep focus in `analyze` |
+| `warn` | `TOCK_COLOR_WARN` | paused timer in `watch`, middling scores in `analyze` |
 
 ```bash
 export TOCK_THEME_NAME="custom"
@@ -409,6 +451,13 @@ export TOCK_COLOR_TEXT="255"     # White
 export TOCK_COLOR_SUBTEXT="248"  # Light Grey
 export TOCK_COLOR_TAG="34"       # Green
 export TOCK_COLOR_REMINDER="81"  # Sky Blue
+```
+
+```yaml
+theme:
+  name: custom
+  base: mocha       # start from mocha instead of dark
+  highlight: "212"
 ```
 
 ### Per-Tag Colors
@@ -727,12 +776,8 @@ Open the interactive terminal calendar to view and analyze your time.
 tock calendar
 ```
 
-**Controls:**
-
-- `Arrow Keys` / `h,j,k,l`: Navigate days
-- `n`: Next month
-- `p`: Previous month
-- `q` / `Esc`: Quit
+**Controls:** see [the calendar controls](#basic-usage) above: arrows move through days and weeks,
+`n` / `p` through months, `j` / `k` select a row of the day, `1`–`4` switch tabs, `q` quits.
 
 ### Text Report
 
@@ -851,6 +896,8 @@ tock analyze
 tock analyze --days 7
 ```
 
+The same analysis is on the analyze tab of the TUI, the last tab of `tock calendar`.
+
 **Flags:**
 
 - `-n, --days`: Number of days to analyze (default 30)
@@ -870,7 +917,7 @@ tock remind snooze 4 15m              # or a time of day: snooze 4 17:45
 tock remind start 4                   # track it as an activity and mark it done
 tock remind edit 4 --at 18:00         # no flags: interactive form
 tock remind rm 4 --date 2026-12-21    # skip one occurrence; without --date remove the reminder
-tock remind                           # interactive list
+tock remind                           # interactive list: the reminders tab of the TUI
 ```
 
 `--on` takes `YYYY-MM-DD`, `today`, `tomorrow` or a weekday (`mon`); `--every` takes `daily`, `weekdays`, `weekly[:mon,thu]`, `monthly[:16|:last|:2-tue|:last-fri]`, `yearly`, or an interval such as `3d`, `2w`, `6m`, `1y`, bounded by `--until DATE` or `--count N`.

@@ -131,9 +131,9 @@ func TestWatchModelViewLocalizedPausedState(t *testing.T) {
 	model.paused = true
 
 	view := model.View()
-	assert.Contains(t, view, "PAUSED")
+	assert.Contains(t, view, "⏸ paused · since 09:00")
 	assert.Contains(t, view, "refactor")
 	assert.Contains(t, view, "core")
 	assert.Contains(t, view, "quit")
-	assert.Contains(t, view, "pause/resume")
+	assert.Contains(t, view, "space pause/resume   q quit   keeps running on exit")
 }

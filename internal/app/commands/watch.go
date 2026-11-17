@@ -3,10 +3,9 @@ package commands
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-faster/errors"
@@ -17,6 +16,7 @@ import (
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 type watchOptions struct {
@@ -64,7 +64,9 @@ func runWatchCmd(cmd *cobra.Command, opts *watchOptions) error {
 		return errors.Wrap(err, "load current activity")
 	}
 
-	if err = runWatchProgram(initialWatchModel(*activity, service, GetTheme(cfg.Theme), getLocalizer(cmd))); err != nil {
+	model := initialWatchModel(*activity, service, GetTheme(cfg.Theme), getLocalizer(cmd))
+	model.timeFormat, model.stopOnExit = rt.TimeFormatter, opts.StopOnExit
+	if err = runWatchProgram(model); err != nil {
 		return err
 	}
 
@@ -86,22 +88,19 @@ func runWatchCmd(cmd *cobra.Command, opts *watchOptions) error {
 type tickMsg time.Time
 
 type watchModel struct {
-	activity models.Activity
-	err      error
-	now      time.Time
-	service  ports.ActivityResolver
-	help     help.Model
-	keys     keyMap
-	width    int
-	height   int
-	theme    Theme
-	loc      *localization.Localizer
-	paused   bool
-}
-
-type keyMap struct {
-	Quit  key.Binding
-	Pause key.Binding
+	activity   models.Activity
+	err        error
+	now        time.Time
+	service    ports.ActivityResolver
+	width      int
+	height     int
+	theme      Theme
+	ui         chromeStyles
+	loc        *localization.Localizer
+	timeFormat *timeutil.Formatter
+	paused     bool
+	// stopOnExit is shown in the footer: whether quitting stops the activity.
+	stopOnExit bool
 }
 
 func initialWatchModel(activity models.Activity, service ports.ActivityResolver, theme Theme, loc *localization.Localizer) watchModel {
@@ -109,19 +108,9 @@ func initialWatchModel(activity models.Activity, service ports.ActivityResolver,
 		activity: activity,
 		service:  service,
 		theme:    theme,
+		ui:       newChromeStyles(theme),
 		loc:      loc,
 		now:      time.Now(),
-		help:     help.New(),
-		keys: keyMap{
-			Quit: key.NewBinding(
-				key.WithKeys("q", keyCtrlC),
-				key.WithHelp("q", loc.Format("watch.key.quit")),
-			),
-			Pause: key.NewBinding(
-				key.WithKeys("space", " "),
-				key.WithHelp("space", loc.Format("watch.key.pause")),
-			),
-		},
 	}
 }
 
@@ -134,10 +123,10 @@ func (m watchModel) Init() tea.Cmd {
 func (m watchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Quit):
+		switch msg.String() {
+		case "q", keyCtrlC:
 			return m, tea.Quit
-		case key.Matches(msg, m.keys.Pause):
+		case " ":
 			updated, paused, err := watching.TogglePause(context.Background(), m.service, m.activity, m.paused, currentActivityTime())
 			if err != nil {
 				m.err = err
@@ -166,83 +155,69 @@ func (m watchModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
+	header := screenHeader{tabs: []string{m.loc.Text("tui.tab.watch")}, title: m.activity.Project, summary: m.summary()}
+	top := m.ui.renderHeader(header, m.width) + "\n"
 
-	var duration time.Duration
+	keys := []footerKey{{key: keySpace, action: m.loc.Text("tui.key.pause")}, {key: "q", action: m.loc.Text("tui.key.quit")}}
+	onExit := "watch.stop_on_exit.off"
+	if m.stopOnExit {
+		onExit = "watch.stop_on_exit.on"
+	}
+	bottom := "\n" + m.ui.renderFooter(keys, m.ui.muted.Render(m.loc.Text(onExit)), m.width)
+
+	content := m.content()
+	if bodyH := m.height - lipgloss.Height(top) - lipgloss.Height(bottom); m.width > 0 && bodyH > 0 {
+		content = lipgloss.Place(m.width, bodyH, lipgloss.Center, lipgloss.Center, content)
+	}
+	return renderScreen(top, content, bottom, m.width, m.height)
+}
+
+// summary is the state on the ruler: "● running · since 13:30", or paused in the warning color.
+func (m watchModel) summary() []rulerItem {
+	state := m.ui.ok.Render(glyphRunning + " " + m.loc.Text("watch.running"))
 	if m.paused {
+		state = lipgloss.NewStyle().Foreground(m.theme.Warn).Render(glyphPaused + " " + m.loc.Text("watch.paused"))
+	}
+	format := "15:04"
+	if m.timeFormat != nil {
+		format = m.timeFormat.GetDisplayFormat()
+	}
+	since := m.ui.muted.Render(" · " + m.loc.Format("watch.since", m.activity.StartTime.Format(format)))
+	return []rulerItem{{long: state + since, short: state}}
+}
+
+// content is the stopwatch in big digits, muted while paused, the description and the project with its tags.
+func (m watchModel) content() string {
+	duration := m.now.Sub(m.activity.StartTime)
+	if m.paused {
+		duration = 0
 		if m.activity.EndTime != nil {
 			duration = m.activity.EndTime.Sub(m.activity.StartTime)
-		} else {
-			duration = 0
 		}
-	} else {
-		duration = m.now.Sub(m.activity.StartTime)
 	}
-
 	duration = duration.Round(time.Second)
+	clock := fmt.Sprintf("%02d:%02d:%02d", int(duration.Hours()), int(duration.Minutes())%60, int(duration.Seconds())%60)
 
-	primary := m.theme.Primary
+	digits := m.ui.bold
 	if m.paused {
-		primary = m.theme.Faint
+		digits = m.ui.mutedBold
 	}
-
-	var (
-		projectStyle = lipgloss.NewStyle().
-				Foreground(m.theme.SubText).
-				Align(lipgloss.Center)
-
-		descStyle = lipgloss.NewStyle().
-				Foreground(m.theme.Text).
-				Bold(true).
-				Align(lipgloss.Center).
-				MarginTop(1)
-
-		helpStyle = lipgloss.NewStyle().
-				Foreground(m.theme.SubText).
-				Align(lipgloss.Center).
-				MarginTop(2)
-	)
-
-	h := int(duration.Hours())
-	minutes := int(duration.Minutes()) % 60
-	s := int(duration.Seconds()) % 60
-	timeStr := fmt.Sprintf("%02d:%02d:%02d", h, minutes, s)
-
-	bigTime := renderBigText(timeStr, string(primary))
-
-	status := ""
-	if m.paused {
-		status = m.loc.Format("watch.status.paused")
+	meta := m.ui.muted.Render(m.activity.Project)
+	if len(m.activity.Tags) > 0 {
+		meta += m.ui.muted.Render(" · ") + m.ui.tag.Render("#"+strings.Join(m.activity.Tags, " #"))
 	}
-
-	statusStyle := lipgloss.NewStyle().
-		Foreground(m.theme.Secondary).
-		Bold(true).
-		Align(lipgloss.Center).
-		MarginTop(1)
-
-	content := lipgloss.JoinVertical(
-		lipgloss.Center,
-		bigTime,
-		statusStyle.Render(status),
-		descStyle.Render(m.activity.Description),
-		projectStyle.Render(m.activity.Project),
-		helpStyle.Render(m.help.ShortHelpView([]key.Binding{m.keys.Quit, m.keys.Pause})),
-	)
-
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
-	}
-	return "\n" + content + "\n"
+	return lipgloss.JoinVertical(lipgloss.Center,
+		renderBigText(clock, digits), "", m.ui.bold.Render(m.activity.Description), meta)
 }
 
 // Font pixel constants for the big-digit renderer.
 const (
-	fontFull  = "###"
-	fontSides = "# #"
-	fontRight = "  #"
-	fontLeft  = "#  "
+	fontFull  = "███"
+	fontSides = "█ █"
+	fontRight = "  █"
+	fontLeft  = "█  "
 	fontEmpty = "   "
-	fontColon = " # "
+	fontColon = " ▪ "
 )
 
 var font = map[rune][]string{
@@ -260,7 +235,7 @@ var font = map[rune][]string{
 }
 
 //nolint:goconst //it's more readable to have the full string literals
-func renderBigText(text string, color string) string {
+func renderBigText(text string, style lipgloss.Style) string {
 	var lines [5]string
 	for _, char := range text {
 		matrix, ok := font[char]
@@ -272,6 +247,5 @@ func renderBigText(text string, color string) string {
 		}
 	}
 
-	s := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Bold(true)
-	return s.Render(fmt.Sprintf("%s\n%s\n%s\n%s\n%s", lines[0], lines[1], lines[2], lines[3], lines[4]))
+	return style.Render(strings.Join(lines[:], "\n"))
 }

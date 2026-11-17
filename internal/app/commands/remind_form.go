@@ -34,13 +34,18 @@ const (
 )
 
 const (
-	reminderFormLabelWidth  = 14
+	reminderFormLabelWidth  = 12
 	reminderFormPreviewDays = 366 * 2
 	reminderFormNextCount   = 5
-	// reminderFormPreviewMinWidth is the terminal width from which the month preview shows.
-	reminderFormPreviewMinWidth = 100
-	reminderFormLeftWidth       = 70
-	maxWeekOfMonthIndex         = 4
+	reminderFormLeftWidth   = 64
+	reminderFormPreviewW    = 28
+	reminderFormGap         = 3
+	// reminderFormFrameW is the border and padding around the form.
+	reminderFormFrameW = 4
+	// The form keeps reminderFormMargin columns free on each side from reminderFormMarginMin.
+	reminderFormMargin    = 4
+	reminderFormMarginMin = 80
+	maxWeekOfMonthIndex   = 4
 )
 
 // monthlyMode is how a monthly reminder picks its day.
@@ -70,14 +75,13 @@ const (
 
 // reminderFormEnv carries what the form needs to parse and render.
 type reminderFormEnv struct {
-	loc    *localization.Localizer
-	tf     *timeutil.Formatter
-	theme  Theme
-	styles Styles
+	loc   *localization.Localizer
+	tf    *timeutil.Formatter
+	theme Theme
 }
 
 func newReminderFormEnv(loc *localization.Localizer, tf *timeutil.Formatter, theme Theme) reminderFormEnv {
-	return reminderFormEnv{loc: loc, tf: tf, theme: theme, styles: InitStyles(theme)}
+	return reminderFormEnv{loc: loc, tf: tf, theme: theme}
 }
 
 // reminderForm edits one reminder. It is a component: the host feeds it keys and saves it.
@@ -403,84 +407,110 @@ func reminderErrorText(loc *localization.Localizer, err error) string {
 	return err.Error()
 }
 
+// view draws the form as a window framed in the accent color, width columns wide with its
+// margins: the fields with what tock makes of them, the occurrences they give, and the month
+// with those marked beside the fields when it fits.
 func (f *reminderForm) view(env reminderFormEnv, now time.Time, width int) string {
-	left := f.renderFields(env, now)
-	if width < reminderFormPreviewMinWidth {
-		return left
+	ui := newChromeStyles(env.theme)
+	margin := 0
+	if width >= reminderFormMarginMin {
+		margin = reminderFormMargin
+	}
+	boxW := width - 2*margin
+	if width <= 0 {
+		boxW = reminderFormLeftWidth + reminderFormFrameW
+	}
+	inner := max(boxW-reminderFormFrameW, 1)
+
+	leftW := min(inner, reminderFormLeftWidth)
+	content := f.renderFields(env, ui, now, leftW)
+	if inner >= reminderFormLeftWidth+reminderFormGap+reminderFormPreviewW {
+		content = lipgloss.JoinHorizontal(lipgloss.Top,
+			fitBlock(content, leftW, lipgloss.Height(content)), strings.Repeat(" ", reminderFormGap), f.renderPreview(env, ui, now))
 	}
 
-	right := f.renderPreview(env, now)
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(reminderFormLeftWidth).Render(left), "   ", right)
+	key := func(k, action string) footerKey { return footerKey{key: k, action: env.loc.Text(action)} }
+	keys := []footerKey{
+		key(keyTab, "tui.key.next_field"), key("←→", "tui.key.option"), key(keySpace, "tui.key.toggle_day"),
+		key("enter", "tui.key.save"), key("ctrl+u", "tui.key.clear"), key("esc", "tui.key.cancel"),
+	}
+	footer := strings.TrimPrefix(ui.renderFooter(keys, ui.renderStatus(f.err, true), inner), " ")
+	hint := ui.muted.Render(cutText(env.loc.Text("remind.form.hint"), inner))
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(env.theme.Highlight).
+		Padding(0, 1).
+		Width(max(boxW-2, 1)).
+		Render(content + "\n\n" + hint + "\n" + footer)
+	if margin == 0 {
+		return box
+	}
+	return lipgloss.NewStyle().MarginLeft(margin).Render(box)
 }
 
-func (f *reminderForm) renderFields(env reminderFormEnv, now time.Time) string {
+func (f *reminderForm) renderFields(env reminderFormEnv, ui chromeStyles, now time.Time, width int) string {
 	loc := env.loc
 	header := loc.Text("remind.form.new")
 	if f.id != 0 {
 		header = loc.Format("remind.form.edit", f.id)
 	}
-
-	labelStyle := lipgloss.NewStyle().Foreground(env.theme.SubText).Width(reminderFormLabelWidth)
-	lines := []string{lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Render(header), ""}
+	lines := []string{ui.accentBold.Render(header), ""}
 
 	labels := [reminderFieldCount]string{
 		"remind.form.title", "remind.form.project", "remind.form.date", "remind.form.time", "remind.form.repeat",
 		"remind.form.on", "remind.form.until", "remind.form.notify", "remind.form.tags", "remind.form.notes",
 	}
 	for field := range reminderFieldCount {
-		if !f.visible(field) {
-			continue
+		if f.visible(field) {
+			lines = append(lines, ui.renderFormField(f.field(env, ui, field, labels[field], now), width))
 		}
-		marker := "  "
-		if field == f.cursor {
-			marker = "> "
-		}
-		lines = append(lines, marker+labelStyle.Render(loc.Text(labels[field]))+f.renderValue(env, field))
 	}
 
 	lines = append(lines, "")
+	next := ui.muted.Render(padText(loc.Text("remind.form.next"), reminderFormLabelWidth, false))
 	if preview, ok := f.preview(env.tf, now); ok {
-		lines = append(lines, env.styles.Reminder.Render(formatReminderSummary(loc, env.tf, preview, now)))
+		lines = append(lines, "   "+next+ui.text.Render(formatReminderSummary(loc, env.tf, preview, now)))
 	} else {
-		lines = append(lines, lipgloss.NewStyle().Foreground(env.theme.SubText).Render(loc.Text("remind.form.invalid")))
+		lines = append(lines, "   "+next+ui.muted.Render(loc.Text("remind.form.invalid")))
 	}
-	lines = append(lines, "", lipgloss.NewStyle().Width(reminderFormLeftWidth).Render(loc.Text("remind.form.help")))
-	if f.err != "" {
-		lines = append(lines, lipgloss.NewStyle().Foreground(env.theme.Secondary).Render(f.err))
-	}
-	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+	return lipgloss.NewStyle().Width(width).Render(strings.Join(lines, "\n"))
 }
 
-func (f *reminderForm) renderValue(env reminderFormEnv, field int) string {
+// field is a line of the form: the value as typed, followed by what tock reads in a date when
+// that is not plain, "→ Mon 16 Nov"; the option fields are drawn as their choices.
+func (f *reminderForm) field(env reminderFormEnv, ui chromeStyles, field int, label string, now time.Time) formField {
 	active := field == f.cursor
-	activeStyle := lipgloss.NewStyle().Foreground(env.theme.Highlight).Bold(true)
-	faint := lipgloss.NewStyle().Foreground(env.theme.SubText)
-
+	line := formField{label: env.loc.Text(label), labelW: reminderFormLabelWidth, active: active, valueStyle: ui.text}
+	if active {
+		line.valueStyle = ui.bold
+	}
 	switch field {
 	case reminderFieldRepeat:
-		value := "‹ " + env.loc.Text("remind.form.repeat."+repeatChoiceKey(f.freq())) + " ›"
-		if active {
-			return activeStyle.Render(value)
-		}
-		return value
+		line.value = "‹ " + env.loc.Text("remind.form.repeat."+repeatChoiceKey(f.freq())) + " ›"
+		line.styled = line.valueStyle.Render(line.value)
+		return line
 	case reminderFieldOn:
-		return f.renderOn(env, active)
+		line.styled = f.renderOn(env, ui, active)
+		return line
 	}
 
-	value := f.values[field]
-	if active {
-		return activeStyle.Render(value + "█")
-	}
-	if value == "" {
+	line.value = f.values[field]
+	if line.value == "" && !active {
 		switch field {
 		case reminderFieldTime:
-			return faint.Render(env.loc.Text("remind.all_day"))
+			line.value, line.valueStyle = env.loc.Text("remind.all_day"), ui.muted
 		case reminderFieldUntil:
-			return faint.Render(env.loc.Text("remind.form.never"))
+			line.value, line.valueStyle = env.loc.Text("remind.form.never"), ui.muted
+		}
+		return line
+	}
+	if field == reminderFieldDate || field == reminderFieldUntil {
+		if day, err := timeutil.ParseDay(line.value, now); err == nil && line.value != day.Format(time.DateOnly) {
+			line.note = "→ " + formatReminderDay(env.loc, day, now)
 		}
 	}
-	return value
+	return line
 }
 
 func repeatChoiceKey(freq models.RepeatFreq) string {
@@ -490,8 +520,8 @@ func repeatChoiceKey(freq models.RepeatFreq) string {
 	return string(freq)
 }
 
-func (f *reminderForm) renderOn(env reminderFormEnv, active bool) string {
-	selected := lipgloss.NewStyle().Foreground(env.theme.Highlight).Bold(true)
+func (f *reminderForm) renderOn(env reminderFormEnv, ui chromeStyles, active bool) string {
+	selected := ui.reminder.Bold(true)
 
 	if f.freq() == models.RepeatWeekly {
 		parts := make([]string, 0, daysInWeek)
@@ -540,7 +570,9 @@ func monthlyWeekdayLabel(loc *localization.Localizer, day time.Time) string {
 	return loc.Text("remind.repeat.ordinal."+ordinal) + " " + localizedWeekdayAbbr(loc, day.Weekday())
 }
 
-func (f *reminderForm) renderPreview(env reminderFormEnv, now time.Time) string {
+// renderPreview is the month of the next occurrence with the occurrences marked, and the
+// next few of them.
+func (f *reminderForm) renderPreview(env reminderFormEnv, ui chromeStyles, now time.Time) string {
 	preview, ok := f.preview(env.tf, now)
 	month := now
 	if ok {
@@ -553,59 +585,58 @@ func (f *reminderForm) renderPreview(env reminderFormEnv, now time.Time) string 
 		occurrences = preview.Occurrences(today, today.AddDate(0, 0, reminderFormPreviewDays), now)
 	}
 
-	var b strings.Builder
-	b.WriteString(renderOccurrenceMonth(env, month, now, occurrences))
-	b.WriteString("\n\n" + lipgloss.NewStyle().Bold(true).Render(env.loc.Text("remind.form.next")) + "\n")
+	lines := renderOccurrenceMonth(env, ui, month, now, occurrences)
+	lines = append(lines, "", ui.renderSection(env.loc.Text("remind.form.next")))
 	for i, occurrence := range occurrences {
 		if i == reminderFormNextCount {
 			break
 		}
-		mark, style := "·", lipgloss.NewStyle().Foreground(env.theme.SubText)
+		style := ui.muted
 		if i == 0 {
-			mark, style = "›", lipgloss.NewStyle().Foreground(env.theme.Highlight)
+			style = ui.bold
 		}
-		when := formatReminderDue(env.loc, env.tf, occurrence.Due, occurrence.Reminder.AllDay, now)
-		fmt.Fprintf(&b, "%s %s\n", env.styles.Line.Render(mark), style.Render(when))
+		lines = append(lines, style.Render(formatReminderDue(env.loc, env.tf, occurrence.Due, occurrence.Reminder.AllDay, now)))
 	}
-	return b.String()
+	return strings.Join(lines, "\n")
 }
 
-// renderOccurrenceMonth draws the month of day with the given occurrences highlighted.
-func renderOccurrenceMonth(env reminderFormEnv, day, now time.Time, occurrences []models.ReminderOccurrence) string {
+// renderOccurrenceMonth is the month of day like the calendar's, its occurrences in the
+// reminder color.
+func renderOccurrenceMonth(env reminderFormEnv, ui chromeStyles, day, now time.Time, occurrences []models.ReminderOccurrence) []string {
 	onDay := make(map[string]bool, len(occurrences))
 	for _, occurrence := range occurrences {
 		onDay[occurrence.Key()] = true
 	}
 
-	var b strings.Builder
-	b.WriteString(env.styles.Header.Render(formatLocalizedMonthYear(env.loc, day)) + "\n\n")
-	for _, weekday := range localizedWeekdayShortNames(env.loc) {
-		b.WriteString(env.styles.Weekday.Render(weekday))
+	weekdays := make([]string, 0, daysInWeek)
+	for _, name := range localizedWeekdayShortNames(env.loc) {
+		weekdays = append(weekdays, padText(name, calendarDayCellW-1, true))
 	}
-	b.WriteString("\n")
+	lines := []string{ui.renderSection(formatLocalizedMonthYear(env.loc, day)), ui.muted.Render(strings.Join(weekdays, " "))}
 
 	first := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.Local)
 	column := mondayFirstIndex(first.Weekday())
-	b.WriteString(strings.Repeat("    ", column))
-
-	occurStyle := env.styles.Day.Foreground(env.theme.Reminder).Bold(true)
+	var week strings.Builder
+	week.WriteString(strings.Repeat(" ", column*calendarDayCellW))
 	for date := first; date.Month() == first.Month(); date = date.AddDate(0, 0, 1) {
-		style := env.styles.Day.Foreground(env.theme.SubText)
+		style := ui.muted
 		switch {
 		case sameDay(date, now):
-			style = env.styles.Today
+			style = ui.accentBold
 		case onDay[models.OccurrenceKey(date)]:
-			style = occurStyle
+			style = ui.reminder.Bold(true)
 		}
-		b.WriteString(style.Render(strconv.Itoa(date.Day())))
-
-		column++
-		if column == daysInWeek {
+		week.WriteString(style.Render(fmt.Sprintf("%3d", date.Day())) + " ")
+		if column++; column == daysInWeek {
+			lines = append(lines, week.String())
+			week.Reset()
 			column = 0
-			b.WriteString("\n")
 		}
 	}
-	return env.styles.Wrapper.Render(strings.TrimRight(b.String(), "\n"))
+	if column > 0 {
+		lines = append(lines, week.String())
+	}
+	return lines
 }
 
 // reminderFormProgram runs the form on its own, for `remind add` and `remind edit`.
@@ -684,5 +715,5 @@ func (m *reminderFormProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *reminderFormProgram) View() string {
-	return m.form.view(m.env, reminderNow(), m.width)
+	return "\n" + m.form.view(m.env, reminderNow(), m.width)
 }

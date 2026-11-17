@@ -22,6 +22,7 @@ func newEditTestModel(service *stubActivityResolver) *editModel {
 		service,
 		timeutil.NewFormatter("24"),
 		localization.MustNew(localization.LanguageEnglish),
+		DarkTheme(),
 	)
 	model.loadHistory()
 	return model
@@ -199,15 +200,18 @@ func TestEditModelViewsAreLocalized(t *testing.T) {
 	model := newEditTestModel(editListService(activity))
 
 	listView := model.View()
-	assert.Contains(t, listView, "<< Saturday, 14 Mar 2026 >> select an entry to edit")
-	assert.Contains(t, listView, "enter: edit")
+	assert.Contains(t, listView, " ≡ tock    edit ")
+	assert.Contains(t, listView, "Saturday, 14 Mar 2026 ←→")
+	assert.Contains(t, listView, "←→ day   ↑↓ entry   enter edit   q quit")
 
 	model.openForm(activity)
 	formView := model.View()
-	assert.Contains(t, formView, "Edit activity (2026-03-14)")
+	assert.Contains(t, formView, "2026-03-14-01")
+	assert.Contains(t, formView, "tock · Sat 14 Mar")
 	assert.Contains(t, formView, "Project")
 	assert.Contains(t, formView, "Notes")
-	assert.Contains(t, formView, "enter: save")
+	assert.Contains(t, formView, "empty End keeps the activity running")
+	assert.Contains(t, formView, "tab next field   enter save   ctrl+u clear field   esc back")
 }
 
 func TestEditModelNavigateJumpsToNextDayWithActivities(t *testing.T) {
@@ -219,14 +223,14 @@ func TestEditModelNavigateJumpsToNextDayWithActivities(t *testing.T) {
 
 	model := newEditTestModel(editListService(first, second))
 	model.selectedDate = first.StartTime
-	model.renderTable()
-	require.Equal(t, "review", model.activities[0].Description)
+	model.list.set(activitiesOnDay(model.allActivities, model.selectedDate))
+	require.Equal(t, "review", model.list.activities[0].Description)
 
 	model.Update(tea.KeyMsg{Type: tea.KeyRight})
 
 	assert.Equal(t, second.StartTime.Day(), model.selectedDate.Day())
-	require.Len(t, model.activities, 1)
-	assert.Equal(t, "later", model.activities[0].Description)
+	require.Len(t, model.list.activities, 1)
+	assert.Equal(t, "later", model.list.activities[0].Description)
 
 	model.Update(tea.KeyMsg{Type: tea.KeyLeft})
 	assert.Equal(t, first.StartTime.Day(), model.selectedDate.Day())
@@ -237,7 +241,7 @@ func TestNewEditModelOpensOnLatestDayWithActivities(t *testing.T) {
 	model := newEditTestModel(editListService(activity))
 
 	assert.Equal(t, activity.StartTime.Format(time.DateOnly), model.selectedDate.Format(time.DateOnly))
-	require.Len(t, model.activities, 1)
+	require.Len(t, model.list.activities, 1)
 }
 
 func TestEditModelListShowsActivityRowsAfterResize(t *testing.T) {
@@ -248,7 +252,7 @@ func TestEditModelListShowsActivityRowsAfterResize(t *testing.T) {
 	view := model.View()
 	assert.Contains(t, view, "2026-03-14-01")
 	assert.Contains(t, view, "review")
-	assert.Contains(t, view, "09:00 - 11:00")
+	assert.Regexp(t, `09:00\s+11:00\s+tock\s+review\s+2h`, view)
 }
 
 func TestBuildFormRequestKeepsLiteralBackslashesInNotes(t *testing.T) {
@@ -291,10 +295,11 @@ func TestEditModelKeepsDistinctKeysForActivitiesInTheSameMinute(t *testing.T) {
 
 	model := newEditTestModel(editListService(first, second))
 
-	rows := model.table.Rows()
-	require.Len(t, rows, 2)
-	assert.Equal(t, "2026-03-14-01", rows[0][0])
-	assert.Equal(t, "2026-03-14-02", rows[1][0])
+	model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	view := model.View()
+	assert.Contains(t, view, "2026-03-14-01")
+	assert.Contains(t, view, "2026-03-14-02")
 }
 
 func TestBuildFormRequestDeduplicatesTagsLikeTheTagCommand(t *testing.T) {

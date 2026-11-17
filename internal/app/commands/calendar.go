@@ -2,9 +2,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -22,15 +19,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var runCalendarProgram = func(model calendarModel) error {
-	program := tea.NewProgram(&model, tea.WithAltScreen())
-	_, err := program.Run()
-	if err != nil {
-		return errors.Wrap(err, "run program")
-	}
-	return nil
-}
-
 func NewCalendarCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "calendar",
@@ -43,12 +31,7 @@ func NewCalendarCmd() *cobra.Command {
 }
 
 func runCalendarCmd(cmd *cobra.Command) error {
-	rt := getRuntime(cmd)
-	model := initialCalendarModel(rt.ActivityService, rt.Config, rt.TimeFormatter, getLocalizer(cmd), rt.TagColors)
-	if rt.ReminderService != nil {
-		model.withReminders(rt.ReminderService, defaultSnooze(cmd))
-	}
-	return runCalendarProgram(model)
+	return runTUI(cmd, tabCalendar, periodDaily)
 }
 
 type calendarModel struct {
@@ -59,12 +42,17 @@ type calendarModel struct {
 	viewDate     time.Time              // The month currently being viewed
 	monthReports map[int]*models.Report // Cache for daily reports in the month (day -> report)
 	dailyReports map[string]*models.Report
-	viewport     viewport.Model
+	running      []models.Activity // activities running when the month was loaded
+	viewport     viewport.Model    // the day column
 	ready        bool
 	width        int
 	height       int
+	layout       calendarLayout
+	sel          daySelection
+	monthOpen    bool // the month over the day, on terminals too narrow for both
 	err          error
-	styles       Styles
+	tabs         tabStrip
+	ui           chromeStyles
 	theme        Theme
 	loc          *localization.Localizer
 	rem          calendarReminders
@@ -100,254 +88,78 @@ func initialCalendarModel(
 		viewDate:     now,
 		monthReports: make(map[int]*models.Report),
 		dailyReports: make(map[string]*models.Report),
-		styles:       InitStyles(theme),
+		tabs:         singleTab(loc.Text("tui.tab.calendar")),
+		ui:           newChromeStyles(theme),
 		theme:        theme,
 		loc:          loc,
 	}
 }
 
+func (m *calendarModel) setTabs(tabs tabStrip) { m.tabs = tabs }
+
+// modal reports whether the reminder form or the delete prompt is open.
+func (m *calendarModel) modal() bool {
+	return m.rem.form != nil || m.rem.pendingDelete != nil
+}
+
+func (m *calendarModel) refresh() tea.Cmd { return m.fetchMonthData }
+
+// calendarTickMsg redraws the calendar each minute, so running time stays current.
+type calendarTickMsg struct{}
+
+func calendarTick() tea.Cmd {
+	return tea.Every(time.Minute, func(time.Time) tea.Msg { return calendarTickMsg{} })
+}
+
 func (m *calendarModel) Init() tea.Cmd {
-	return m.fetchMonthData
+	return tea.Batch(m.fetchMonthData, calendarTick())
 }
 
 func (m *calendarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		var handled bool
-		if cmd, handled = m.handleKeyMsg(msg); handled {
+		if cmd, handled := m.handleKeyMsg(msg); handled {
 			return m, cmd
 		}
 
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-
-		var detailsWidth int
-
-		//nolint:gocritic // nested ifs for clarity
-		if msg.Width >= 120 {
-			detailsWidth = msg.Width - 33 - 44 - 4 // Calendar(33) + Sidebar(44) + DetailsOverhead(4)
-		} else if msg.Width >= 70 {
-			detailsWidth = msg.Width - 33 - 4 // Calendar(33) + DetailsOverhead(4)
-		} else {
-			detailsWidth = msg.Width - 4 // DetailsOverhead(4)
-		}
-
-		if !m.ready {
-			m.viewport = viewport.New(detailsWidth, msg.Height-5)
-			m.ready = true
-		} else {
-			m.viewport.Width = detailsWidth
-			m.viewport.Height = msg.Height - 5
-		}
-		m.updateViewportContent()
+		m.resize(msg.Width, msg.Height)
 
 	case monthDataMsg:
 		m.monthReports = msg.monthReports
 		m.dailyReports = msg.dailyReports
-		m.rem.data = msg.reminders
+		m.running = msg.running
+		m.rem.data, m.rem.next = msg.reminders, nextMemo{}
 		m.updateViewportContent()
+
+	case calendarTickMsg:
+		m.updateViewportContent()
+		return m, calendarTick()
 
 	case errMsg:
 		m.err = msg.err
 	}
 
+	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	return m, cmd
 }
 
-func (m *calendarModel) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("Error: %v", m.err)
-	}
+// resize lays the calendar out anew for the terminal size.
+func (m *calendarModel) resize(width, height int) {
+	m.width, m.height = width, height
+	m.layout = newCalendarLayout(width, height)
 	if !m.ready {
-		return m.loc.Format("calendar.initializing")
-	}
-	if m.rem.form != nil {
-		return m.rem.form.view(m.rem.env, reminderNow(), m.width)
-	}
-
-	detailsView := m.renderDetails()
-
-	if m.width >= 120 {
-		calendarView := m.renderCalendar()
-		sidebarView := m.renderSidebar()
-		return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView, sidebarView)
-	} else if m.width >= 70 {
-		calendarView := m.renderCalendar()
-		return lipgloss.JoinHorizontal(lipgloss.Top, calendarView, detailsView)
-	}
-
-	return detailsView
-}
-
-func (m *calendarModel) renderCalendar() string {
-	var b strings.Builder
-	now := time.Now()
-
-	// Month Header
-	header := formatLocalizedMonthYear(m.loc, m.viewDate)
-	b.WriteString(m.styles.Header.Render(header) + "\n\n")
-
-	// Weekday headers
-	for _, weekday := range localizedWeekdayShortNames(m.loc) {
-		b.WriteString(m.styles.Weekday.Render(weekday))
-	}
-	b.WriteString("\n")
-
-	// Calendar grid
-	firstDay := time.Date(m.viewDate.Year(), m.viewDate.Month(), 1, 0, 0, 0, 0, time.Local)
-	weekday := int(firstDay.Weekday())
-	if weekday == 0 {
-		weekday = 7
-	}
-	weekday-- // Mon=0
-
-	// Padding
-	for range weekday {
-		b.WriteString("    ")
-	}
-
-	daysInMonth := time.Date(m.viewDate.Year(), m.viewDate.Month()+1, 0, 0, 0, 0, 0, time.Local).Day()
-	for day := 1; day <= daysInMonth; day++ {
-		date := time.Date(m.viewDate.Year(), m.viewDate.Month(), day, 0, 0, 0, 0, time.Local)
-
-		isToday := date.Year() == now.Year() && date.Month() == now.Month() && date.Day() == now.Day()
-		isSelected := date.Year() == m.currentDate.Year() && date.Month() == m.currentDate.Month() && date.Day() == m.currentDate.Day()
-		hasActivity := false
-		if report, ok := m.monthReports[day]; ok && report.TotalDuration > 0 {
-			hasActivity = true
-		}
-
-		var cellStyle lipgloss.Style
-
-		switch {
-		case isToday:
-			cellStyle = m.styles.Today
-		case isSelected:
-			cellStyle = m.styles.Selected
-		default:
-			cellStyle = m.styles.Day
-			if hasActivity {
-				cellStyle = cellStyle.Foreground(m.styles.Dot.GetForeground()).Bold(true)
-			} else {
-				cellStyle = cellStyle.Foreground(m.styles.Weekday.GetForeground())
-			}
-		}
-
-		if hasActivity && (isToday || isSelected) {
-			cellStyle = cellStyle.Underline(true)
-		}
-
-		b.WriteString(m.renderDayCell(cellStyle, date, now))
-
-		weekday++
-		if weekday > 6 {
-			weekday = 0
-			b.WriteString("\n")
-		}
-	}
-	b.WriteString("\n\n")
-	b.WriteString(m.calendarHelp())
-
-	return m.styles.Wrapper.Render(b.String())
-}
-
-func (m *calendarModel) renderDetails() string {
-	var detailsWidth int
-
-	//nolint:gocritic // nested ifs for clarity
-	if m.width >= 120 {
-		detailsWidth = m.width - 33 - 44 - 4
-	} else if m.width >= 70 {
-		detailsWidth = m.width - 33 - 4
+		m.viewport = viewport.New(m.layout.dayW, m.layout.bodyH)
+		m.ready = true
 	} else {
-		detailsWidth = m.width - 4
+		m.viewport.Width = m.layout.dayW
+		m.viewport.Height = m.layout.bodyH
 	}
-
-	return lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(m.theme.Faint).
-		Padding(0, 1).
-		Width(detailsWidth).
-		Height(m.height - 2).
-		Render(m.viewport.View())
-}
-
-func (m *calendarModel) updateViewportContent() {
-	report, ok := m.reportForDate(m.currentDate)
-
-	var b strings.Builder
-
-	dateStr := formatLocalizedLongDate(m.loc, m.currentDate)
-	b.WriteString(m.styles.DetailsHeader.Render(dateStr) + "\n\n")
-
-	var dayActivities []models.Activity
-	if ok && report != nil {
-		dayActivities = report.Activities
+	if !m.layout.dayOnly() {
+		m.monthOpen = false
 	}
-	hasReminders := m.writeReminderSection(&b, dayActivities)
-
-	if !ok || report == nil || report.TotalDuration == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(m.styles.Weekday.GetForeground()).Render(m.loc.Text("calendar.no_events")))
-		m.viewport.SetContent(b.String())
-		return
-	}
-
-	activities := make([]models.Activity, len(report.Activities))
-	copy(activities, report.Activities)
-	sort.Slice(activities, func(i, j int) bool {
-		return activities[i].StartTime.Before(activities[j].StartTime)
-	})
-
-	if hasReminders {
-		b.WriteString(m.styles.Header.UnsetWidth().UnsetAlign().Render(m.loc.Text("calendar.tracked")) + "  " +
-			lipgloss.NewStyle().Foreground(m.theme.SubText).Render(m.trackedEntries(len(activities))) + "\n\n")
-	}
-
-	for i, act := range activities {
-		m.renderActivityEntry(&b, act, i == len(activities)-1)
-	}
-
-	totalFormat := m.config.Calendar.TimeTotalFormat
-	totalDurStr := timeutil.FormatDuration(report.TotalDuration.Round(time.Minute), totalFormat)
-
-	if m.config.Calendar.AlignDurationLeft {
-		b.WriteString(lipgloss.NewStyle().
-			Foreground(m.styles.Weekday.GetForeground()).
-			Render(fmt.Sprintf("%s Total", totalDurStr)))
-	} else {
-		b.WriteString(lipgloss.NewStyle().
-			Foreground(m.styles.Weekday.GetForeground()).
-			Render(fmt.Sprintf("Total: %s", totalDurStr)))
-	}
-	b.WriteString("\n")
-
-	// Project breakdown
-	type pStat struct {
-		Name     string
-		Duration time.Duration
-	}
-	var stats []pStat
-	for name, pr := range report.ByProject {
-		stats = append(stats, pStat{Name: name, Duration: pr.Duration})
-	}
-	sort.Slice(stats, func(i, j int) bool {
-		return stats[i].Duration > stats[j].Duration
-	})
-
-	for _, s := range stats {
-		b.WriteString(m.formatProjectStat(s.Name, s.Duration))
-	}
-
-	m.viewport.SetContent(b.String())
+	m.updateViewportContent()
 }
 
 type tagColorScope string
@@ -418,155 +230,12 @@ func (m *calendarModel) tagBarStyle(base lipgloss.Style, name string, scope tagC
 	return base
 }
 
-// renderTagLine renders the project name followed by an optional bracketed tag list.
-func (m *calendarModel) renderTagLine(act models.Activity) string {
-	projectLine := m.tagColorStyle(m.styles.Project, act.Project, tagColorScopeCalendar).Render(act.Project)
-	if len(act.Tags) == 0 {
-		return projectLine
-	}
-	tagParts := make([]string, 0, len(act.Tags))
-	for _, tag := range act.Tags {
-		tagParts = append(tagParts, m.tagColorStyle(lipgloss.NewStyle().Foreground(m.theme.Tag), tag, tagColorScopeCalendar).Render(tag))
-	}
-	return projectLine + " [" + strings.Join(tagParts, ", ") + "]"
-}
-
-// renderActivityEntry writes one activity block (rows 1–4 + spacer) into b.
-func (m *calendarModel) renderActivityEntry(b *strings.Builder, act models.Activity, isLast bool) {
-	startFormat := m.config.Calendar.TimeStartFormat
-	if startFormat == "" {
-		startFormat = m.timeFormat.GetDisplayFormat()
-	}
-	start := act.StartTime.Format(startFormat)
-
-	line := "│"
-	lineStyle := m.styles.Line
-
-	durStr := timeutil.FormatDuration(act.Duration(), m.config.Calendar.TimeSpentFormat)
-	if act.EndTime != nil {
-		if m.config.Calendar.TimeEndFormat != "" {
-			durStr += act.EndTime.Format(m.config.Calendar.TimeEndFormat)
-		} else {
-			durStr += fmt.Sprintf(" • %s", act.EndTime.Format(m.timeFormat.GetDisplayFormat()))
-		}
-	}
-
-	// Row 1: time | dot | project [tags]
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-		m.styles.Time.Width(9).Align(lipgloss.Right).Render(start),
-		"  ",
-		m.styles.Dot.Render("●"),
-		"  ",
-		m.renderTagLine(act),
-	) + "\n")
-
-	// Row 2: description (word-wrapped)
-	if act.Description != "" {
-		availWidth := m.viewport.Width - 14 - 2
-		for _, dl := range wrapText(act.Description, availWidth) {
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(9).Render(""),
-				"  ",
-				lineStyle.Render(line),
-				"  ",
-				m.styles.Desc.Render(dl),
-			) + "\n")
-		}
-	}
-
-	// Row 3: duration
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(9).Render(""),
-		"  ",
-		lineStyle.Render(line),
-		"  ",
-		m.styles.Duration.Render(durStr),
-	) + "\n")
-
-	// Row 4: notes (word-wrapped)
-	if act.Notes != "" {
-		notes := strings.ReplaceAll(act.Notes, "\n", " ")
-		availWidth := m.viewport.Width - 14 - 2
-		for _, nl := range wrapText(notes, availWidth) {
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-				lipgloss.NewStyle().Width(9).Render(""),
-				"  ",
-				lineStyle.Render(line),
-				"  ",
-				lipgloss.NewStyle().Faint(true).Render(nl),
-			) + "\n")
-		}
-	}
-
-	// Spacer
-	if !isLast {
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.NewStyle().Width(9).Render(""),
-			"  ",
-			lineStyle.Render(line),
-		) + "\n")
-	} else {
-		b.WriteString("\n")
-	}
-}
-
-func (m *calendarModel) formatProjectStat(name string, duration time.Duration) string {
-	dur := timeutil.FormatDuration(duration, m.config.Calendar.TimeSpentFormat)
-	projectStyle := m.tagColorStyle(m.styles.Project, name, tagColorScopeCalendar)
-	if m.config.Calendar.AlignDurationLeft {
-		return fmt.Sprintf("%s %s\n",
-			m.styles.Duration.Render(dur),
-			projectStyle.Render(name),
-		)
-	}
-	return fmt.Sprintf("- %s: %s\n",
-		projectStyle.Render(name),
-		m.styles.Duration.Render(dur),
-	)
-}
-
-// wrapText splits text into lines of at most maxWidth runes, breaking at word boundaries.
-func wrapText(text string, maxWidth int) []string {
-	if maxWidth <= 0 {
-		return []string{text}
-	}
-	words := strings.Fields(text)
-	if len(words) == 0 {
-		return []string{""}
-	}
-
-	var lines []string
-	var current strings.Builder
-	currentLen := 0
-
-	for _, word := range words {
-		wordLen := len([]rune(word))
-		switch {
-		case currentLen == 0:
-			current.WriteString(word)
-			currentLen = wordLen
-		case currentLen+1+wordLen <= maxWidth:
-			current.WriteString(" ")
-			current.WriteString(word)
-			currentLen += 1 + wordLen
-		default:
-			lines = append(lines, current.String())
-			current.Reset()
-			current.WriteString(word)
-			currentLen = wordLen
-		}
-	}
-	if currentLen > 0 {
-		lines = append(lines, current.String())
-	}
-	return lines
-}
-
 // Messages and Commands
 
 type monthDataMsg struct {
 	monthReports map[int]*models.Report
 	dailyReports map[string]*models.Report
+	running      []models.Activity
 	reminders    reminderData
 }
 
@@ -601,8 +270,15 @@ func (m *calendarModel) fetchMonthData() tea.Msg {
 		return errMsg{err}
 	}
 
+	var running []models.Activity
+	for _, activity := range report.Activities {
+		if activity.EndTime == nil {
+			running = append(running, activity)
+		}
+	}
+
 	data := insights.BuildMonthData(report.Activities, year, month, time.Now())
-	return monthDataMsg{monthReports: data.MonthReports, dailyReports: data.DailyReports, reminders: reminders}
+	return monthDataMsg{monthReports: data.MonthReports, dailyReports: data.DailyReports, running: running, reminders: reminders}
 }
 
 func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
@@ -610,61 +286,52 @@ func (m *calendarModel) reportForDate(date time.Time) (*models.Report, bool) {
 	return report, ok
 }
 
-// getWeeklyDuration calculates the total duration for the current week (Monday to Sunday)
-// based on the selected date. Fetches directly from service to handle cross-month weeks.
+// handleKeyMsg routes a key to the reminder form or prompt, the selected row, then the calendar.
 func (m *calendarModel) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 	if cmd, handled := m.handleReminderKey(msg); handled {
 		return cmd, true
 	}
+	if m.handleSelectionKey(msg) {
+		return nil, true
+	}
+	return m.handleNavigationKey(msg)
+}
+
+// handleNavigationKey moves through days, weeks and months, and quits.
+func (m *calendarModel) handleNavigationKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.String() {
 	case "q", keyCtrlC, keyEsc:
 		return tea.Quit, true
 	case keyLeft, "h":
-		m.currentDate = m.currentDate.AddDate(0, 0, -1)
-		if m.currentDate.Month() != m.viewDate.Month() {
-			m.viewDate = m.currentDate
-			return m.fetchMonthData, true
-		}
-		m.updateViewportContent()
-		return nil, true
+		return m.moveDate(m.currentDate.AddDate(0, 0, -1)), true
 	case keyRight, "l":
-		m.currentDate = m.currentDate.AddDate(0, 0, 1)
-		if m.currentDate.Month() != m.viewDate.Month() {
-			m.viewDate = m.currentDate
-			return m.fetchMonthData, true
-		}
-		m.updateViewportContent()
-		return nil, true
+		return m.moveDate(m.currentDate.AddDate(0, 0, 1)), true
 	case "up":
-		m.currentDate = m.currentDate.AddDate(0, 0, -7)
-		if m.currentDate.Month() != m.viewDate.Month() {
-			m.viewDate = m.currentDate
-			return m.fetchMonthData, true
-		}
-		m.updateViewportContent()
-		return nil, true
+		return m.moveDate(m.currentDate.AddDate(0, 0, -7)), true
 	case keyDown:
-		m.currentDate = m.currentDate.AddDate(0, 0, 7)
-		if m.currentDate.Month() != m.viewDate.Month() {
-			m.viewDate = m.currentDate
-			return m.fetchMonthData, true
-		}
-		m.updateViewportContent()
-		return nil, true
-	case "j":
-		m.viewport.LineDown(1) //nolint:staticcheck //it's deprecated but still works
-		return nil, true
-	case "k":
-		m.viewport.LineUp(1) //nolint:staticcheck //it's deprecated but still works
-		return nil, true
+		return m.moveDate(m.currentDate.AddDate(0, 0, 7)), true
 	case "n": // Next month
 		m.viewDate = m.viewDate.AddDate(0, 1, 0)
 		m.currentDate = m.viewDate
+		m.sel = daySelection{}
 		return m.fetchMonthData, true
 	case "p": // Previous month
 		m.viewDate = m.viewDate.AddDate(0, -1, 0)
 		m.currentDate = m.viewDate
+		m.sel = daySelection{}
 		return m.fetchMonthData, true
 	}
 	return nil, false
+}
+
+// moveDate selects another day, loading its month when it is not on screen.
+func (m *calendarModel) moveDate(date time.Time) tea.Cmd {
+	m.currentDate = date
+	m.sel = daySelection{}
+	if date.Year() != m.viewDate.Year() || date.Month() != m.viewDate.Month() {
+		m.viewDate = date
+		return m.fetchMonthData
+	}
+	m.updateViewportContent()
+	return nil
 }

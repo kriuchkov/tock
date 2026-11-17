@@ -3,11 +3,11 @@ package commands
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-faster/errors"
@@ -29,32 +29,12 @@ const (
 	remindViewCount
 )
 
-const (
-	// remindViewBlankLines are the blank lines around the table plus one spare line.
-	remindViewBlankLines   = 3
-	remindDetailsNextCount = 4
-	remindPink             = lipgloss.Color("212")
-	remindStatusOK         = lipgloss.Color("120")
-)
-
-var runRemindProgram = func(model *remindModel) error {
-	program := tea.NewProgram(model, tea.WithAltScreen())
-	if _, err := program.Run(); err != nil {
-		return errors.Wrap(err, "run program")
-	}
-	return nil
-}
-
+// runRemindTUI opens the TUI on the reminders tab.
 func runRemindTUI(cmd *cobra.Command) error {
-	svc, err := getReminderService(cmd)
-	if err != nil {
+	if _, err := getReminderService(cmd); err != nil {
 		return err
 	}
-	rt := getRuntime(cmd)
-	model := newRemindModel(cmd.Context(), svc, rt.ActivityService,
-		newReminderFormEnv(rt.Localizer, rt.TimeFormatter, GetTheme(rt.Config.Theme)), defaultSnooze(cmd))
-	model.reload()
-	return runRemindProgram(model)
+	return runTUI(cmd, tabReminders, periodDaily)
 }
 
 type remindModel struct {
@@ -69,7 +49,11 @@ type remindModel struct {
 	rows    []models.ReminderOccurrence
 	tracked []models.Activity
 	overdue int
-	table   table.Model
+	next    nextMemo
+	// cursor is the selected row; offset the first line of the body on screen, page its height.
+	cursor int
+	offset int
+	page   int
 
 	form          *reminderForm
 	pendingDelete *models.ReminderOccurrence
@@ -78,6 +62,8 @@ type remindModel struct {
 	err           error
 	width         int
 	height        int
+	tabs          tabStrip
+	ui            chromeStyles
 }
 
 func newRemindModel(
@@ -88,38 +74,62 @@ func newRemindModel(
 	snooze time.Duration,
 ) *remindModel {
 	day, _ := timeutil.LocalDayBounds(reminderNow())
-	m := &remindModel{ctx: ctx, svc: svc, activities: activities, env: env, snooze: snooze, day: day}
-	loc := env.loc
-	m.table = newActivityTable([]table.Column{
-		{Title: loc.Text("remind.table.id"), Width: 4},
-		{Title: loc.Text("remind.table.due"), Width: 18},
-		{Title: loc.Text("remind.table.title"), Width: 24},
-		{Title: loc.Text("remind.table.repeat"), Width: 22},
-		{Title: loc.Text("remind.table.project"), Width: 12},
-		{Title: loc.Text("remind.table.tags"), Width: 14},
-		{Title: loc.Text("remind.table.status"), Width: 20},
-	}, defaultDailyTableHeight)
+	m := &remindModel{
+		ctx: ctx, svc: svc, activities: activities, env: env, snooze: snooze, day: day,
+		tabs: singleTab(env.loc.Text("tui.tab.reminders")),
+		ui:   newChromeStyles(env.theme),
+	}
 	return m
 }
 
+// remindQuery is what a reload reads: the rows of a view and its day, as of now.
+type remindQuery struct {
+	view remindView
+	day  time.Time
+	now  time.Time
+}
+
+// remindLoaded is what a reload found; a refresh sends it from the background.
+type remindLoaded struct {
+	query   remindQuery
+	rows    []models.ReminderOccurrence
+	tracked []models.Activity
+	overdue int
+	err     error
+}
+
+func (m *remindModel) query() remindQuery {
+	return remindQuery{view: m.view, day: m.day, now: reminderNow()}
+}
+
+// reload reads the rows of the view again, keeping the selection on the same occurrence.
 func (m *remindModel) reload() {
-	now := reminderNow()
+	m.apply(m.load(m.query()))
+}
+
+// load reads the rows of q. It only uses the services, so it can run in the background.
+func (m *remindModel) load(q remindQuery) remindLoaded {
+	overdue, err := m.svc.Overdue(m.ctx, q.now)
+	if err != nil {
+		return remindLoaded{query: q, err: errors.Wrap(err, "list overdue reminders")}
+	}
+	rows, err := m.loadRows(q, overdue)
+	if err != nil {
+		return remindLoaded{query: q, err: err}
+	}
+	rows = sortReminderRows(rows, q.now)
+	return remindLoaded{query: q, rows: rows, tracked: m.loadTracked(rows), overdue: len(overdueOnly(overdue, q.now))}
+}
+
+// apply shows what a reload found.
+func (m *remindModel) apply(loaded remindLoaded) {
+	if loaded.err != nil {
+		m.err = loaded.err
+		return
+	}
 	selected, hadSelection := m.selected()
-
-	overdue, err := m.svc.Overdue(m.ctx, now)
-	if err != nil {
-		m.err = errors.Wrap(err, "list overdue reminders")
-		return
-	}
-	m.overdue = len(overdueOnly(overdue, now))
-
-	m.rows, err = m.loadRows(overdue, now)
-	if err != nil {
-		m.err = err
-		return
-	}
-	m.tracked = m.loadTracked()
-	m.renderTable(now)
+	m.rows, m.tracked, m.overdue, m.next = loaded.rows, loaded.tracked, loaded.overdue, nextMemo{}
+	m.cursor = min(m.cursor, max(len(m.rows)-1, 0))
 	if hadSelection {
 		m.keepSelection(occurrenceID(selected))
 	}
@@ -130,14 +140,15 @@ func (m *remindModel) reload() {
 func (m *remindModel) keepSelection(id string) {
 	for i, row := range m.rows {
 		if occurrenceID(row) == id {
-			m.table.SetCursor(i)
+			m.cursor = i
 			return
 		}
 	}
 }
 
-func (m *remindModel) loadRows(overdue []models.ReminderOccurrence, now time.Time) ([]models.ReminderOccurrence, error) {
-	switch m.view {
+func (m *remindModel) loadRows(q remindQuery, overdue []models.ReminderOccurrence) ([]models.ReminderOccurrence, error) {
+	now := q.now
+	switch q.view {
 	case remindViewOverdue:
 		return overdueOnly(overdue, now), nil
 	case remindViewAll:
@@ -160,9 +171,9 @@ func (m *remindModel) loadRows(overdue []models.ReminderOccurrence, now time.Tim
 	case remindViewDay, remindViewWeek, remindViewCount:
 	}
 
-	from := m.day
+	from := q.day
 	to := from.AddDate(0, 0, 1)
-	if m.view == remindViewWeek {
+	if q.view == remindViewWeek {
 		to = from.AddDate(0, 0, defaultReminderListDays)
 	}
 	occurrences, err := m.svc.Occurrences(m.ctx, from, to, now)
@@ -178,9 +189,9 @@ func (m *remindModel) loadRows(overdue []models.ReminderOccurrence, now time.Tim
 }
 
 // loadTracked reads the activities started from the listed occurrences, for "tracked 15m".
-func (m *remindModel) loadTracked() []models.Activity {
+func (m *remindModel) loadTracked(rows []models.ReminderOccurrence) []models.Activity {
 	var from, to time.Time
-	for _, row := range m.rows {
+	for _, row := range rows {
 		start := row.State.ActivityStart
 		if start == nil {
 			continue
@@ -204,46 +215,54 @@ func (m *remindModel) loadTracked() []models.Activity {
 	return activities
 }
 
-func (m *remindModel) renderTable(now time.Time) {
-	loc, tf := m.env.loc, m.env.tf
-	rows := make([]table.Row, 0, len(m.rows))
-	for _, occurrence := range m.rows {
-		reminder := occurrence.Reminder
-		due := formatReminderDue(loc, tf, occurrence.Due, reminder.AllDay, now)
-		if m.view == remindViewDay && sameDay(occurrence.Due, m.day) {
-			due = formatReminderClock(loc, tf, occurrence.Due, reminder.AllDay)
+// sortReminderRows puts the overdue occurrences first, then the others by when they are due.
+func sortReminderRows(rows []models.ReminderOccurrence, now time.Time) []models.ReminderOccurrence {
+	sorted := slices.Clone(rows)
+	slices.SortStableFunc(sorted, func(a, b models.ReminderOccurrence) int {
+		aOverdue, bOverdue := a.Status(now) == models.ReminderOverdue, b.Status(now) == models.ReminderOverdue
+		switch {
+		case aOverdue != bOverdue:
+			if aOverdue {
+				return -1
+			}
+			return 1
+		case !sameDay(a.Due, b.Due):
+			return a.Due.Compare(b.Due)
 		}
-		rows = append(rows, table.Row{
-			strconv.Itoa(reminder.ID),
-			due,
-			reminder.Title,
-			orDash(formatRepeat(loc, reminder)),
-			reminder.Project,
-			strings.Join(reminder.Tags, ", "),
-			formatReminderStatusLine(loc, tf, occurrence, now, trackedDuration(occurrence, m.tracked)),
-		})
-	}
-	m.table.SetRows(rows)
-	if cursor := m.table.Cursor(); cursor < 0 || cursor >= len(rows) {
-		m.table.SetCursor(max(len(rows)-1, 0))
-	}
+		return 0
+	})
+	return sorted
 }
 
 func (m *remindModel) selected() (models.ReminderOccurrence, bool) {
-	cursor := m.table.Cursor()
-	if cursor < 0 || cursor >= len(m.rows) {
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
 		return models.ReminderOccurrence{}, false
 	}
-	return m.rows[cursor], true
+	return m.rows[m.cursor], true
 }
 
 func (m *remindModel) Init() tea.Cmd { return nil }
+
+func (m *remindModel) setTabs(tabs tabStrip) { m.tabs = tabs }
+
+// modal reports whether the form or the delete prompt is open.
+func (m *remindModel) modal() bool { return m.form != nil || m.pendingDelete != nil }
+
+// refresh reloads in the background, so switching to the tab does not wait on the reminders.
+func (m *remindModel) refresh() tea.Cmd {
+	q := m.query()
+	return func() tea.Msg { return m.load(q) }
+}
 
 func (m *remindModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.table.SetWidth(msg.Width - dailyViewHorizontalPadding)
+	case remindLoaded:
+		// A refresh for a view or day since left is dropped.
+		if msg.query.view == m.view && msg.query.day.Equal(m.day) {
+			m.apply(msg)
+		}
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
@@ -265,10 +284,10 @@ func (m *remindModel) handleKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "q", keyEsc:
 		return tea.Quit
-	case "tab":
+	case keyTab:
 		m.view = (m.view + 1) % remindViewCount
 		m.reload()
-	case "shift+tab":
+	case keyShiftTab:
 		m.view = (m.view + remindViewCount - 1) % remindViewCount
 		m.reload()
 	case keyLeft, "h":
@@ -285,7 +304,7 @@ func (m *remindModel) handleKey(msg tea.KeyMsg) tea.Cmd {
 		if occurrence, ok := m.selected(); ok {
 			m.form = newReminderFormFromReminder(m.env.tf, occurrence.Reminder)
 		}
-	case " ", "space":
+	case " ", keySpace:
 		m.toggleDone()
 	case "s":
 		m.track()
@@ -296,9 +315,7 @@ func (m *remindModel) handleKey(msg tea.KeyMsg) tea.Cmd {
 			m.pendingDelete = &occurrence
 		}
 	default:
-		var cmd tea.Cmd
-		m.table, cmd = m.table.Update(msg)
-		return cmd
+		m.cursor, _ = moveCursor(msg.String(), m.cursor, len(m.rows), m.page)
 	}
 	return nil
 }
@@ -421,122 +438,137 @@ func (m *remindModel) View() string {
 		return fmt.Sprintf("Error: %v", m.err)
 	}
 	now := reminderNow()
+	header := m.ui.renderHeader(m.header(now), m.width)
 	if m.form != nil {
-		return m.form.view(m.env, now, m.width)
+		return renderScreen(header+"\n", m.form.view(m.env, now, m.width), "", m.width, m.height)
 	}
 
-	header, footer := m.renderHeader(), m.footer()
-	var details string
-	if occurrence, ok := m.selected(); ok {
-		details = m.renderDetails(occurrence, now)
+	labels := []string{
+		m.env.loc.Text("remind.tui.view.day"),
+		m.env.loc.Text("remind.tui.view.week"),
+		m.env.loc.Format("remind.tui.view.overdue", m.overdue),
+		m.env.loc.Text("remind.tui.view.all"),
 	}
-	m.fitTable(header, details, footer)
+	top := header + "\n" + m.ui.renderViewLine(m.env.loc.Text("tui.view"), labels, int(m.view), keyTab) + "\n"
+	bottom := "\n" + m.footer()
+	if m.height >= calendarFocusMinH {
+		bottom = m.ui.renderFocusBox(m.focusLines(now), m.width) + "\n" + m.footer()
+	}
+	bodyH := m.height - lipgloss.Height(top) - lipgloss.Height(bottom)
+	return renderScreen(top, m.body(now, bodyH), bottom, m.width, m.height)
+}
 
-	body := m.table.View()
+// body is the rows under their sections, scrolled so the selected one is on screen.
+func (m *remindModel) body(now time.Time, height int) string {
 	if len(m.rows) == 0 {
-		body = lipgloss.NewStyle().Foreground(m.env.theme.SubText).Render(m.env.loc.Text("remind.list.empty"))
+		return " " + m.ui.muted.Render(m.env.loc.Text("remind.list.empty"))
 	}
-
-	sections := []string{header, "", body, ""}
-	if details != "" {
-		sections = append(sections, details, "")
+	lines, selectedLine := m.bodyLines(now)
+	if height <= 0 {
+		return strings.Join(lines, "\n")
 	}
-	sections = append(sections, footer)
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	if m.cursor == 0 {
+		// The first row keeps its section title in sight.
+		selectedLine = 0
+	}
+	m.offset, m.page = scrollOffset(m.offset, selectedLine, height, len(lines)), height
+	return strings.Join(lines[m.offset:min(len(lines), m.offset+height)], "\n")
 }
 
-// fitTable gives the table the lines the rest of the view leaves free. The details box and the
-// footer grow with notes and a status line, so the chrome is measured rather than assumed;
-// one line is kept spare.
-func (m *remindModel) fitTable(header, details, footer string) {
-	if m.height <= 0 {
-		return
+// bodyLines are the sections of the rows: the overdue ones, then one per day; selectedLine is
+// the line of the selected row.
+func (m *remindModel) bodyLines(now time.Time) ([]string, int) {
+	rows := newReminderRows(m.ui, m.env.loc, m.env.tf)
+	var lines []string
+	selectedLine := 0
+	for start := 0; start < len(m.rows); {
+		overdue := m.rows[start].Status(now) == models.ReminderOverdue
+		end := start + 1
+		for end < len(m.rows) && m.sameSection(m.rows[start], m.rows[end], overdue, now) {
+			end++
+		}
+		if start > 0 {
+			lines = append(lines, "")
+		}
+		lines = append(lines, " "+m.sectionTitle(m.rows[start], overdue, end-start, now))
+
+		day := m.rows[start].Due
+		if overdue {
+			day = now
+		}
+		opts := reminderRowOpts{day: day, notes: true, notify: true}
+		for i := start; i < end; i++ {
+			if i == m.cursor {
+				selectedLine = len(lines)
+			}
+			lines = append(lines, rows.row(m.rows[i], trackedDuration(m.rows[i], m.tracked), now, i == m.cursor, m.width, opts))
+		}
+		start = end
 	}
-	chrome := lipgloss.Height(header) + lipgloss.Height(footer) + remindViewBlankLines
-	if details != "" {
-		chrome += lipgloss.Height(details) + 1
-	}
-	m.table.SetHeight(fitTableHeight(m.height, chrome, defaultDailyTableHeight))
+	return lines, selectedLine
 }
 
-func (m *remindModel) renderHeader() string {
+func (m *remindModel) sameSection(first, next models.ReminderOccurrence, overdue bool, now time.Time) bool {
+	if overdue {
+		return next.Status(now) == models.ReminderOverdue
+	}
+	return sameDay(first.Due, next.Due)
+}
+
+// sectionTitle is "OVERDUE · 2", "TODAY · MON 16 NOV · 3" or "WED 18 NOV · 1".
+func (m *remindModel) sectionTitle(first models.ReminderOccurrence, overdue bool, count int, now time.Time) string {
 	loc := m.env.loc
-	pink := lipgloss.NewStyle().Bold(true).Foreground(remindPink)
-	faint := lipgloss.NewStyle().Foreground(m.env.theme.SubText)
+	if overdue {
+		return m.ui.renderSection(loc.Text("remind.tui.section.overdue"), strconv.Itoa(count))
+	}
+	day := strings.ToUpper(formatReminderDay(loc, first.Due, now))
+	switch {
+	case sameDay(first.Due, now):
+		return m.ui.renderSection(loc.Text("calendar.upcoming.today"), day, strconv.Itoa(count))
+	case sameDay(first.Due, now.AddDate(0, 0, 1)):
+		return m.ui.renderSection(loc.Text("calendar.upcoming.tomorrow"), day, strconv.Itoa(count))
+	}
+	return m.ui.renderSection(day, strconv.Itoa(count))
+}
 
-	var title string
+// focusLines are the details of the selected reminder.
+func (m *remindModel) focusLines(now time.Time) []string {
+	label := m.ui.mutedBold.Render(m.env.loc.Text("calendar.focus") + "  ")
+	occurrence, ok := m.selected()
+	if !ok {
+		return []string{label + m.ui.muted.Render(m.env.loc.Text("remind.tui.focus.hint"))}
+	}
+	rows := newReminderRows(m.ui, m.env.loc, m.env.tf)
+	rows.next = &m.next
+	return rows.focus(label, occurrence, now)
+}
+
+// header names what the view shows: the day, the week, or all reminders; the ruler counts
+// the overdue ones.
+func (m *remindModel) header(now time.Time) screenHeader {
+	loc := m.env.loc
+	h := screenHeader{tabs: m.tabs.names, active: m.tabs.active, title: loc.Text("remind.tui.title")}
 	switch m.view {
 	case remindViewDay:
-		title = loc.Format("list.header", formatLocalizedLongDateShortMonth(loc, m.day))
+		h.title, h.hint = formatReminderDay(loc, m.day, now), "←→"
 	case remindViewWeek:
-		title = loc.Format("list.header", loc.Format("list.period.week_of", formatReminderDate(loc, m.day)))
+		h.title, h.hint = formatDayRange(loc, m.day, m.day.AddDate(0, 0, defaultReminderListDays-1), now), "←→"
 	case remindViewOverdue, remindViewAll, remindViewCount:
-		title = loc.Text("remind.tui.title")
 	}
-
-	labels := [remindViewCount]string{
-		loc.Text("remind.tui.view.day"),
-		loc.Text("remind.tui.view.week"),
-		loc.Format("remind.tui.view.overdue", m.overdue),
-		loc.Text("remind.tui.view.all"),
+	if m.overdue > 0 {
+		h.summary = append(h.summary, m.ui.overdueItem(loc.Format("tui.summary.overdue", m.overdue), m.overdue))
 	}
-	tabs := make([]string, 0, len(labels))
-	for i, label := range labels {
-		if remindView(i) == m.view {
-			tabs = append(tabs, pink.Underline(true).Render(label))
-		} else {
-			tabs = append(tabs, faint.Render(label))
+	if len(m.rows) > 0 {
+		done := 0
+		for _, row := range m.rows {
+			if row.Status(now) == models.ReminderDone {
+				done++
+			}
 		}
+		count := m.ui.muted.Render(loc.Format("remind.tui.summary.done", done, len(m.rows)))
+		h.summary = append(h.summary, rulerItem{long: count, short: count})
 	}
-	return pink.Render(title) + "   " + strings.Join(tabs, faint.Render("  ·  "))
-}
-
-func (m *remindModel) renderDetails(occurrence models.ReminderOccurrence, now time.Time) string {
-	loc, tf := m.env.loc, m.env.tf
-	reminder := occurrence.Reminder
-	label := lipgloss.NewStyle().Foreground(m.env.theme.SubText).Width(reminderFormLabelWidth)
-	sub := lipgloss.NewStyle().Foreground(m.env.theme.SubText)
-
-	lines := []string{lipgloss.NewStyle().Bold(true).Render(reminder.Title) + "  " + sub.Render(fmt.Sprintf("#%d", reminder.ID))}
-
-	meta := m.env.styles.Project.Render(orDash(reminder.Project))
-	if len(reminder.Tags) > 0 {
-		meta += "   " + sub.Render(loc.Text("remind.form.tags")) + "  " +
-			lipgloss.NewStyle().Foreground(m.env.theme.Tag).Render(strings.Join(reminder.Tags, ", "))
-	}
-	lines = append(lines, label.Render(loc.Text("remind.form.project"))+meta)
-
-	repeat := orDash(formatRepeat(loc, reminder) + formatRepeatBounds(loc, reminder.Repeat))
-	lines = append(lines, label.Render(loc.Text("remind.form.repeat"))+repeat)
-
-	if reminder.Notify > 0 {
-		lines = append(
-			lines,
-			label.Render(loc.Text("remind.form.notify"))+loc.Format("remind.notify_before", formatNotifyValue(reminder.Notify)),
-		)
-	}
-
-	upcoming := reminder.Occurrences(occurrence.Due, occurrence.Due.AddDate(0, 0, reminderFormPreviewDays), now)
-	next := make([]string, 0, remindDetailsNextCount)
-	for i, upcomingOccurrence := range upcoming {
-		if i == remindDetailsNextCount {
-			break
-		}
-		when := formatReminderDue(loc, tf, upcomingOccurrence.Due, reminder.AllDay, now)
-		if i == 0 {
-			next = append(next, m.env.styles.Duration.Render(when))
-		} else {
-			next = append(next, sub.Render(when))
-		}
-	}
-	if len(next) > 0 {
-		lines = append(lines, label.Render(loc.Text("remind.form.next"))+strings.Join(next, sub.Render("  ·  ")))
-	}
-
-	if reminder.Notes != "" {
-		lines = append(lines, label.Render(loc.Text("remind.form.notes"))+strings.ReplaceAll(reminder.Notes, "\n", " "))
-	}
-	return m.env.styles.Wrapper.Render(strings.Join(lines, "\n"))
+	return h
 }
 
 func (m *remindModel) footer() string {
@@ -547,17 +579,31 @@ func (m *remindModel) footer() string {
 		if occurrence.Reminder.IsRepeating() {
 			key = "remind.tui.delete_confirm_repeating"
 		}
-		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("203")).
-			Render(loc.Format(key, occurrence.Reminder.ID, occurrence.Reminder.Title))
+		return m.ui.renderPrompt(loc.Format(key, occurrence.Reminder.ID, occurrence.Reminder.Title), m.width)
 	}
+	return m.ui.renderFooter(m.footerKeys(), m.ui.renderStatus(m.status, m.statusErr), m.width)
+}
 
-	help := loc.Text("remind.tui.help")
-	if m.status == "" {
-		return help
+// footerKeys are the keys of the selected reminder first, then those of the view.
+func (m *remindModel) footerKeys() []footerKey {
+	loc := m.env.loc
+	key := func(k, action string) footerKey { return footerKey{key: k, action: loc.Text(action)} }
+	var keys []footerKey
+	if _, ok := m.selected(); ok {
+		keys = append(keys,
+			key(keySpace, "tui.key.done"), key("s", "tui.key.start"),
+			footerKey{key: "z", action: loc.Format("tui.key.snooze", formatNotifyValue(m.snooze))},
+			key("e", "tui.key.edit"), key("x", "tui.key.delete"),
+		)
 	}
-	color := remindStatusOK
-	if m.statusErr {
-		color = m.env.theme.Secondary
+	keys = append(keys, key("a", "tui.key.add"))
+	switch m.view {
+	case remindViewDay:
+		keys = append(keys, key("←→", "tui.key.day"))
+	case remindViewWeek:
+		keys = append(keys, key("←→", "tui.key.week"))
+	case remindViewOverdue, remindViewAll, remindViewCount:
 	}
-	return help + "\n" + lipgloss.NewStyle().Foreground(color).Render(m.status)
+	keys = append(keys, key(keyTab, "tui.key.view"), key("q", "tui.key.quit"))
+	return m.tabs.withTabs(keys, loc.Text("tui.key.tabs"))
 }

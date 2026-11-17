@@ -281,14 +281,21 @@ func TestRemindModelFitsTheWindowAndKeepsTheSelection(t *testing.T) {
 	model.reload()
 	require.Len(t, model.rows, 3)
 
-	model.table.SetCursor(0)
+	model.cursor = 0
 	model.Update(tea.KeyMsg{Type: tea.KeySpace})
 	selected, ok := model.selected()
 	require.True(t, ok)
 	assert.Equal(t, "Water plants", selected.Reminder.Title, "the cursor follows the row it acted on")
-	assert.NotEqual(t, 0, model.table.Cursor(), "done moved it below the overdue one")
+	assert.NotEqual(t, 0, model.cursor, "done moved it below the overdue one")
 
-	assert.LessOrEqual(t, lipgloss.Height(model.View()), 30, "notes and the status line fit")
+	view := model.View()
+	assert.Equal(t, 30, lipgloss.Height(view), "the footer is on the last line")
+	assert.Contains(t, view, "◆ 1 overdue ─ 1 of 3 done")
+	assert.Contains(t, view, "OVERDUE · 1")
+	assert.Contains(t, view, "TODAY · MON 16 NOV · 2")
+	assert.Regexp(t, `◆ 13:00\s+Send invoice\s+Admin\s+overdue 1h25m`, view)
+	assert.Contains(t, view, "focus  Water plants #1 · Mon 16 Nov 09:00", "the ID that `tock remind` commands take")
+	assert.Contains(t, view, "✓ Done: Water plants")
 }
 
 func TestRemindModelActions(t *testing.T) {
@@ -302,7 +309,7 @@ func TestRemindModelActions(t *testing.T) {
 	require.Len(t, model.rows, 2)
 	assert.Equal(t, 1, model.overdue)
 
-	model.table.SetCursor(0)
+	model.cursor = 0
 	model.Update(tea.KeyMsg{Type: tea.KeySpace})
 	assert.Equal(t, "Done: Send invoice", model.status)
 	assert.Equal(t, 0, model.overdue)
@@ -325,7 +332,7 @@ func TestRemindModelActions(t *testing.T) {
 
 	model.Update(tea.KeyMsg{Type: tea.KeyTab})
 	assert.Equal(t, remindViewWeek, model.view)
-	assert.Contains(t, model.View(), "Week of 16 Nov 2026")
+	assert.Contains(t, model.View(), "16 – 22 Nov")
 }
 
 func TestCalendarShowsAndActsOnReminders(t *testing.T) {
@@ -349,19 +356,105 @@ func TestCalendarShowsAndActsOnReminders(t *testing.T) {
 	assert.False(t, marked, "weekday repeats do not mark every day")
 
 	view := model.View()
-	assert.Contains(t, view, "Reminders  0 of 2 done")
-	assert.Contains(t, view, "Upcoming")
-	assert.Contains(t, view, "2 overdue · Standup")
+	assert.Contains(t, view, "REMINDERS · 0/2")
+	assert.Contains(t, view, "UPCOMING · 5", "four Standups and the Dentist; the selected day is left out")
+	assert.Contains(t, view, glyphOverdue+" 2 overdue", "the ruler counts the overdue ones")
+
+	_, cmd := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	assert.Nil(t, cmd, "space does nothing until a reminder is selected")
 
 	model.Update(tea.KeyMsg{Type: tea.KeyTab})
-	require.True(t, model.rem.focused)
+	require.Equal(t, daySelection{section: sectionReminders}, model.sel)
 	model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	model.Update(tea.KeyMsg{Type: tea.KeyUp})
-	_, cmd := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	assert.Contains(t, model.View(), "space done   s start   z snooze 10m")
+
+	_, cmd = model.Update(tea.KeyMsg{Type: tea.KeySpace})
 	require.NotNil(t, cmd)
 	model.Update(cmd())
 
 	assert.Equal(t, "Done: Standup", model.rem.status, "rows run by due time, so Standup comes first")
-	assert.Contains(t, model.View(), "Reminders  1 of 2 done")
-	assert.Contains(t, model.View(), "space: done, s: start tracking, z: snooze 10m")
+	assert.Contains(t, model.View(), "REMINDERS · 1/2")
+	assert.Contains(t, model.View(), "✓ Done: Standup")
+}
+
+func TestCalendarUpcoming(t *testing.T) {
+	h := newRemindHarness(t)
+	h.mustRun("add", "Renew domain", "--every", "yearly")
+	h.mustRun("add", "Water plants", "--every", "3d")
+	h.mustRun("add", "Team sync", "--at", "16:40", "--every", "weekly")
+	h.mustRun("add", "Late call", "--at", "23:30")
+	h.mustRun("add", "Dentist", "--on", "tomorrow", "--at", "15:00")
+
+	h.activities.getReportFn = func(context.Context, models.ActivityFilter) (*models.Report, error) {
+		return &models.Report{ByProject: map[string]models.ProjectReport{}}, nil
+	}
+	model := initialCalendarModel(h.activities, &config.Config{}, h.rt.TimeFormatter, h.rt.Localizer, nil)
+	// Friday is selected, so today's reminders are in Upcoming rather than in the day.
+	model.currentDate, model.viewDate = remindAt(13, 0, 0), remindAt(13, 0, 0)
+	model.withReminders(h.svc, 10*time.Minute)
+	model.Update(tea.WindowSizeMsg{Width: 160, Height: 46})
+	model.Update(model.fetchMonthData())
+
+	lines := model.upcomingLines(42, 20)
+	assert.Equal(t, []string{
+		"UPCOMING · 7",
+		"today   all day   Renew domain ↻",
+		"        all day   Water plants ↻",
+		"        16:40     Team sync ↻     in 2h15m",
+		"        23:30     Late call       in 9h05m",
+		"tmrw    Dentist",
+		"thu 19  Water plants",
+		"sun 22  Water plants",
+	}, lines, "today a line each with the time left, later days a line each")
+	assert.Equal(t, lines[:3], model.upcomingLines(42, 3), "cut to the room there is")
+
+	narrow := model.upcomingLines(calendarMonthColW-1, 20)
+	assert.Equal(t, "today  all day  Renew doma… ↻", narrow[1], "narrow, the columns lose a space each")
+	assert.Equal(t, "       16:40    Team sync ↻", narrow[3], "no countdown when the title would get too little room")
+	assert.Equal(t, "thu 19 Water plants", narrow[6])
+
+	model.config.Calendar.UpcomingDays = 2
+	model.Update(model.fetchMonthData())
+	lines = model.upcomingLines(42, 20)
+	assert.Equal(t, "UPCOMING · 5", lines[0], "calendar.upcoming_days limits the days")
+	assert.Equal(t, "tmrw    Dentist", lines[len(lines)-1])
+}
+
+func TestRemindFocusShowsTheRepeatEnd(t *testing.T) {
+	h := newRemindHarness(t)
+	h.mustRun("add", "Standup", "--at", "18:00", "--every", "daily", "--until", "2027-06-30")
+
+	model := newRemindModel(context.Background(), h.svc, h.activities,
+		newReminderFormEnv(h.rt.Localizer, h.rt.TimeFormatter, DarkTheme()), 10*time.Minute)
+	model.Update(tea.WindowSizeMsg{Width: 160, Height: 30})
+	model.reload()
+
+	view := model.View()
+	assert.Contains(t, view, "Standup #1 · Mon 16 Nov 18:00 · ↻ daily until 30 Jun 2027")
+	assert.Contains(t, view, "then Tue 17 Nov 18:00")
+	assert.True(t, model.next.set, "the next occurrence is remembered for the next redraw")
+}
+
+func TestRemindRefreshRunsInTheBackground(t *testing.T) {
+	h := newRemindHarness(t)
+	model := newRemindModel(context.Background(), h.svc, h.activities,
+		newReminderFormEnv(h.rt.Localizer, h.rt.TimeFormatter, DarkTheme()), 10*time.Minute)
+	model.reload()
+	h.mustRun("add", "Dentist", "--at", "15:00")
+
+	cmd := model.refresh()
+	require.NotNil(t, cmd)
+	assert.Empty(t, model.rows, "nothing is read until the command runs")
+	msg := cmd()
+
+	model.Update(tea.KeyMsg{Type: tea.KeyTab}) // to the week view
+	model.Update(msg)
+	assert.Equal(t, remindViewWeek, model.view)
+	require.Len(t, model.rows, 1, "the week view read the new reminder itself")
+
+	model.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	model.Update(model.refresh()())
+	require.Len(t, model.rows, 1)
+	assert.Equal(t, "Dentist", model.rows[0].Reminder.Title)
 }

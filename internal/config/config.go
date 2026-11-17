@@ -34,6 +34,8 @@ type CalendarConfig struct {
 	TimeEndFormat     string `mapstructure:"time_end_format"`
 	TimeTotalFormat   string `mapstructure:"time_total_format"`
 	AlignDurationLeft bool   `mapstructure:"align_duration_left"`
+	// UpcomingDays is how many days the Upcoming block of the calendar covers, today included.
+	UpcomingDays int `mapstructure:"upcoming_days"`
 }
 
 type ExportConfig struct {
@@ -88,7 +90,9 @@ type RemindersConfig struct {
 }
 
 type ThemeConfig struct {
-	Name      string            `mapstructure:"name"`
+	Name string `mapstructure:"name"`
+	// Base is the built-in theme a custom one starts from (dark by default).
+	Base      string            `mapstructure:"base"`
 	Primary   string            `mapstructure:"primary"`
 	Secondary string            `mapstructure:"secondary"`
 	Text      string            `mapstructure:"text"`
@@ -97,6 +101,9 @@ type ThemeConfig struct {
 	Highlight string            `mapstructure:"highlight"`
 	Tag       string            `mapstructure:"tag"`
 	Reminder  string            `mapstructure:"reminder"`
+	Surface   string            `mapstructure:"surface"`
+	OK        string            `mapstructure:"ok"`
+	Warn      string            `mapstructure:"warn"`
 	TagColors map[string]string `mapstructure:"tag_colors"`
 }
 
@@ -154,6 +161,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("tray.auto_start", false)
 	v.SetDefault("reminders.notifications", true)
 	v.SetDefault("reminders.snooze", "10m")
+	v.SetDefault("calendar.upcoming_days", 7)
 	v.SetDefault("timewarrior.use_tock_tag_colors", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_calendar", false)
 	v.SetDefault("timewarrior.use_tock_tag_colors_weekly_activity", false)
@@ -184,7 +192,12 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("theme.sub_text", "TOCK_COLOR_SUBTEXT")
 	_ = v.BindEnv("theme.faint", "TOCK_COLOR_FAINT")
 	_ = v.BindEnv("theme.highlight", "TOCK_COLOR_HIGHLIGHT")
+	_ = v.BindEnv("theme.tag", "TOCK_COLOR_TAG")
 	_ = v.BindEnv("theme.reminder", "TOCK_COLOR_REMINDER")
+	_ = v.BindEnv("theme.base", "TOCK_THEME_BASE")
+	_ = v.BindEnv("theme.surface", "TOCK_COLOR_SURFACE")
+	_ = v.BindEnv("theme.ok", "TOCK_COLOR_OK")
+	_ = v.BindEnv("theme.warn", "TOCK_COLOR_WARN")
 	_ = v.BindEnv("working_hours.enabled", "TOCK_WORKING_HOURS_ENABLED")
 	_ = v.BindEnv("working_hours.stop_at", "TOCK_WORKING_HOURS_STOP_AT")
 	_ = v.BindEnv("working_hours.weekdays", "TOCK_WORKING_HOURS_WEEKDAYS")
@@ -192,6 +205,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("tray.auto_start", "TOCK_TRAY_AUTO_START")
 	_ = v.BindEnv("reminders.notifications", "TOCK_REMINDERS_NOTIFICATIONS")
 	_ = v.BindEnv("reminders.snooze", "TOCK_REMINDERS_SNOOZE")
+	_ = v.BindEnv("calendar.upcoming_days", "TOCK_CALENDAR_UPCOMING_DAYS")
 	_ = v.BindEnv("weekly_target", "TOCK_WEEKLY_TARGET")
 	_ = v.BindEnv("check_updates", "TOCK_CHECK_UPDATES")
 
