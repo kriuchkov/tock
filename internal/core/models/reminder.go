@@ -14,7 +14,10 @@ const MaxNotifyLead = 7 * 24 * time.Hour
 
 // Reminder is something to do on a day, optionally at a time, once or repeatedly.
 type Reminder struct {
-	ID      int    `json:"id"`
+	ID int `json:"id"`
+	// UID identifies the reminder across devices, where ID numbers differ (docs/sync.md). Saving a
+	// reminder without one keeps the stored uid, or assigns a new one to a new reminder.
+	UID     string `json:"-"`
 	Title   string `json:"title"`
 	Project string `json:"project,omitempty"`
 	// Due is the first occurrence. Its time of day is ignored for all-day reminders.
