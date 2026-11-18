@@ -52,6 +52,9 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
   way — no viper/cobra/adapters here.
   - `models/` — `Activity` and request/DTO/filter types. Note: `Activity.ID()` is derived from
     `StartTime` (`"150405"`), not a stored field, so two activities in the same second collide.
+    `Activity.UID`/`Reminder.UID` are the sync ids (UUIDv7 from `journal.NewUID`, hidden from JSON): a store
+    saving a record without one keeps the stored uid or makes a new one. Only sqlite stores activity uids;
+    reminders keep theirs in `reminders.yaml` and the sqlite `reminders` table.
   - `ports/` — the interfaces that wire the layers: `ActivityResolver` (the full service API used by
     commands — start/stop/list/report plus notes & tags mutation), `ActivityRepository` and
     `NotesRepository` (implemented by adapters), and `ReminderResolver`/`ReminderRepository` for reminders. Mocks live in `ports/mocks/` (regenerate with

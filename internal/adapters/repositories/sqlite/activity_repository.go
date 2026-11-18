@@ -44,12 +44,15 @@ func (r *ActivityRepository) initSchema(ctx context.Context) error {
 		start_time DATETIME NOT NULL UNIQUE,
 		end_time DATETIME,
 		notes TEXT,
-		tags TEXT
+		tags TEXT,
+		uid TEXT NOT NULL DEFAULT ''
 	);
 	CREATE INDEX IF NOT EXISTS idx_start_time ON activities(start_time);
 	`
-	_, err := r.DB.ExecContext(ctx, query)
-	return err
+	if _, err := r.DB.ExecContext(ctx, query); err != nil {
+		return err
+	}
+	return ensureUIDs(ctx, r.DB, "activities")
 }
 
 func (r *ActivityRepository) Save(ctx context.Context, activity models.Activity) error {
@@ -58,15 +61,25 @@ func (r *ActivityRepository) Save(ctx context.Context, activity models.Activity)
 		return errors.Wrap(err, "serialize tags")
 	}
 
+	// A new activity gets a new uid. A stored one keeps its uid unless the activity names another; a
+	// row an older tock wrote without a uid gets the new one.
+	uid := activity.UID
+	if uid == "" {
+		if uid, err = newUID(); err != nil {
+			return errors.Wrap(err, "make activity uid")
+		}
+	}
+
 	query := `
-	INSERT INTO activities (description, project, start_time, end_time, notes, tags)
-	VALUES (?, ?, ?, ?, ?, ?)
+	INSERT INTO activities (description, project, start_time, end_time, notes, tags, uid)
+	VALUES (?, ?, ?, ?, ?, ?, ?)
 	ON CONFLICT(start_time) DO UPDATE SET
 		description=excluded.description,
 		project=excluded.project,
 		end_time=excluded.end_time,
 		notes=excluded.notes,
-		tags=excluded.tags;
+		tags=excluded.tags,
+		uid=CASE WHEN ? = '' AND activities.uid != '' THEN activities.uid ELSE excluded.uid END;
 	`
 	_, err = r.DB.ExecContext(ctx, query,
 		activity.Description,
@@ -75,6 +88,8 @@ func (r *ActivityRepository) Save(ctx context.Context, activity models.Activity)
 		activity.EndTime,
 		activity.Notes,
 		string(tagsJSON),
+		uid,
+		activity.UID,
 	)
 	if err != nil {
 		return errors.Wrap(err, "save activity")
@@ -84,7 +99,7 @@ func (r *ActivityRepository) Save(ctx context.Context, activity models.Activity)
 
 func (r *ActivityRepository) FindLast(ctx context.Context) (*models.Activity, error) {
 	query := `
-	SELECT description, project, start_time, end_time, notes, tags
+	SELECT description, project, start_time, end_time, notes, tags, uid
 	FROM activities
 	ORDER BY start_time DESC
 	LIMIT 1
@@ -96,7 +111,7 @@ func (r *ActivityRepository) FindLast(ctx context.Context) (*models.Activity, er
 func (r *ActivityRepository) Find(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
 	dialect := goqu.Dialect("sqlite3")
 	dataset := dialect.From("activities").
-		Select("description", "project", "start_time", "end_time", "notes", "tags").
+		Select("description", "project", "start_time", "end_time", "notes", "tags", "uid").
 		Order(goqu.I("start_time").Asc())
 
 	// Keep entries overlapping the range, like the file backends; a running entry ends now.
@@ -177,6 +192,7 @@ func scanActivity(s scanner) (*models.Activity, error) {
 		&endTime,
 		&notesString,
 		&tagsString,
+		&act.UID,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

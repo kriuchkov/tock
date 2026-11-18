@@ -42,16 +42,19 @@ func (r *ReminderRepository) initSchema(ctx context.Context) error {
 		tags TEXT NOT NULL DEFAULT '[]',
 		notes TEXT NOT NULL DEFAULT '',
 		created TEXT NOT NULL DEFAULT '',
-		occurrences TEXT NOT NULL DEFAULT '{}'
+		occurrences TEXT NOT NULL DEFAULT '{}',
+		uid TEXT NOT NULL DEFAULT ''
 	);
 	`
-	_, err := r.DB.ExecContext(ctx, query)
-	return err
+	if _, err := r.DB.ExecContext(ctx, query); err != nil {
+		return err
+	}
+	return ensureUIDs(ctx, r.DB, "reminders")
 }
 
 func (r *ReminderRepository) List(ctx context.Context) ([]models.Reminder, error) {
 	query := `
-	SELECT id, title, project, due, all_day, every, "until", "count", notify, tags, notes, created, occurrences
+	SELECT id, title, project, due, all_day, every, "until", "count", notify, tags, notes, created, occurrences, uid
 	FROM reminders
 	ORDER BY id
 	`
@@ -87,38 +90,58 @@ func (r *ReminderRepository) Save(ctx context.Context, reminder models.Reminder)
 		return nil, errors.Wrap(err, "serialize reminder occurrences")
 	}
 
-	args := []any{
-		record.Title, record.Project, record.Due, record.AllDay, record.Every, record.Until, record.Count,
-		record.Notify, string(tags), record.Notes, record.Created.Format(time.RFC3339Nano), string(occurrences),
+	// A new reminder gets a new uid. A stored one keeps its uid unless the reminder names another; a
+	// row an older tock wrote without a uid gets the new one.
+	uid := reminder.UID
+	if uid == "" {
+		if uid, err = newUID(); err != nil {
+			return nil, errors.Wrap(err, "make reminder uid")
+		}
 	}
 
-	if reminder.ID == 0 {
-		query := `
-		INSERT INTO reminders (title, project, due, all_day, every, "until", "count", notify, tags, notes, created, occurrences)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-		res, execErr := r.DB.ExecContext(ctx, query, args...)
-		if execErr != nil {
-			return nil, errors.Wrap(execErr, "insert reminder")
-		}
-		id, idErr := res.LastInsertId()
-		if idErr != nil {
-			return nil, errors.Wrap(idErr, "read reminder id")
-		}
-		reminder.ID = int(id)
-		return &reminder, nil
+	// A NULL id makes SQLite pick the next one.
+	var id any
+	if reminder.ID != 0 {
+		id = reminder.ID
 	}
-
 	query := `
-	INSERT INTO reminders (id, title, project, due, all_day, every, "until", "count", notify, tags, notes, created, occurrences)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT INTO reminders (id, title, project, due, all_day, every, "until", "count", notify, tags, notes, created, occurrences, uid)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	ON CONFLICT(id) DO UPDATE SET
 		title=excluded.title, project=excluded.project, due=excluded.due, all_day=excluded.all_day,
 		every=excluded.every, "until"=excluded."until", "count"=excluded."count", notify=excluded.notify,
-		tags=excluded.tags, notes=excluded.notes, created=excluded.created, occurrences=excluded.occurrences
+		tags=excluded.tags, notes=excluded.notes, created=excluded.created, occurrences=excluded.occurrences,
+		uid=CASE WHEN ? = '' AND reminders.uid != '' THEN reminders.uid ELSE excluded.uid END
 	`
-	if _, err = r.DB.ExecContext(ctx, query, append([]any{reminder.ID}, args...)...); err != nil {
+	args := []any{
+		id, record.Title, record.Project, record.Due, record.AllDay, record.Every, record.Until, record.Count,
+		record.Notify, string(tags), record.Notes, record.Created.Format(time.RFC3339Nano), string(occurrences),
+		uid, reminder.UID,
+	}
+
+	// The bundled SQLite (3.31) has no RETURNING, so the stored uid is read back in the same transaction.
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "begin saving reminder")
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
 		return nil, errors.Wrap(err, "save reminder")
+	}
+	if reminder.ID == 0 {
+		newID, idErr := res.LastInsertId()
+		if idErr != nil {
+			return nil, errors.Wrap(idErr, "read reminder id")
+		}
+		reminder.ID = int(newID)
+	}
+	if err = tx.QueryRowContext(ctx, `SELECT uid FROM reminders WHERE id = ?`, reminder.ID).Scan(&reminder.UID); err != nil {
+		return nil, errors.Wrap(err, "read reminder uid")
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, errors.Wrap(err, "commit reminder")
 	}
 	return &reminder, nil
 }
@@ -147,7 +170,7 @@ func scanReminder(rows *sql.Rows) (models.Reminder, error) {
 	)
 	err := rows.Scan(
 		&record.ID, &record.Title, &record.Project, &record.Due, &record.AllDay, &record.Every, &record.Until,
-		&record.Count, &record.Notify, &tags, &record.Notes, &created, &occurrences,
+		&record.Count, &record.Notify, &tags, &record.Notes, &created, &occurrences, &record.UID,
 	)
 	if err != nil {
 		return models.Reminder{}, errors.Wrap(err, "scan reminder")

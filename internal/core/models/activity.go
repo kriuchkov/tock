@@ -14,6 +14,9 @@ type Activity struct {
 	EndTime     *time.Time `json:"end_time,omitempty"` // nil if active
 	Notes       string     `json:"notes,omitempty"`
 	Tags        []string   `json:"tags,omitempty"`
+	// UID identifies the activity across devices (docs/sync.md). Only the sqlite backend stores it:
+	// saving an activity without one keeps the stored uid, or assigns a new one to a new activity.
+	UID string `json:"-"`
 }
 
 func (a Activity) ID() string {
