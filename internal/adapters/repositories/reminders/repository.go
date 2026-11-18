@@ -3,20 +3,15 @@ package reminders
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	"github.com/go-faster/errors"
 	"gopkg.in/yaml.v3"
 
+	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/reminderrecord"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
-)
-
-const (
-	directoryMode = 0750
-	fileMode      = 0644
 )
 
 // repository keeps reminders in one YAML file next to the activity log.
@@ -53,6 +48,16 @@ func (r *repository) List(_ context.Context) ([]models.Reminder, error) {
 }
 
 func (r *repository) Save(_ context.Context, reminder models.Reminder) (*models.Reminder, error) {
+	var saved *models.Reminder
+	err := fileio.Update(r.path, func() error {
+		var saveErr error
+		saved, saveErr = r.save(reminder)
+		return saveErr
+	})
+	return saved, err
+}
+
+func (r *repository) save(reminder models.Reminder) (*models.Reminder, error) {
 	doc, err := r.load()
 	if err != nil {
 		return nil, err
@@ -83,6 +88,10 @@ func (r *repository) Save(_ context.Context, reminder models.Reminder) (*models.
 }
 
 func (r *repository) Remove(_ context.Context, id int) error {
+	return fileio.Update(r.path, func() error { return r.remove(id) })
+}
+
+func (r *repository) remove(id int) error {
 	doc, err := r.load()
 	if err != nil {
 		return err
@@ -125,37 +134,14 @@ func (r *repository) load() (document, error) {
 	return doc, nil
 }
 
-// store writes the file through a temporary sibling and a rename, so a reader never sees half of it.
+// store writes the file atomically, so a reader never sees half of it.
 func (r *repository) store(doc document) error {
 	payload, err := yaml.Marshal(doc)
 	if err != nil {
 		return errors.Wrap(err, "encode reminders")
 	}
-
-	dir := filepath.Dir(r.path)
-	if err = os.MkdirAll(dir, directoryMode); err != nil {
-		return errors.Wrap(err, "create reminders directory")
-	}
-
-	tmp, err := os.CreateTemp(dir, filepath.Base(r.path)+".*.tmp")
-	if err != nil {
-		return errors.Wrap(err, "create temporary reminders file")
-	}
-	defer func() { _ = os.Remove(tmp.Name()) }()
-
-	if _, err = tmp.Write(payload); err != nil {
-		_ = tmp.Close()
+	if err = fileio.WriteAtomic(r.path, payload); err != nil {
 		return errors.Wrap(err, "write reminders")
-	}
-	if err = tmp.Chmod(fileMode); err != nil {
-		_ = tmp.Close()
-		return errors.Wrap(err, "chmod reminders")
-	}
-	if err = tmp.Close(); err != nil {
-		return errors.Wrap(err, "close reminders")
-	}
-	if err = os.Rename(tmp.Name(), r.path); err != nil {
-		return errors.Wrap(err, "replace reminders")
 	}
 	return nil
 }
