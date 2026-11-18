@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"testing"
@@ -13,36 +15,46 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/core/journal"
-	"github.com/kriuchkov/tock/internal/core/journal/journaltest"
 )
 
 // rulesDevice writes the ends the one-running rule gives.
 const rulesDevice = "0123456789abcdef"
 
+// The test vectors of docs/sync.md, shared with tock-ios: hlc_vectors_test.go, merge_vectors_test.go and
+// repeat_vectors_test.go hold them, the tests below run them, and TestWriteVectors writes them as JSON.
+
+// hlcVector checks how clocks parse and compare, and how a device's clock moves.
 type hlcVector struct {
+	File    string      `json:"-"`
 	Name    string      `json:"name"`
-	Valid   []string    `json:"valid"`
-	Invalid []string    `json:"invalid"`
-	Order   [][2]string `json:"order"`
-	Last    string      `json:"last"`
-	Steps   []hlcStep   `json:"steps"`
+	Valid   []string    `json:"valid,omitempty"`
+	Invalid []string    `json:"invalid,omitempty"`
+	Order   [][2]string `json:"order,omitempty"`
+	Last    string      `json:"last,omitempty"`
+	Steps   []hlcStep   `json:"steps,omitempty"`
 }
 
+// hlcStep is one step on a clock: "new" makes a change at Now, "read" reads HLC at Now.
 type hlcStep struct {
 	Op     string `json:"op"`
 	Now    int64  `json:"now"`
-	HLC    string `json:"hlc"`
+	HLC    string `json:"hlc,omitempty"`
 	Expect string `json:"expect"`
 }
 
+// mergeVector merges journals and lists the records left visible after the rules.
 type mergeVector struct {
+	File     string                       `json:"-"`
 	Name     string                       `json:"name"`
 	Journals map[string][]json.RawMessage `json:"journals"`
-	Expect   struct {
-		Activities []record `json:"activities"`
-		Reminders  []record `json:"reminders"`
-		Skipped    int      `json:"skipped"`
-	} `json:"expect"`
+	Expect   mergeExpect                  `json:"expect"`
+}
+
+// mergeExpect is the result of a merge: visible records in uid order and the number of skipped lines.
+type mergeExpect struct {
+	Activities []record `json:"activities"`
+	Reminders  []record `json:"reminders"`
+	Skipped    int      `json:"skipped"`
 }
 
 type record struct {
@@ -50,25 +62,28 @@ type record struct {
 	Fields map[string]any `json:"fields"`
 }
 
+// repeatVector lists the occurrences of a reminder on the days [From, To) at Now, in time zone TZ.
 type repeatVector struct {
-	Name     string                     `json:"name"`
-	TZ       string                     `json:"tz"`
-	Reminder map[string]json.RawMessage `json:"reminder"`
-	From     string                     `json:"from"`
-	To       string                     `json:"to"`
-	Now      string                     `json:"now"`
-	Expect   []occurrence               `json:"expect"`
+	File     string         `json:"-"`
+	Name     string         `json:"name"`
+	TZ       string         `json:"tz"`
+	Reminder map[string]any `json:"reminder"`
+	From     string         `json:"from"`
+	To       string         `json:"to"`
+	Now      string         `json:"now"`
+	Expect   []occurrence   `json:"expect"`
 }
 
+// occurrence is the due wall time (a date for an all-day reminder) and status of one occurrence.
 type occurrence struct {
 	Due    string `json:"due"`
 	Status string `json:"status"`
 }
 
 func TestHLCVectors(t *testing.T) {
-	for _, vector := range journaltest.HLCVectors() {
+	for _, vector := range hlcVectors() {
 		t.Run(vector.File, func(t *testing.T) {
-			v := wire[hlcVector](t, vector)
+			v := roundTrip(t, vector)
 			t.Log(v.Name)
 			for _, s := range v.Valid {
 				h, err := journal.ParseHLC(s)
@@ -130,9 +145,9 @@ func runClock(t *testing.T, last string, steps []hlcStep) {
 }
 
 func TestMergeVectors(t *testing.T) {
-	for _, vector := range journaltest.MergeVectors() {
+	for _, vector := range mergeVectors() {
 		t.Run(vector.File, func(t *testing.T) {
-			v := wire[mergeVector](t, vector)
+			v := roundTrip(t, vector)
 			t.Log(v.Name)
 			journals := make(map[string][]byte, len(v.Journals))
 			for dev, lines := range v.Journals {
@@ -261,21 +276,21 @@ func visible(t *testing.T, state *journal.State, typ journal.RecordType) []recor
 		if !shown {
 			continue
 		}
-		fields := make(map[string]any, len(rec.Fields))
+		values := make(map[string]any, len(rec.Fields))
 		for path, field := range rec.Fields {
 			var value any
 			require.NoError(t, json.Unmarshal(field.Value, &value))
-			fields[path] = value
+			values[path] = value
 		}
-		records = append(records, record{UID: rec.UID, Fields: fields})
+		records = append(records, record{UID: rec.UID, Fields: values})
 	}
 	return records
 }
 
 func TestRepeatVectors(t *testing.T) {
-	for _, vector := range journaltest.RepeatVectors() {
+	for _, vector := range repeatVectors() {
 		t.Run(vector.File, func(t *testing.T) {
-			v := wire[repeatVector](t, vector)
+			v := roundTrip(t, vector)
 			t.Log(v.Name)
 			loc, err := time.LoadLocation(v.TZ)
 			if err != nil {
@@ -283,14 +298,16 @@ func TestRepeatVectors(t *testing.T) {
 			}
 			setLocal(t, loc)
 
-			fields := make(map[string]journal.Field, len(v.Reminder))
+			reminderFields := make(map[string]journal.Field, len(v.Reminder))
 			for name, value := range v.Reminder {
-				fields[name] = journal.Field{Value: value}
+				raw, marshalErr := json.Marshal(value)
+				require.NoError(t, marshalErr)
+				reminderFields[name] = journal.Field{Value: raw}
 			}
 			reminder, ok := journal.Record{
 				Type:   journal.TypeReminder,
 				UID:    "019a9b3c-0000-7000-8000-000000000001",
-				Fields: fields,
+				Fields: reminderFields,
 			}.Reminder()
 			require.True(t, ok, "the reminder is hidden")
 
@@ -332,15 +349,51 @@ func parseHLC(t *testing.T, s string) journal.HLC {
 	return h
 }
 
-// wire returns a vector as tock-ios reads it: encoded by `make sync-vectors` and decoded by keys
-// the format defines, so a key the tests do not read cannot slip into the files.
-func wire[T any](t *testing.T, vector any) T {
+// roundTrip returns a vector as tock-ios reads it, encoded to JSON and decoded again, so the tests
+// run what TestWriteVectors writes.
+func roundTrip[T any](t *testing.T, vector T) T {
 	t.Helper()
 	data, err := json.Marshal(vector)
 	require.NoError(t, err)
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
 	var v T
-	require.NoError(t, dec.Decode(&v))
+	require.NoError(t, json.Unmarshal(data, &v))
 	return v
+}
+
+// TestWriteVectors writes the vectors as JSON files, one per vector, into <dir>/hlc, <dir>/merge and
+// <dir>/repeat for tock-ios when SYNC_VECTORS_OUT is an absolute path <dir>: make sync-vectors OUT=<dir>.
+// It first removes the *.json files there, so a renamed vector does not linger.
+func TestWriteVectors(t *testing.T) {
+	out := os.Getenv("SYNC_VECTORS_OUT")
+	if out == "" {
+		t.Skip("set SYNC_VECTORS_OUT to write the vectors")
+	}
+	require.True(t, filepath.IsAbs(out), "SYNC_VECTORS_OUT must be an absolute path")
+
+	files := map[string]map[string]any{"hlc": {}, "merge": {}, "repeat": {}}
+	for _, v := range hlcVectors() {
+		files["hlc"][v.File] = v
+	}
+	for _, v := range mergeVectors() {
+		files["merge"][v.File] = v
+	}
+	for _, v := range repeatVectors() {
+		files["repeat"][v.File] = v
+	}
+
+	for kind, vectors := range files {
+		dir := filepath.Join(out, kind)
+		require.NoError(t, os.MkdirAll(dir, 0o750))
+		stale, err := filepath.Glob(filepath.Join(dir, "*.json"))
+		require.NoError(t, err)
+		for _, path := range stale {
+			require.NoError(t, os.Remove(path))
+		}
+		for name, vector := range vectors {
+			data, marshalErr := json.MarshalIndent(vector, "", "  ")
+			require.NoError(t, marshalErr)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, name+".json"), append(data, '\n'), 0o600))
+		}
+		t.Logf("wrote %d vectors to %s", len(vectors), dir)
+	}
 }

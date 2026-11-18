@@ -274,8 +274,8 @@ state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes
 
 ## Test vectors
 
-The vectors are Go values in `internal/core/journal/journaltest`, and the Go tests in `internal/core/journal` run
-them. `make sync-vectors OUT=<dir>` writes them as JSON files, one per vector, into `<dir>/hlc`, `<dir>/merge` and
+The vectors are Go values in the tests of `internal/core/journal` (`*_vectors_test.go`), which run them.
+`make sync-vectors OUT=<dir>` writes them as JSON files, one per vector, into `<dir>/hlc`, `<dir>/merge` and
 `<dir>/repeat`. tock-ios commits the files generated from a tock release and runs all of them.
 
 - `hlc/*.json`: `{"name", "valid", "invalid", "order", "last", "steps"}`, each key but `name` optional. `valid`

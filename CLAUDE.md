@@ -59,7 +59,7 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
   - `errors/` — sentinel errors (`ErrNoActiveActivity`, `ErrNotesUnavailable`, etc.).
   - `journal/` — the sync format of `docs/sync.md`: the HLC clock, journal lines, the field-by-field merge, the
     one-running rule, and reading merged records as `models`. No I/O. The shared test vectors are Go values in
-    `journal/journaltest` (run by `vectors_test.go`); `make sync-vectors OUT=<dir>` writes them as JSON for
+    its `*_vectors_test.go` (run by `vectors_test.go`); `make sync-vectors OUT=<dir>` writes them as JSON for
     tock-ios. A rule change updates the spec and the vectors.
 
 - **Reminders** — `models.Reminder` holds the recurrence engine (`reminder_repeat.go`: `ParseRepeat`/`Spec`,

@@ -451,9 +451,6 @@ linters:
         linters: [ gosec ]
       - path: 'internal/services/scheduler/tasks/'
         linters: [ dupl ]
-      # Test vectors are data, like the test files below.
-      - path: 'internal/core/journal/journaltest/'
-        linters: [ dupl, funlen, goconst ]
       - path: '_test\.go'
         linters:
           - bodyclose

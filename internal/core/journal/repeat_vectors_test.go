@@ -1,14 +1,14 @@
-package journaltest
+package journal_test
 
 import "slices"
 
-// RepeatVectors returns the repeat rule vectors.
-func RepeatVectors() []RepeatVector {
+// repeatVectors returns the repeat rule vectors.
+func repeatVectors() []repeatVector {
 	return slices.Concat(statusVectors(), ruleVectors(), dayVectors())
 }
 
-func statusVectors() []RepeatVector {
-	return []RepeatVector{
+func statusVectors() []repeatVector {
+	return []repeatVector{
 		{
 			File: "daily",
 			Name: "daily: only the latest past occurrence is overdue, older ones not done are missed",
@@ -18,7 +18,7 @@ func statusVectors() []RepeatVector {
 				"occ/2026-11-16/done": "2026-11-16T10:05:00+01:00",
 			},
 			From: "2026-11-16", To: "2026-11-21", Now: "2026-11-18T12:00",
-			Expect: []Occurrence{
+			Expect: []occurrence{
 				{"2026-11-16T10:00", "done"}, {"2026-11-17T10:00", "missed"}, {"2026-11-18T10:00", "overdue"},
 				{"2026-11-19T10:00", statusPending}, {"2026-11-20T10:00", statusPending},
 			},
@@ -31,7 +31,7 @@ func statusVectors() []RepeatVector {
 				"title": "Expenses", "due": "2026-11-16T15:00", "all_day": true, "every": "daily",
 			},
 			From: "2026-11-16", To: "2026-11-20", Now: "2026-11-18T23:59",
-			Expect: []Occurrence{
+			Expect: []occurrence{
 				{"2026-11-16", "missed"}, {"2026-11-17", "overdue"}, {"2026-11-18", statusPending}, {"2026-11-19", statusPending},
 			},
 		},
@@ -44,7 +44,7 @@ func statusVectors() []RepeatVector {
 				"occ/2026-11-17/snoozed": "2026-11-17T10:00:00+01:00", "occ/2026-11-18/snoozed": "2026-11-18T13:00:00+01:00",
 			},
 			From: "2026-11-17", To: "2026-11-20", Now: "2026-11-18T12:00",
-			Expect: []Occurrence{
+			Expect: []occurrence{
 				{"2026-11-17T09:00", "missed"}, {"2026-11-18T09:00", "snoozed"}, {"2026-11-19T09:00", statusPending},
 			},
 		},
@@ -56,7 +56,7 @@ func statusVectors() []RepeatVector {
 				"title": "Leave the office", "due": "2026-11-17T17:30", "all_day": false, "every": "daily",
 			},
 			From: "2026-11-17", To: "2026-11-20", Now: "2026-11-18T17:30",
-			Expect: []Occurrence{
+			Expect: []occurrence{
 				{"2026-11-17T17:30", "missed"}, {"2026-11-18T17:30", "overdue"}, {"2026-11-19T17:30", statusPending},
 			},
 		},
@@ -73,8 +73,8 @@ func statusVectors() []RepeatVector {
 	}
 }
 
-func ruleVectors() []RepeatVector {
-	return []RepeatVector{
+func ruleVectors() []repeatVector {
+	return []repeatVector{
 		{
 			File:     "interval-days",
 			Name:     "every third day, counted from the first day",
@@ -134,8 +134,8 @@ func ruleVectors() []RepeatVector {
 	}
 }
 
-func dayVectors() []RepeatVector {
-	return []RepeatVector{
+func dayVectors() []repeatVector {
+	return []repeatVector{
 		{
 			File: "count",
 			Name: "count limits the occurrences, skipped ones included",
@@ -173,16 +173,16 @@ func dayVectors() []RepeatVector {
 			TZ:       berlin,
 			Reminder: fields{"title": "Renew the passport", "due": "2026-11-20", "all_day": false, "every": "weekly"},
 			From:     "2026-11-16", To: "2026-12-01", Now: "2026-11-21T00:00",
-			Expect: []Occurrence{{"2026-11-20", "overdue"}, {"2026-11-27", statusPending}},
+			Expect: []occurrence{{"2026-11-20", "overdue"}, {"2026-11-27", statusPending}},
 		},
 	}
 }
 
 // pending returns occurrences due at the given times, all pending.
-func pending(dues ...string) []Occurrence {
-	occurrences := make([]Occurrence, 0, len(dues))
+func pending(dues ...string) []occurrence {
+	occurrences := make([]occurrence, 0, len(dues))
 	for _, due := range dues {
-		occurrences = append(occurrences, Occurrence{Due: due, Status: statusPending})
+		occurrences = append(occurrences, occurrence{Due: due, Status: statusPending})
 	}
 	return occurrences
 }

@@ -1,8 +1,8 @@
-package journaltest
+package journal_test
 
-// HLCVectors returns the clock vectors.
-func HLCVectors() []HLCVector {
-	return []HLCVector{
+// hlcVectors returns the clock vectors.
+func hlcVectors() []hlcVector {
+	return []hlcVector{
 		{
 			File: "parse",
 			Name: "a clock is 16 digits, a dot and 6 digits, ASCII only",
@@ -40,7 +40,7 @@ func HLCVectors() []HLCVector {
 		{
 			File: "new",
 			Name: "a new change takes the current time, or counts on when time stands still or goes back",
-			Steps: []HLCStep{
+			Steps: []hlcStep{
 				{Op: "new", Now: 1794985200000, Expect: "0001794985200000.000000"},
 				{Op: "new", Now: 1794985200000, Expect: "0001794985200000.000001"},
 				{Op: "new", Now: 1794985199000, Expect: "0001794985200000.000002"},
@@ -51,7 +51,7 @@ func HLCVectors() []HLCVector {
 			File: "counter-overflow",
 			Name: "a counter past 999999 moves the wall on by 1 ms",
 			Last: "0001794985200000.999998",
-			Steps: []HLCStep{
+			Steps: []hlcStep{
 				{Op: "new", Now: 1794985200000, Expect: "0001794985200000.999999"},
 				{Op: "new", Now: 1794985200000, Expect: "0001794985200001.000000"},
 				{Op: "new", Now: 1794985200000, Expect: "0001794985200001.000001"},
@@ -61,7 +61,7 @@ func HLCVectors() []HLCVector {
 			File: "read",
 			Name: "a clock read advances the device's clock, unless it is more than 24 hours ahead",
 			Last: "0001794985200000.000000",
-			Steps: []HLCStep{
+			Steps: []hlcStep{
 				{Op: "read", HLC: "0001794985500000.000003", Now: 1794985200000, Expect: "0001794985500000.000003"},
 				{Op: "new", Now: 1794985200000, Expect: "0001794985500000.000004"},
 				{Op: "read", HLC: "0001794985200000.000009", Now: 1794985200000, Expect: "0001794985500000.000004"},

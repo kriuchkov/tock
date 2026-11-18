@@ -104,13 +104,13 @@ func TestRecordReminder(t *testing.T) {
 	assert.True(t, reminder.Created.Equal(time.Date(2026, time.November, 15, 12, 0, 0, 0, time.UTC)))
 	assert.Zero(t, reminder.ID, "reminder numbers are local")
 
-	at := func(day, hour, minute int) *time.Time {
+	utc := func(day, hour, minute int) *time.Time {
 		v := time.Date(2026, time.November, day, hour, minute, 0, 0, time.UTC)
 		return &v
 	}
 	want := map[string]models.OccurrenceState{
-		"2026-11-16": {DoneAt: at(16, 10, 5)},
-		"2026-11-19": {SnoozedUntil: at(19, 11, 0), ActivityStart: at(19, 11, 2)},
+		"2026-11-16": {DoneAt: utc(16, 10, 5)},
+		"2026-11-19": {SnoozedUntil: utc(19, 11, 0), ActivityStart: utc(19, 11, 2)},
 		"2026-11-23": {Skipped: true},
 	}
 	assert.Len(t, reminder.States, len(want))
