@@ -12,6 +12,7 @@ rows=30
 out="${1:-assets}"
 frames="${DEMO_FRAMES:-$(mktemp -d)}"
 mkdir -p "$frames"
+frames="$(cd "$frames" && pwd)"
 rm -f "$frames/ready"
 sock="tock-demo-$$"
 
@@ -25,12 +26,13 @@ trap cleanup EXIT
 tm new-session -d -s demo -x "$cols" -y "$rows" -c "$PWD" \
   "$(printf '%q ' env -i HOME="$HOME" PATH="$PATH" TERM=xterm-256color COLORTERM=truecolor LANG=en_US.UTF-8 bash --norc --noprofile)"
 
-# The running activity starts a little before now, after the seeded ones end at 12:45.
+# The running activity starts a little before now, after the seeded ones end at 12:45. tock then
+# runs in the temp HOME, so a tock.yaml in the repository root cannot reach the recording.
 start=$(date -v-25M +%H:%M 2>/dev/null || date -d '-25 min' +%H:%M)
 [[ "$start" > "12:45" ]] || start=$(date +%H:%M)
 tm send-keys -t demo "source demo/demo_seed.sh && \
 tock remind add 'Team sync' -p Management --at 11:00 --every weekly:mon,thu >/dev/null && \
-tock start -p 'Project Alpha' -d 'Release notes' -t $start >/dev/null && clear && touch $frames/ready" Enter
+tock start -p 'Project Alpha' -d 'Release notes' -t $start >/dev/null && cd \"\$HOME\" && clear && touch $frames/ready" Enter
 for _ in $(seq 180); do [[ -e "$frames/ready" ]] && break; sleep 1; done
 [[ -e "$frames/ready" ]] || { echo "demo: seeding timed out" >&2; exit 1; }
 
