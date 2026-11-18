@@ -2,18 +2,16 @@ package reminders
 
 import (
 	"context"
-	"crypto/rand"
 	"os"
 	"slices"
-	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/reminderrecord"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
-	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 )
@@ -145,11 +143,11 @@ func (r *repository) store(doc *document) error {
 		if doc.Reminders[i].UID != "" {
 			continue
 		}
-		uid, err := journal.NewUID(time.Now(), rand.Reader)
+		uid, err := uuid.NewV7()
 		if err != nil {
 			return errors.Wrap(err, "make reminder uid")
 		}
-		doc.Reminders[i].UID = uid
+		doc.Reminders[i].UID = uid.String()
 	}
 
 	payload, err := yaml.Marshal(doc)

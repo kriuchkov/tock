@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -183,7 +184,11 @@ func TestSaveFillsAnEmptyUID(t *testing.T) {
 	assert.Equal(t, saved.UID, listed[0].UID)
 }
 
+// assertUID checks that a change naming uid is valid by docs/sync.md.
 func assertUID(t *testing.T, uid string) {
 	t.Helper()
-	assert.Regexp(t, `^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, uid)
+	line := `{"v":1,"hlc":"0001794985200000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"` + uid +
+		`","set":{"project":"Ops"}}`
+	_, err := journal.ParseChange([]byte(line))
+	assert.NoError(t, err, "uid %q", uid)
 }

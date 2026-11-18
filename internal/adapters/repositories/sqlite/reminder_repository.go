@@ -119,7 +119,7 @@ func (r *ReminderRepository) Save(ctx context.Context, reminder models.Reminder)
 		uid, reminder.UID,
 	}
 
-	// The bundled SQLite (3.31) has no RETURNING, so the stored uid is read back in the same transaction.
+	// The upsert may keep the stored uid, so it is read back in the same transaction.
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "begin saving reminder")

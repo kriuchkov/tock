@@ -2,18 +2,20 @@ package sqlite
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/go-faster/errors"
-
-	"github.com/kriuchkov/tock/internal/core/journal"
+	"github.com/google/uuid"
 )
 
+// newUID returns a new record uid, a lowercase UUIDv7 (docs/sync.md).
 func newUID() (string, error) {
-	return journal.NewUID(time.Now(), rand.Reader)
+	id, err := uuid.NewV7()
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
 }
 
 // ensureUIDs adds the uid column to a table made before uids and gives every row without a uid a new
