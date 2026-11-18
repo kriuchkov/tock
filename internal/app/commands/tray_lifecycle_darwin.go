@@ -73,7 +73,7 @@ func ensureTrayRunning(cmd *cobra.Command) {
 		return
 	}
 
-	args := append([]string{"tray", "--until-idle"}, trayPassthroughFlags(cmd)...)
+	args := append([]string{"tray", "--until-idle"}, rootPassthroughFlags(cmd)...)
 	//nolint:noctx // a detached background process must outlive the parent command's context
 	proc := exec.Command(exe, args...)
 	proc.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // detach from the terminal
@@ -87,15 +87,3 @@ func ensureTrayRunning(cmd *cobra.Command) {
 	_ = proc.Process.Release()
 }
 
-// trayPassthroughFlags forwards the root flags that select the backend/data so
-// the spawned tray tracks the same activities as the current command.
-func trayPassthroughFlags(cmd *cobra.Command) []string {
-	var args []string
-	root := cmd.Root().PersistentFlags()
-	for _, name := range []string{"backend", "file", "config", "lang"} {
-		if v, err := root.GetString(name); err == nil && v != "" {
-			args = append(args, "--"+name, v)
-		}
-	}
-	return args
-}

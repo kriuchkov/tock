@@ -74,7 +74,9 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
 - **`internal/adapters/repositories`** — one subpackage per backend, each implementing
   `ActivityRepository`: `file` (default, Bartib format), `todotxt`, `timewarrior`, `sqlite`, plus
   `notes` (sidecar notes/tags store for the non-sqlite backends), `reminders` (sidecar reminder store).
-  Sqlite provides its own notes and reminder repos.
+  Sqlite provides its own notes and reminder repos. The file-based stores write through `fileio`
+  (`Update`: a `flock` on a hidden `.<name>.lock` sibling; `WriteAtomic`: temp file + rename), so the
+  CLI, the tray and the MCP server can write concurrently.
 
 - **`internal/app`** — the delivery layer.
   - `runtime/` — the composition root / DI, and the **only** package that imports concrete adapters.
@@ -96,6 +98,9 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
     `tock tray --until-idle` (single-instance via a `flock` on `~/.tock/tray.lock`) — and
     `tock tray install`/`uninstall` manage the launchd LaunchAgent for an always-on icon. The menu bar template icon is generated at runtime
     (no image assets) from the Tock logo mark.
+  - `mcpserver/` — the MCP server behind `tock mcp` (off unless `mcp.enabled`). Tools and prompts call
+    the same `ActivityResolver`/`ReminderResolver` as the commands; calls are serialized and each one
+    runs the working-hours auto-stop first. `mcp install` registers it through the client's own CLI.
   - `insights/`, `watching/`, `export/` (text/CSV/JSON + iCal), `localization/` (i18n), `updatecheck/`.
 
 - **`cmd/tock/main.go`** — entrypoint; blank-imports the sqlite driver + goqu dialect, then calls

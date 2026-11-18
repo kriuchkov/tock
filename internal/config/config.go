@@ -19,6 +19,7 @@ type Config struct {
 	WorkingHours    WorkingHoursConfig `mapstructure:"working_hours"`
 	Tray            TrayConfig         `mapstructure:"tray"`
 	Reminders       RemindersConfig    `mapstructure:"reminders"`
+	MCP             MCPConfig          `mapstructure:"mcp"`
 	Theme           ThemeConfig        `mapstructure:"theme"`
 	Calendar        CalendarConfig     `mapstructure:"calendar"`
 	TimeFormat      string             `mapstructure:"time_format"`
@@ -80,6 +81,16 @@ type WorkingHoursConfig struct {
 type TrayConfig struct {
 	Enabled   bool `mapstructure:"enabled"`
 	AutoStart bool `mapstructure:"auto_start"`
+}
+
+// MCPConfig controls the local MCP server (`tock mcp`) that lets AI clients read and
+// change tracked time. It is off until Enabled is set.
+type MCPConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// ReadOnly leaves out every tool that changes data.
+	ReadOnly bool `mapstructure:"read_only"`
+	// DisabledTools are tool names to leave out, such as "remove".
+	DisabledTools []string `mapstructure:"disabled_tools"`
 }
 
 // RemindersConfig controls reminders. Notifications are sent by the macOS menu bar
@@ -159,6 +170,9 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("working_hours.weekdays", "mon,tue,wed,thu,fri")
 	v.SetDefault("tray.enabled", false)
 	v.SetDefault("tray.auto_start", false)
+	v.SetDefault("mcp.enabled", false)
+	v.SetDefault("mcp.read_only", false)
+	v.SetDefault("mcp.disabled_tools", []string{})
 	v.SetDefault("reminders.notifications", true)
 	v.SetDefault("reminders.snooze", "10m")
 	v.SetDefault("calendar.upcoming_days", 7)
@@ -203,6 +217,8 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("working_hours.weekdays", "TOCK_WORKING_HOURS_WEEKDAYS")
 	_ = v.BindEnv("tray.enabled", "TOCK_TRAY_ENABLED")
 	_ = v.BindEnv("tray.auto_start", "TOCK_TRAY_AUTO_START")
+	_ = v.BindEnv("mcp.enabled", "TOCK_MCP_ENABLED")
+	_ = v.BindEnv("mcp.read_only", "TOCK_MCP_READ_ONLY")
 	_ = v.BindEnv("reminders.notifications", "TOCK_REMINDERS_NOTIFICATIONS")
 	_ = v.BindEnv("reminders.snooze", "TOCK_REMINDERS_SNOOZE")
 	_ = v.BindEnv("calendar.upcoming_days", "TOCK_CALENDAR_UPCOMING_DAYS")

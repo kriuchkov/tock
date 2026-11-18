@@ -83,7 +83,7 @@ func installTrayAgent(cmd *cobra.Command) error {
 	if err != nil {
 		return errors.Wrap(err, "resolve executable")
 	}
-	if trayBinaryLooksUnstable(exe) {
+	if binaryLooksUnstable(exe) {
 		fmt.Fprintln(cmd.ErrOrStderr(), text(cmd, "tray.install.unstable_path", exe))
 	}
 
@@ -140,22 +140,6 @@ func reloadTrayAgent(cmd *cobra.Command, plistPath string) error {
 		return errors.Wrapf(err, "launchctl bootstrap: %s", out)
 	}
 	return nil
-}
-
-// trayBinaryLooksUnstable reports whether exe sits in a temporary or source-tree
-// location, from which a login agent would break once the binary is moved,
-// rebuilt elsewhere, or cleaned.
-func trayBinaryLooksUnstable(exe string) bool {
-	if strings.HasPrefix(exe, os.TempDir()) {
-		return true
-	}
-	dir := filepath.Dir(exe)
-	for _, marker := range []string{"go.mod", ".git"} {
-		if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func trayAgentInstalled() bool {

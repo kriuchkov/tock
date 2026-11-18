@@ -24,6 +24,8 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`analyze`](#analyze)
   - [`export`](#export-alias-e)
   - [`ical`](#ical)
+- [Integrations](#integrations)
+  - [`mcp`](#mcp)
 
 ## Core Commands
 
@@ -666,3 +668,24 @@ tock ical 2026-01-07 --path ./export    # Export single day activities to direct
 
 - `--path string`: Output directory for files
 - `--open`: Open generated file in system calendar
+
+## Integrations
+
+### `mcp`
+
+Run a local MCP server on stdin/stdout for AI clients. Off until `mcp.enabled: true` is set in the config.
+See [MCP Server](mcp.md) for the tools and prompts.
+
+**Usage:**
+
+```bash
+tock mcp
+tock mcp install --client claude-code|opencode [--scope user|project] [--print]
+tock mcp uninstall --client claude-code|opencode [--scope user|project]
+```
+
+**Flags (`install`, `uninstall`):**
+
+- `--client string`: `claude-code` or `opencode` (required)
+- `--scope string`: `user` (all projects, default) or `project` (the current directory)
+- `--print`: Print the command and config entry instead of running the client's CLI (`install` only)

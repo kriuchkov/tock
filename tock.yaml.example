@@ -100,6 +100,22 @@ tray:
   # Default: false
   auto_start: false
 
+# Local MCP server (`tock mcp`) for AI clients such as Claude Code or opencode.
+# Register it with `tock mcp install --client claude-code` (or opencode).
+# See docs/mcp.md.
+mcp:
+  # Enable or disable the server
+  # Default: false
+  enabled: false
+
+  # Leave out every tool that changes data
+  # Default: false
+  read_only: false
+
+  # Tool names to leave out, e.g. [remove, remind_remove]
+  # Default: []
+  disabled_tools: []
+
 # Reminders (`tock remind`).
 reminders:
   # Notification banners when reminders come due. They are sent by the menu bar
