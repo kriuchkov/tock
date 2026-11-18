@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turns tmux screen captures into an animated SVG, like assets/demo.svg at the top of the README.
 
-Usage: ansi_svg.py screens.tsv [--type COMMAND] [--title TITLE] > demo.svg
+Usage: ansi_svg.py screens.tsv [--type COMMAND] [--title TITLE] [--site] > demo.svg
 
 Each line of screens.tsv is a screen: a name, a capture (tmux capture-pane -e -p) relative to
 the tsv, the seconds it stays on screen in the loop (0 keeps it out), the key that leads to it,
@@ -17,6 +17,10 @@ so it works where scripts are blocked, as on raw.githubusercontent.com.
 Text keeps the terminal grid: every run sits at its column and is stretched to its width, so
 any monospace font lines up. Lines, bars and blocks become shapes, so they join without the
 gaps fonts leave between cells.
+
+--site draws the variant that kriuchkov.com/tock inlines into the page: no window and no caption
+bar, the page's font, and the site's colors in place of the tock theme's. Inlined, the page's
+address drives the screens, so kriuchkov.com/tock#rem opens on the reminders.
 """
 
 import argparse
@@ -40,6 +44,18 @@ TITLE_H, CAPTION_H = 34, 46  # window title bar and caption bar
 BG, FG = "#16171d", "#d0d0d0"
 CHROME, EDGE, MUTED, ACCENT = "#1e1f27", "#2c2e3a", "#9a9caa", "#5f5fff"
 LIGHTS = ("#ff5f57", "#febc2e", "#28c840")
+PROMPT, KEY_EDGE, LINK = "#87ff87", "#40435a", "#9d9dff"
+REMAP = {}  # a color the terminal sends -> the color drawn; --site fills it
+
+# --site: the colors of kriuchkov.com, and the tock theme's colors mapped onto them.
+SITE = {
+    "BG": "#0e1014", "FG": "#d4d8de", "MUTED": "#8b949e", "EDGE": "#2a2f38", "ACCENT": "#79c0ff",
+    "PROMPT": "#7ee787", "KEY_EDGE": "#3a404a", "LINK": "#79c0ff", "MONO": "'JetBrains Mono'," + MONO,
+}
+SITE_REMAP = {
+    "#5f5fff": "#79c0ff", "#87ff87": "#7ee787", "#ffaf00": "#e3b341", "#5fd7ff": "#79c0ff", "#eeeeee": "#ffffff",
+    "#d0d0d0": "#d4d8de", "#a8a8a8": "#b7bdc6", "#585858": "#3a404a", "#303030": "#1a1e25",
+}
 
 INTRO_S, TYPE_FROM, TYPE_STEP = 2.2, 0.5, 0.07  # intro length, typing start, seconds per key
 
@@ -133,7 +149,7 @@ def mix(a, b, t):
 
 
 def colors(style):
-    fg, bg = style.fg or FG, style.bg
+    fg, bg = REMAP.get(style.fg, style.fg) or FG, REMAP.get(style.bg, style.bg)
     if style.reverse:
         fg, bg = bg or BG, fg
     if style.dim:
@@ -317,7 +333,14 @@ def window(width, height, cap_y):
     ]
 
 
-def build(screens, command, title):
+def use_site_style():
+    global BG, FG, MUTED, EDGE, ACCENT, PROMPT, KEY_EDGE, LINK, MONO
+    BG, FG, MUTED, EDGE, ACCENT = SITE["BG"], SITE["FG"], SITE["MUTED"], SITE["EDGE"], SITE["ACCENT"]
+    PROMPT, KEY_EDGE, LINK, MONO = SITE["PROMPT"], SITE["KEY_EDGE"], SITE["LINK"], SITE["MONO"]
+    REMAP.update(SITE_REMAP)
+
+
+def build(screens, command, title, site=False):
     by_name = {s.name: s for s in screens}
     tour = [s for s in screens if s.seconds > 0] or screens[:1]
     targets = list(dict.fromkeys(t for s in screens for _, t in s.links))
@@ -334,14 +357,19 @@ def build(screens, command, title):
     intro = INTRO_S if command else 0
     total = intro + sum(s.seconds for s in tour)
     looping = command or len(tour) > 1
+    # The site variant shows only the terminal: no window, no caption bar.
+    frame = (PAD * 0.6, term_y - PAD * 0.4, width - PAD * 1.2, lines * CH + PAD * 0.8) if site else (0, 0, width, height)
 
     tclass, fclass, sclass = Classes("t"), Classes("f"), Classes("s")
     css = []
     # Markers come first: a link targets one, and CSS reaches the rest through it (#x:target ~ ...).
     body = ['<g id="%s" class="mk"/>' % t for t in targets]
-    body += window(width, height, cap_y)
+    if site:
+        body.append('<rect x="%s" y="%s" width="%s" height="%s" fill="%s"/>' % (*map(num, frame), BG))
+    else:
+        body += window(width, height, cap_y)
 
-    if targets:
+    if targets and not site:
         hint_y = num(TITLE_H / 2 + 4)
         body.append('<g class="hint"><a href="#%s"><text class="hn he" x="%s" y="%s" text-anchor="end">\u25b8 click to explore</text></a>'
                     '<a href="#tour"><text class="hn hp" x="%s" y="%s" text-anchor="end">\u25b6 play the tour</text></a></g>'
@@ -355,7 +383,7 @@ def build(screens, command, title):
         t += s.seconds
 
     # Progress: a segment per screen of the loop that fills while it is on screen.
-    if len(tour) > 1:
+    if len(tour) > 1 and not site:
         seg_w, gap = 26, 6
         seg_x = width - PAD - len(tour) * (seg_w + gap) + gap
         seg_y = cap_y + CAPTION_H / 2 - 2
@@ -370,7 +398,7 @@ def build(screens, command, title):
         body.append("</g>")
 
     if command:
-        body += intro_scene(command, term_y, cap_y)
+        body += intro_scene(command, term_y, cap_y, site)
         typed = len(command) * TYPE_STEP
         css.append("@keyframes intro{0%%{visibility:visible}%s,100%%{visibility:hidden}}.intro{animation-name:intro}"
                    % pct(intro, total))
@@ -393,15 +421,16 @@ def build(screens, command, title):
         body += render_screen(s.rows, tclass, fclass, sclass)
         body += render_links(s, by_name)
         body.append("</g>")
-        body.append(caption_bar(s.key, s.caption, cap_y))
+        if not site:
+            body.append(caption_bar(s.key, s.caption, cap_y))
         body.append("</g>")
 
     style = [
         "text{font-family:%s;font-size:%spx;white-space:pre}" % (MONO, FS),
         ".ti{fill:%s;font-size:13px}" % MUTED,
-        ".pr{fill:#87ff87}.cm{fill:%s}.cur{fill:%s}" % (FG, FG),
+        ".pr{fill:%s}.cm{fill:%s}.cur{fill:%s}" % (PROMPT, FG, FG),
         ".cap{font-family:%s;font-size:14px;fill:%s}" % (SANS, MUTED),
-        ".key{fill:%s;stroke:%s}.kt{fill:#fff;font-size:13px;font-weight:700}" % (EDGE, "#40435a"),
+        ".key{fill:%s;stroke:%s}.kt{fill:#fff;font-size:13px;font-weight:700}" % (EDGE, KEY_EDGE),
         ".fa{opacity:.45}",
         ".sc{visibility:hidden;animation-duration:%ss;animation-timing-function:step-end;animation-iteration-count:infinite}"
         % num(total),
@@ -414,7 +443,7 @@ def build(screens, command, title):
         style += [
             "a{cursor:pointer}.hit{fill:%s;fill-opacity:0;pointer-events:visibleFill}a:hover .hit{fill-opacity:.3}" % ACCENT,
             ".ul{fill:%s;display:none}" % ACCENT,
-            ".hn{font-family:%s;font-size:14px;font-weight:600;fill:#9d9dff}a:hover .hn{fill:#fff}.hp,.ex{display:none}" % SANS,
+            ".hn{font-family:%s;font-size:14px;font-weight:600;fill:%s}a:hover .hn{fill:#fff}.hp,.ex{display:none}" % (SANS, LINK),
             # A screen picked by a link replaces the loop; #tour (no such id) starts the loop again.
             ".mk:target~.sc{animation:none;visibility:hidden}.mk:target~.intro .ty{animation:none}",
             ".mk:target~.tour,.mk:target~.hint .he{display:none}",
@@ -429,8 +458,8 @@ def build(screens, command, title):
     style.append("@media (prefers-reduced-motion:reduce){.sc,.pg,.ty,.cur{animation:none}}")
 
     return "\n".join([
-        '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s" viewBox="0 0 %s %s" role="img">'
-        % (num(width), num(height), num(width), num(height)),
+        '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s" viewBox="%s" role="img">'
+        % (num(frame[2]), num(frame[3]), " ".join(map(num, frame))),
         "<title>%s</title>" % html.escape(title, quote=False),
         "<style>%s</style>" % "".join(style),
         *body,
@@ -439,7 +468,7 @@ def build(screens, command, title):
     ])
 
 
-def intro_scene(command, term_y, cap_y):
+def intro_scene(command, term_y, cap_y, site=False):
     """A prompt that types the command: the text sits under a cover that steps right."""
     x, y = PAD + CW, term_y + BASELINE
     cmd_x, cmd_w = x + 2 * CW, len(command) * CW
@@ -451,7 +480,7 @@ def intro_scene(command, term_y, cap_y):
         '<g class="ty"><rect class="cur" x="%s" y="%s" width="%s" height="%s"/>'
         '<rect x="%s" y="%s" width="%s" height="%s" fill="%s"/></g>'
         % (num(cmd_x), num(term_y + 1), num(CW), CH - 2, num(cmd_x + CW), num(term_y), num(cmd_w + CW), CH, BG),
-        caption_bar(None, INTRO_CAPTION, cap_y),
+        "" if site else caption_bar(None, INTRO_CAPTION, cap_y),
         "</g>",
     ]
 
@@ -483,8 +512,11 @@ def main():
     parser.add_argument("screens", type=Path, help="tsv: name, capture, seconds, key, caption, links")
     parser.add_argument("--type", metavar="COMMAND", help="type this command at a prompt first")
     parser.add_argument("--title", default="tock in the terminal", help="the SVG title")
+    parser.add_argument("--site", action="store_true", help="the variant inlined into kriuchkov.com/tock")
     args = parser.parse_args()
-    sys.stdout.write(build(read_screens(args.screens), args.type, args.title))
+    if args.site:
+        use_site_style()
+    sys.stdout.write(build(read_screens(args.screens), args.type, args.title, args.site))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Records the animated SVGs of the README: assets/demo.svg at the top and one per tab under it
-# (demo_calendar, demo_reminders, demo_list, demo_analyze). Runs tock in a detached tmux on the
+# (demo_calendar, demo_reminders, demo_list, demo_analyze), and demo_site.svg, the same demo drawn for
+# kriuchkov.com/tock (see ansi_svg.py --site). Runs tock in a detached tmux on the
 # sample data of demo_seed.sh, captures each screen with its colors and turns the captures into
 # SVGs with demo/ansi_svg.py. demo.svg also holds the screens its links lead to, so it can be
 # explored by clicking when opened on its own.
@@ -157,6 +158,7 @@ svg() {
   echo "wrote $out/$file"
 }
 svg demo demo.svg --type "tock calendar" --title "tock: calendar, reminders, list and analyze in the terminal"
+svg demo demo_site.svg --type "tock calendar" --site --title "tock: calendar, reminders, list and analyze in the terminal"
 svg calendar demo_calendar.svg --title "tock calendar: days, months and adding a reminder"
 svg reminders demo_reminders.svg --title "tock remind: today, the week, overdue and all reminders"
 svg list demo_list.svg --title "tock list: a day, a week, a month and a year of activities"
