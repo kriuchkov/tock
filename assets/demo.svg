@@ -49,7 +49,7 @@
 <rect class="f2" x="428.4" y="343.5" width="16.8" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="326.5" width="67.2" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="309.5" width="302.4" height="10" rx="1.5"/>
-<rect class="f2" x="890.4" y="292.5" width="117.6" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="292.5" width="126" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="224.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
@@ -106,7 +106,7 @@
 <text class="t0" x="285.6" y="131.6">◆</text>
 <text class="t6" x="302.4" y="131.6" textLength="42">13:00</text>
 <text class="t6" x="386.4" y="131.6" textLength="100.8">Send invoice</text>
-<text class="t0" x="705.6" y="131.6" textLength="92.4">overdue 27m</text>
+<text class="t0" x="688.8" y="131.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
 <text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
 <text class="t2" x="25.2" y="148.6">9</text>
@@ -182,7 +182,7 @@
 <text class="t2" x="823.2" y="250.6" textLength="42">Su 15</text>
 <text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
 <text class="t4" x="285.6" y="267.6">●</text>
-<text class="t2" x="302.4" y="267.6" textLength="50.4">13:01–</text>
+<text class="t2" x="302.4" y="267.6" textLength="50.4">14:28–</text>
 <text class="t4" x="352.8" y="267.6" textLength="25.2">now</text>
 <text class="t6" x="411.6" y="267.6" textLength="109.2">Project Alpha</text>
 <text class="t6" x="537.6" y="267.6" textLength="109.2">Release notes</text>
@@ -256,7 +256,7 @@
 <rect class="f2" x="428.4" y="343.5" width="16.8" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="326.5" width="67.2" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="309.5" width="302.4" height="10" rx="1.5"/>
-<rect class="f2" x="890.4" y="292.5" width="117.6" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="292.5" width="126" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="224.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
@@ -314,7 +314,7 @@
 <text class="t0" x="285.6" y="131.6">◆</text>
 <text class="t6" x="302.4" y="131.6" textLength="42">13:00</text>
 <text class="t6" x="386.4" y="131.6" textLength="100.8">Send invoice</text>
-<text class="t0" x="705.6" y="131.6" textLength="92.4">overdue 27m</text>
+<text class="t0" x="688.8" y="131.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
 <text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
 <text class="t2" x="25.2" y="148.6">9</text>
@@ -390,7 +390,7 @@
 <text class="t2" x="823.2" y="250.6" textLength="42">Su 15</text>
 <text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
 <text class="t4" x="285.6" y="267.6">●</text>
-<text class="t2" x="302.4" y="267.6" textLength="50.4">13:01–</text>
+<text class="t2" x="302.4" y="267.6" textLength="50.4">14:28–</text>
 <text class="t4" x="352.8" y="267.6" textLength="25.2">now</text>
 <text class="t6" x="411.6" y="267.6" textLength="109.2">Project Alpha</text>
 <text class="t6" x="537.6" y="267.6" textLength="109.2">Release notes</text>
@@ -466,7 +466,7 @@
 <rect class="f2" x="428.4" y="326.5" width="16.8" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="309.5" width="67.2" height="10" rx="1.5"/>
 <rect class="f2" x="428.4" y="292.5" width="302.4" height="10" rx="1.5"/>
-<rect class="f2" x="890.4" y="292.5" width="117.6" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="292.5" width="126" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="224.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
 <rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
@@ -511,7 +511,7 @@
 <text class="t3" x="285.6" y="114.6">◆</text>
 <text class="t1" x="302.4" y="114.6" textLength="42">13:00</text>
 <text class="t1" x="386.4" y="114.6" textLength="100.8">Send invoice</text>
-<text class="t3" x="705.6" y="114.6" textLength="92.4">overdue 27m</text>
+<text class="t3" x="688.8" y="114.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="823.2" y="114.6" textLength="50.4">sat 21</text>
 <text class="t6" x="890.4" y="114.6" textLength="100.8">Release v1.9</text>
 <text class="t2" x="25.2" y="131.6">2</text>
@@ -594,7 +594,7 @@
 <text class="t0" x="117.6" y="250.6">◆</text>
 <text class="t2" x="134.4" y="250.6" textLength="58.8">overdue</text>
 <text class="t4" x="285.6" y="250.6">●</text>
-<text class="t2" x="302.4" y="250.6" textLength="50.4">13:01–</text>
+<text class="t2" x="302.4" y="250.6" textLength="50.4">14:28–</text>
 <text class="t4" x="352.8" y="250.6" textLength="25.2">now</text>
 <text class="t6" x="411.6" y="250.6" textLength="109.2">Project Alpha</text>
 <text class="t6" x="537.6" y="250.6" textLength="109.2">Release notes</text>
@@ -634,7 +634,7 @@
 <text class="t3" x="75.6" y="454.6" textLength="100.8">Send invoice</text>
 <text class="t2" x="184.8" y="454.6" textLength="613.2">#2 · Wed 18 Nov 13:00 · ↻ monthly on 18 · Admin · then Fri 18 Dec 13:00 ·</text>
 <text class="t4" x="806.4" y="454.6" textLength="50.4">#money</text>
-<text class="t2" x="16.8" y="471.6" textLength="92.4">overdue 27m</text>
+<text class="t2" x="16.8" y="471.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="8.4" y="505.6" textLength="25.2">j/k</text>
 <text class="t6" x="42" y="505.6" textLength="25.2">row</text>
 <text class="t2" x="92.4" y="505.6" textLength="42">space</text>
@@ -694,7 +694,7 @@
 <text class="t1" x="109.2" y="97.6" textLength="100.8">Send invoice</text>
 <text class="t5" x="260.4" y="97.6" textLength="126">↻ monthly on 18</text>
 <text class="t1" x="428.4" y="97.6" textLength="42">Admin</text>
-<text class="t3" x="1083.6" y="97.6" textLength="92.4">overdue 27m</text>
+<text class="t3" x="1066.8" y="97.6" textLength="109.2">overdue 1h54m</text>
 <text class="t5" x="8.4" y="131.6" textLength="184.8">TODAY · WED 18 NOV · 2</text>
 <text class="t7" x="8.4" y="148.6">○</text>
 <text class="t6" x="25.2" y="148.6" textLength="58.8">all day</text>
@@ -712,7 +712,7 @@
 <text class="t3" x="75.6" y="454.6" textLength="100.8">Send invoice</text>
 <text class="t2" x="184.8" y="454.6" textLength="613.2">#2 · Wed 18 Nov 13:00 · ↻ monthly on 18 · Admin · then Fri 18 Dec 13:00 ·</text>
 <text class="t4" x="806.4" y="454.6" textLength="50.4">#money</text>
-<text class="t2" x="16.8" y="471.6" textLength="92.4">overdue 27m</text>
+<text class="t2" x="16.8" y="471.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="8.4" y="505.6" textLength="42">space</text>
 <text class="t6" x="58.8" y="505.6" textLength="33.6">done</text>
 <text class="t2" x="117.6" y="505.6">s</text>
@@ -775,7 +775,7 @@
 <text class="t1" x="109.2" y="97.6" textLength="100.8">Send invoice</text>
 <text class="t5" x="260.4" y="97.6" textLength="126">↻ monthly on 18</text>
 <text class="t1" x="428.4" y="97.6" textLength="42">Admin</text>
-<text class="t3" x="1083.6" y="97.6" textLength="92.4">overdue 27m</text>
+<text class="t3" x="1066.8" y="97.6" textLength="109.2">overdue 1h54m</text>
 <text class="t5" x="8.4" y="131.6" textLength="184.8">TODAY · WED 18 NOV · 2</text>
 <text class="t7" x="8.4" y="148.6">○</text>
 <text class="t6" x="25.2" y="148.6" textLength="58.8">all day</text>
@@ -800,13 +800,13 @@
 <text class="t2" x="260.4" y="233.6" textLength="84">↻ weekdays</text>
 <text class="t6" x="428.4" y="233.6" textLength="84">Management</text>
 <text class="t2" x="554.4" y="233.6" textLength="75.6">5m before</text>
-<text class="t2" x="1100.4" y="233.6" textLength="75.6">in 20h03m</text>
+<text class="t2" x="1100.4" y="233.6" textLength="75.6">in 18h36m</text>
 <text class="t7" x="8.4" y="250.6">○</text>
 <text class="t6" x="25.2" y="250.6" textLength="42">11:00</text>
 <text class="t6" x="109.2" y="250.6" textLength="75.6">Team sync</text>
 <text class="t2" x="260.4" y="250.6" textLength="159.6">↻ weekly on Mon, T…</text>
 <text class="t6" x="428.4" y="250.6" textLength="84">Management</text>
-<text class="t2" x="1100.4" y="250.6" textLength="75.6">in 21h33m</text>
+<text class="t2" x="1100.4" y="250.6" textLength="75.6">in 20h06m</text>
 <text class="t7" x="8.4" y="267.6">○</text>
 <text class="t6" x="25.2" y="267.6" textLength="42">15:00</text>
 <text class="t6" x="109.2" y="267.6" textLength="58.8">Dentist</text>
@@ -832,7 +832,7 @@
 <text class="t3" x="75.6" y="454.6" textLength="100.8">Send invoice</text>
 <text class="t2" x="184.8" y="454.6" textLength="613.2">#2 · Wed 18 Nov 13:00 · ↻ monthly on 18 · Admin · then Fri 18 Dec 13:00 ·</text>
 <text class="t4" x="806.4" y="454.6" textLength="50.4">#money</text>
-<text class="t2" x="16.8" y="471.6" textLength="92.4">overdue 27m</text>
+<text class="t2" x="16.8" y="471.6" textLength="109.2">overdue 1h54m</text>
 <text class="t2" x="8.4" y="505.6" textLength="42">space</text>
 <text class="t6" x="58.8" y="505.6" textLength="33.6">done</text>
 <text class="t2" x="117.6" y="505.6">s</text>
@@ -907,7 +907,7 @@
 <text class="t6" x="1134" y="131.6" textLength="42">2h45m</text>
 <text class="t4" x="8.4" y="148.6">●</text>
 <text class="t2" x="25.2" y="148.6" textLength="109.2">2026-11-18-04</text>
-<text class="t6" x="151.2" y="148.6" textLength="42">13:01</text>
+<text class="t6" x="151.2" y="148.6" textLength="42">14:28</text>
 <text class="t4" x="210" y="148.6" textLength="25.2">now</text>
 <text class="t6" x="268.8" y="148.6" textLength="109.2">Project Alpha</text>
 <text class="t6" x="403.2" y="148.6" textLength="109.2">Release notes</text>

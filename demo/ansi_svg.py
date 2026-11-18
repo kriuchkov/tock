@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Turns tmux screen captures into one animated SVG, assets/demo.svg at the top of the README.
 
-Usage: ansi_svg.py scenes.tsv > demo.svg
+Usage: ansi_svg.py scenes.tsv [--type COMMAND] [--title TITLE] > demo.svg
 
 Each line of scenes.tsv is a scene: a capture (tmux capture-pane -e -p) relative to the tsv,
-the seconds it stays on screen, the key that led to it and a caption. The SVG types the command,
-then cuts from scene to scene in a loop. Without animation (reduced motion, static renderers)
-it shows the first scene.
+the seconds it stays on screen, the key that led to it and a caption. The SVG cuts from scene
+to scene in a loop, after typing COMMAND at a prompt if given. Without animation (reduced
+motion, static renderers) it shows the first scene.
 
 Text keeps the terminal grid: every run sits at its column and is stretched to its width, so
 any monospace font lines up. Lines, bars and blocks become shapes, so they join without the
 gaps fonts leave between cells.
 """
 
+import argparse
 import html
 import re
 import sys
@@ -20,7 +21,6 @@ import unicodedata
 from collections import namedtuple
 from pathlib import Path
 
-COMMAND = "tock calendar"
 INTRO_CAPTION = "a time tracker that lives in your terminal"
 MONO = "ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace"
 SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
@@ -271,19 +271,20 @@ def pct(t, total):
     return "%.3f%%" % (100 * t / total)
 
 
-def build(scenes):
+def build(scenes, command, title):
     cols = max(len(row) for s in scenes for row in s.screen)
     lines = max(len(s.screen) for s in scenes)
     width = cols * CW + 2 * PAD
     term_y = TITLE_H + PAD * 0.7
     cap_y = term_y + lines * CH + PAD * 0.7
     height = cap_y + CAPTION_H
-    total = INTRO_S + sum(s.seconds for s in scenes)
+    intro = INTRO_S if command else 0
+    total = intro + sum(s.seconds for s in scenes)
 
     tclass, fclass, sclass = Classes("t"), Classes("f"), Classes("s")
     css, body = [], []
 
-    starts, t = [], INTRO_S
+    starts, t = [], intro
     for s in scenes:
         starts.append(t)
         t += s.seconds
@@ -304,7 +305,7 @@ def build(scenes):
     seg_w, gap = 26, 6
     seg_x = width - PAD - len(scenes) * (seg_w + gap) + gap
     seg_y = cap_y + CAPTION_H / 2 - 2
-    for i, s in enumerate(scenes):
+    for i, s in enumerate(scenes if len(scenes) > 1 else []):
         x = seg_x + i * (seg_w + gap)
         body.append('<rect x="%s" y="%s" width="%s" height="4" rx="2" fill="%s"/>' % (num(x), num(seg_y), seg_w, EDGE))
         body.append('<rect class="pg p%d" x="%s" y="%s" width="%s" height="4" rx="2"/>' % (i, num(x), num(seg_y), seg_w))
@@ -312,28 +313,20 @@ def build(scenes):
         css.append("@keyframes p%d{0%%,%s{transform:scaleX(0)}%s,100%%{transform:scaleX(1)}}.p%d{animation-name:p%d}"
                    % (i, pct(a, total), pct(b, total), i, i))
 
-    # Intro: the prompt types the command.
-    typed = len(COMMAND) * TYPE_STEP
-    prompt_x, prompt_y = PAD + CW, term_y + BASELINE
-    body.append('<g class="sc intro">')
-    body.append('<text class="pr" x="%s" y="%s">$</text>' % (num(prompt_x), num(prompt_y)))
-    cmd_x = prompt_x + 2 * CW
-    body.append('<text class="cm" x="%s" y="%s" textLength="%s">%s</text>'
-                % (num(cmd_x), num(prompt_y), num(len(COMMAND) * CW), COMMAND))
-    body.append('<g class="ty"><rect class="cur" x="%s" y="%s" width="%s" height="%s"/>'
-                '<rect x="%s" y="%s" width="%s" height="%s" fill="%s"/></g>'
-                % (num(cmd_x), num(term_y + 1), num(CW), CH - 2, num(cmd_x + CW), num(term_y), num(len(COMMAND) * CW + CW), CH, BG))
-    body.append(caption_bar(None, INTRO_CAPTION, cap_y))
-    body.append("</g>")
-    css.append("@keyframes intro{0%%{opacity:1}%s,100%%{opacity:0}}.intro{animation-name:intro}" % pct(INTRO_S, total))
-    css.append("@keyframes ty{0%%,%s{transform:translateX(0);animation-timing-function:steps(%d,end)}%s,100%%"
-               "{transform:translateX(%spx)}}.ty{animation:ty %ss linear infinite}"
-               % (pct(TYPE_FROM, total), len(COMMAND), pct(TYPE_FROM + typed, total), num(len(COMMAND) * CW), num(total)))
+    if command:
+        body += intro_scene(command, term_y, cap_y)
+        typed = len(command) * TYPE_STEP
+        css.append("@keyframes intro{0%%{opacity:1}%s,100%%{opacity:0}}.intro{animation-name:intro}" % pct(intro, total))
+        css.append("@keyframes ty{0%%,%s{transform:translateX(0);animation-timing-function:steps(%d,end)}%s,100%%"
+                   "{transform:translateX(%spx)}}.ty{animation:ty %ss linear infinite}"
+                   % (pct(TYPE_FROM, total), len(command), pct(TYPE_FROM + typed, total), num(len(command) * CW), num(total)))
 
     for i, s in enumerate(scenes):
         a, b = starts[i], starts[i] + s.seconds
-        css.append("@keyframes k%d{0%%{opacity:0}%s{opacity:1}%s,100%%{opacity:0}}.k%d{animation-name:k%d}"
-                   % (i, pct(a, total), pct(b, total), i, i))
+        if command or len(scenes) > 1:
+            shown = "%s{opacity:1}" % pct(a, total) if a else ""
+            css.append("@keyframes k%d{0%%{opacity:%d}%s%s,100%%{opacity:0}}.k%d{animation-name:k%d}"
+                       % (i, 0 if a else 1, shown, pct(b, total), i, i))
         body.append('<g class="sc k%d%s">' % (i, " poster" if i == 0 else ""))
         body.append('<g transform="translate(%s,%s)">' % (PAD, num(term_y)))
         body += render_screen(s.screen, tclass, fclass, sclass)
@@ -364,12 +357,29 @@ def build(scenes):
     return "\n".join([
         '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s" viewBox="0 0 %s %s" role="img">'
         % (num(width), num(height), num(width), num(height)),
-        "<title>tock: calendar, reminders, list and analyze in the terminal</title>",
+        "<title>%s</title>" % html.escape(title, quote=False),
         "<style>%s</style>" % "".join(style),
         *body,
         "</svg>",
         "",
     ])
+
+
+def intro_scene(command, term_y, cap_y):
+    """A prompt that types the command: the text sits under a cover that steps right."""
+    x, y = PAD + CW, term_y + BASELINE
+    cmd_x, cmd_w = x + 2 * CW, len(command) * CW
+    return [
+        '<g class="sc intro">',
+        '<text class="pr" x="%s" y="%s">$</text>' % (num(x), num(y)),
+        '<text class="cm" x="%s" y="%s" textLength="%s">%s</text>'
+        % (num(cmd_x), num(y), num(cmd_w), html.escape(command, quote=False)),
+        '<g class="ty"><rect class="cur" x="%s" y="%s" width="%s" height="%s"/>'
+        '<rect x="%s" y="%s" width="%s" height="%s" fill="%s"/></g>'
+        % (num(cmd_x), num(term_y + 1), num(CW), CH - 2, num(cmd_x + CW), num(term_y), num(cmd_w + CW), CH, BG),
+        caption_bar(None, INTRO_CAPTION, cap_y),
+        "</g>",
+    ]
 
 
 def caption_bar(key, caption, cap_y):
@@ -386,14 +396,16 @@ def caption_bar(key, caption, cap_y):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit("usage: ansi_svg.py scenes.tsv > demo.svg")
-    tsv = Path(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Turns tmux screen captures into one animated SVG.")
+    parser.add_argument("scenes", type=Path, help="tsv: capture, seconds, key, caption")
+    parser.add_argument("--type", metavar="COMMAND", help="type this command at a prompt first")
+    parser.add_argument("--title", default="tock in the terminal", help="the SVG title")
+    args = parser.parse_args()
     scenes = []
-    for line in tsv.read_text(encoding="utf-8").splitlines():
+    for line in args.scenes.read_text(encoding="utf-8").splitlines():
         name, seconds, key, caption = line.split("\t")
-        scenes.append(Scene(read_screen(tsv.parent / name), float(seconds), key, caption))
-    sys.stdout.write(build(scenes))
+        scenes.append(Scene(read_screen(args.scenes.parent / name), float(seconds), key, caption))
+    sys.stdout.write(build(scenes, args.type, args.title))
 
 
 if __name__ == "__main__":
