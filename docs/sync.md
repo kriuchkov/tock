@@ -5,7 +5,7 @@ Reading and writing the sync folder is not implemented yet.
 
 This document defines how the tock CLI on a Mac and the tock iOS app share activities and reminders. It is the
 contract between the two implementations: the Go code in this repository and the Swift code in tock-ios. Both run the
-test vectors in `testdata/sync/`, and tock-ios pins them to a tock release.
+same test vectors, and tock-ios pins them to a tock release.
 
 ## Goals and limits
 
@@ -274,8 +274,9 @@ state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes
 
 ## Test vectors
 
-Each test vector is one JSON file in `testdata/sync/`. The Go tests (`internal/core/journal`) and the tock-ios tests
-run all of them.
+The vectors are Go values in `internal/core/journal/journaltest`, and the Go tests in `internal/core/journal` run
+them. `make sync-vectors OUT=<dir>` writes them as JSON files, one per vector, into `<dir>/hlc`, `<dir>/merge` and
+`<dir>/repeat`. tock-ios commits the files generated from a tock release and runs all of them.
 
 - `hlc/*.json`: `{"name", "valid", "invalid", "order", "last", "steps"}`, each key but `name` optional. `valid`
   and `invalid` are clocks that parse or not; a valid one is written back unchanged. `order` lists `[hlc, dev]`

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"testing"
@@ -15,10 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/core/journal"
+	"github.com/kriuchkov/tock/internal/core/journal/journaltest"
 )
-
-// vectorsDir holds the test vectors of docs/sync.md, which tock-ios runs too.
-const vectorsDir = "../../../testdata/sync"
 
 // rulesDevice writes the ends the one-running rule gives.
 const rulesDevice = "0123456789abcdef"
@@ -70,10 +66,9 @@ type occurrence struct {
 }
 
 func TestHLCVectors(t *testing.T) {
-	for _, path := range vectorFiles(t, "hlc") {
-		var v hlcVector
-		readVector(t, path, &v)
-		t.Run(filepath.Base(path), func(t *testing.T) {
+	for _, vector := range journaltest.HLCVectors() {
+		t.Run(vector.File, func(t *testing.T) {
+			v := wire[hlcVector](t, vector)
 			t.Log(v.Name)
 			for _, s := range v.Valid {
 				h, err := journal.ParseHLC(s)
@@ -135,10 +130,9 @@ func runClock(t *testing.T, last string, steps []hlcStep) {
 }
 
 func TestMergeVectors(t *testing.T) {
-	for _, path := range vectorFiles(t, "merge") {
-		var v mergeVector
-		readVector(t, path, &v)
-		t.Run(filepath.Base(path), func(t *testing.T) {
+	for _, vector := range journaltest.MergeVectors() {
+		t.Run(vector.File, func(t *testing.T) {
+			v := wire[mergeVector](t, vector)
 			t.Log(v.Name)
 			journals := make(map[string][]byte, len(v.Journals))
 			for dev, lines := range v.Journals {
@@ -279,10 +273,9 @@ func visible(t *testing.T, state *journal.State, typ journal.RecordType) []recor
 }
 
 func TestRepeatVectors(t *testing.T) {
-	for _, path := range vectorFiles(t, "repeat") {
-		var v repeatVector
-		readVector(t, path, &v)
-		t.Run(filepath.Base(path), func(t *testing.T) {
+	for _, vector := range journaltest.RepeatVectors() {
+		t.Run(vector.File, func(t *testing.T) {
+			v := wire[repeatVector](t, vector)
 			t.Log(v.Name)
 			loc, err := time.LoadLocation(v.TZ)
 			if err != nil {
@@ -339,20 +332,15 @@ func parseHLC(t *testing.T, s string) journal.HLC {
 	return h
 }
 
-func vectorFiles(t *testing.T, kind string) []string {
+// wire returns a vector as tock-ios reads it: encoded by `make sync-vectors` and decoded by keys
+// the format defines, so a key the tests do not read cannot slip into the files.
+func wire[T any](t *testing.T, vector any) T {
 	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(vectorsDir, kind, "*.json"))
-	require.NoError(t, err)
-	require.NotEmpty(t, paths)
-	return paths
-}
-
-// readVector decodes a vector and fails on keys it does not know, so a typo in a vector cannot pass silently.
-func readVector(t *testing.T, path string, v any) {
-	t.Helper()
-	data, err := os.ReadFile(path)
+	data, err := json.Marshal(vector)
 	require.NoError(t, err)
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	require.NoError(t, dec.Decode(v), path)
+	var v T
+	require.NoError(t, dec.Decode(&v))
+	return v
 }
