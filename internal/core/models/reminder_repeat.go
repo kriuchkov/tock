@@ -311,7 +311,7 @@ func (r Reminder) dueOn(day time.Time) time.Time {
 		return day
 	}
 	clock := r.Due.In(time.Local)
-	return time.Date(day.Year(), day.Month(), day.Day(), clock.Hour(), clock.Minute(), 0, 0, time.Local)
+	return timeutil.WallTime(day.Year(), day.Month(), day.Day(), clock.Hour(), clock.Minute(), time.Local)
 }
 
 // eachOccurrence calls fn with the due time of every occurrence on a day before limit, in order,

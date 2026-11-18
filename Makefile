@@ -19,6 +19,12 @@ build:
 	-v $$(go env GOMODCACHE):/.cache/mod -e GOMODCACHE=/.cache/mod \
 	--entrypoint "" golang:1.26.3 sh -c "go build -o tock ./cmd/tock"
 
+# Write the sync test vectors (docs/sync.md) as JSON files for tock-ios:
+#   make sync-vectors OUT=../tock-ios/Tests/Vectors
+sync-vectors:
+	SYNC_VECTORS_OUT=$(abspath $(or $(OUT),$(error set OUT to the directory to write to))) \
+		go test ./internal/core/journal -run '^TestWriteVectors$$' -count=1 -v
+
 # Refresh test data by running the script that generates it. 
 # By default, it refreshes data for the last 1 day, 
 refresh-test-data:

@@ -57,6 +57,10 @@ Hexagonal (ports & adapters). Dependencies point inward toward `internal/core`.
     `NotesRepository` (implemented by adapters), and `ReminderResolver`/`ReminderRepository` for reminders. Mocks live in `ports/mocks/` (regenerate with
     `mockery`; the committed mocks use the v3 `testify` template — do not downgrade with a v2 binary).
   - `errors/` — sentinel errors (`ErrNoActiveActivity`, `ErrNotesUnavailable`, etc.).
+  - `journal/` — the sync format of `docs/sync.md`: the HLC clock, journal lines, the field-by-field merge, the
+    one-running rule, and reading merged records as `models`. No I/O. The shared test vectors are Go values in
+    its `*_vectors_test.go` (run by `vectors_test.go`); `make sync-vectors OUT=<dir>` writes them as JSON for
+    tock-ios. A rule change updates the spec and the vectors.
 
 - **Reminders** — `models.Reminder` holds the recurrence engine (`reminder_repeat.go`: `ParseRepeat`/`Spec`,
   day-by-day `eachOccurrence`) and occurrence states keyed by `YYYY-MM-DD`; only the latest past undone
