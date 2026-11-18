@@ -1,0 +1,10 @@
+{
+  "name": "a new change takes the current time, or counts on when time stands still or goes back",
+  "last": "",
+  "steps": [
+    {"op": "new", "now": 1794985200000, "expect": "0001794985200000.000000"},
+    {"op": "new", "now": 1794985200000, "expect": "0001794985200000.000001"},
+    {"op": "new", "now": 1794985199000, "expect": "0001794985200000.000002"},
+    {"op": "new", "now": 1794985200005, "expect": "0001794985200005.000000"}
+  ]
+}

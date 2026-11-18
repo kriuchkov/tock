@@ -1,0 +1,23 @@
+{
+  "name": "occurrence states merge field by field; fields a reader does not know are kept",
+  "journals": {
+    "7f3a9c2e5b1d4a60": [
+      {"v":1,"hlc":"0001794985200000.000000","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"title":"Pay rent","project":"","due":"2026-12-01","all_day":true,"every":"monthly","until":"","count":0,"notify":0,"notes":"","created":"2026-11-18T07:00:00Z"}},
+      {"v":1,"hlc":"0001794985500000.000000","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"occ/2026-12-01/snoozed":"2026-12-01T12:00:00+01:00"}},
+      {"v":1,"hlc":"0001794985800000.000000","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"occ/2027-01-01/skipped":true}},
+      {"v":1,"hlc":"0001794986400000.000000","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"tags/home":true}}
+    ],
+    "2b91c4d7e0f3a815": [
+      {"v":1,"hlc":"0001794985500000.000000","dev":"2b91c4d7e0f3a815","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"occ/2026-12-01/done":"2026-12-01T09:12:00+01:00"}},
+      {"v":1,"hlc":"0001794986100000.000000","dev":"2b91c4d7e0f3a815","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"occ/2027-01-01/skipped":false}},
+      {"v":1,"hlc":"0001794986100000.000001","dev":"2b91c4d7e0f3a815","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"title":"Pay the rent","color":"green"}}
+    ]
+  },
+  "expect": {
+    "activities": [],
+    "reminders": [
+      {"uid":"019a9b3c-0000-7000-8000-0000000000b1","fields":{"title":"Pay the rent","project":"","due":"2026-12-01","all_day":true,"every":"monthly","until":"","count":0,"notify":0,"notes":"","created":"2026-11-18T07:00:00Z","occ/2026-12-01/snoozed":"2026-12-01T12:00:00+01:00","occ/2026-12-01/done":"2026-12-01T09:12:00+01:00","occ/2027-01-01/skipped":false,"tags/home":true,"color":"green"}}
+    ],
+    "skipped": 0
+  }
+}

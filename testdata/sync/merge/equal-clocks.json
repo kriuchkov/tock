@@ -1,0 +1,23 @@
+{
+  "name": "equal clocks: the larger dev wins; within one journal the later line wins; a duplicated line does no harm",
+  "journals": {
+    "7f3a9c2e5b1d4a60": [
+      {"v":1,"hlc":"0001794985200000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"start":"2026-11-18T09:00:00Z","end":"2026-11-18T10:00:00Z","project":"Docs","description":"","notes":""}},
+      {"v":1,"hlc":"0001794985500000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"project":"Docs A"}},
+      {"v":1,"hlc":"0001794985800000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"description":"first"}},
+      {"v":1,"hlc":"0001794985800000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"description":"second"}}
+    ],
+    "2b91c4d7e0f3a815": [
+      {"v":1,"hlc":"0001794985500000.000000","dev":"2b91c4d7e0f3a815","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"project":"Docs B"}},
+      {"v":1,"hlc":"0001794985800000.000000","dev":"2b91c4d7e0f3a815","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"notes":"From the phone"}},
+      {"v":1,"hlc":"0001794985800000.000000","dev":"2b91c4d7e0f3a815","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"notes":"From the phone"}}
+    ]
+  },
+  "expect": {
+    "activities": [
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a1","fields":{"start":"2026-11-18T09:00:00Z","end":"2026-11-18T10:00:00Z","project":"Docs A","description":"second","notes":"From the phone"}}
+    ],
+    "reminders": [],
+    "skipped": 0
+  }
+}

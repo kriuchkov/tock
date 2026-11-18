@@ -1,0 +1,13 @@
+{
+  "name": "count limits the occurrences, skipped ones included",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Take the pills","due":"2026-11-16T09:00","all_day":false,"every":"daily","count":4,"occ/2026-11-17/skipped":true},
+  "from": "2026-11-01",
+  "to": "2026-12-01",
+  "now": "2026-11-16T08:00",
+  "expect": [
+    {"due":"2026-11-16T09:00","status":"pending"},
+    {"due":"2026-11-18T09:00","status":"pending"},
+    {"due":"2026-11-19T09:00","status":"pending"}
+  ]
+}

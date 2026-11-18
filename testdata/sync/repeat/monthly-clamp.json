@@ -1,0 +1,14 @@
+{
+  "name": "monthly on the 31st falls on the last day of shorter months",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Close the books","due":"2027-01-31","all_day":true,"every":"monthly"},
+  "from": "2027-01-01",
+  "to": "2027-05-01",
+  "now": "2027-01-01T00:00",
+  "expect": [
+    {"due":"2027-01-31","status":"pending"},
+    {"due":"2027-02-28","status":"pending"},
+    {"due":"2027-03-31","status":"pending"},
+    {"due":"2027-04-30","status":"pending"}
+  ]
+}

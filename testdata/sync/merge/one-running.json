@@ -1,0 +1,27 @@
+{
+  "name": "of the activities started on several devices, each but the last stops at the start of the next one",
+  "journals": {
+    "7f3a9c2e5b1d4a60": [
+      {"v":1,"hlc":"0001794985200000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a5","set":{"start":"2026-11-18T06:00:00Z","end":"2026-11-18T06:30:00Z","project":"Ops","description":"Stand-up","notes":""}},
+      {"v":1,"hlc":"0001794985200000.000001","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"start":"2026-11-18T10:00:00+03:00","end":null,"project":"Backend","description":"API","notes":""}},
+      {"v":1,"hlc":"0001794985200000.000002","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a4","set":{"start":"2026-11-18T07:45:00Z","end":null,"project":"Ops","description":"Started by mistake","notes":""}},
+      {"v":1,"hlc":"0001794985260000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a4","set":{"deleted":true}}
+    ],
+    "2b91c4d7e0f3a815": [
+      {"v":1,"hlc":"0001794987000000.000000","dev":"2b91c4d7e0f3a815","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a2","set":{"start":"2026-11-18T08:30:00+01:00","end":null,"project":"Mobile","description":"Release","notes":""}}
+    ],
+    "5e8d1a2b3c4f6071": [
+      {"v":1,"hlc":"0001794987060000.000000","dev":"5e8d1a2b3c4f6071","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a3","set":{"start":"2026-11-18T07:30:00Z","end":null,"project":"Mobile","description":"Release notes","notes":""}}
+    ]
+  },
+  "expect": {
+    "activities": [
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a1","fields":{"start":"2026-11-18T10:00:00+03:00","end":"2026-11-18T08:30:00+01:00","project":"Backend","description":"API","notes":""}},
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a2","fields":{"start":"2026-11-18T08:30:00+01:00","end":"2026-11-18T07:30:00Z","project":"Mobile","description":"Release","notes":""}},
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a3","fields":{"start":"2026-11-18T07:30:00Z","end":null,"project":"Mobile","description":"Release notes","notes":""}},
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a5","fields":{"start":"2026-11-18T06:00:00Z","end":"2026-11-18T06:30:00Z","project":"Ops","description":"Stand-up","notes":""}}
+    ],
+    "reminders": [],
+    "skipped": 0
+  }
+}

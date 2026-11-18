@@ -1,0 +1,14 @@
+{
+  "name": "monthly on the last Friday",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Demo day","due":"2026-11-27T16:00","all_day":false,"every":"monthly:last-fri"},
+  "from": "2026-11-01",
+  "to": "2027-03-01",
+  "now": "2026-11-01T00:00",
+  "expect": [
+    {"due":"2026-11-27T16:00","status":"pending"},
+    {"due":"2026-12-25T16:00","status":"pending"},
+    {"due":"2027-01-29T16:00","status":"pending"},
+    {"due":"2027-02-26T16:00","status":"pending"}
+  ]
+}

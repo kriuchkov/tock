@@ -1,0 +1,11 @@
+{
+  "name": "a repeat rule not in its canonical form counts as missing, so the reminder is one-off",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Rule not in canonical form","due":"2026-11-20T10:00","all_day":false,"every":"Daily"},
+  "from": "2026-11-16",
+  "to": "2026-11-27",
+  "now": "2026-11-16T00:00",
+  "expect": [
+    {"due":"2026-11-20T10:00","status":"pending"}
+  ]
+}

@@ -1,6 +1,7 @@
 # Sync
 
-**Status: draft, format version 1. Not implemented yet.**
+**Status: draft, format version 1.** The clock, the merge and the rules after it are in `internal/core/journal`.
+Reading and writing the sync folder is not implemented yet.
 
 This document defines how the tock CLI on a Mac and the tock iOS app share activities and reminders. It is the
 contract between the two implementations: the Go code in this repository and the Swift code in tock-ios. Both run the
@@ -75,13 +76,20 @@ Each line of a journal is one change to one record:
 No change is marked as "create" or "delete". A record exists once any change names its `uid`. Deleting a record
 sets its `deleted` field. A device writes all of a new record's fields in its first change.
 
+- **Invalid lines.** A reader skips a complete line that is not a valid change and reports it. That is a line that
+  is not a JSON object, lacks a key or has one of the wrong type, has `v` other than 1, a `dev` other than the
+  journal's device, a `type` it does not know, a `uid` that is not a lowercase UUIDv7, or a `set` that is empty or
+  has an empty path. Keys are matched exactly, and keys a reader does not know are ignored. Every device skips the
+  same lines, so they still agree.
+
 ### Clock
 
 `hlc` is a hybrid logical clock written as `<wall>.<counter>`. `<wall>` is milliseconds since the Unix epoch,
 zero-padded to 16 digits; `<counter>` is zero-padded to 6 digits. Since both parts have a fixed width, comparing
 the strings compares the clocks.
 
-- **Order.** Changes are ordered by `hlc`, and by `dev` when two `hlc` are equal.
+- **Order.** Changes are ordered by `hlc`, and by `dev` when two `hlc` are equal. Two changes with the same `hlc`
+  and `dev` come only from a cloned device; of these the later line in the journal wins.
 - **New change.** Let `last` be the latest clock the device has written or read. The new wall is the larger of the
   current time and `last.wall`. The counter is `last.counter + 1` if the wall equals `last.wall`, else 0. If the
   counter would pass 999999, the wall moves on by 1 ms instead.
@@ -116,8 +124,8 @@ Activity times are instants: each device shows them in its own time zone.
 | `all_day` | Boolean |
 | `every` | Repeat rule (see [Repeat rules](#repeat-rules)); `""` for a one-off reminder |
 | `until` | `YYYY-MM-DD`, the last day an occurrence can fall on, or `""` |
-| `count` | Maximum number of occurrences; `0` means no limit |
-| `notify` | Seconds before an occurrence the notification goes out; `0` means none |
+| `count` | Maximum number of occurrences, a whole number; `0` means no limit |
+| `notify` | Seconds before an occurrence the notification goes out, a whole number; `0` means none |
 | `notes` | String |
 | `tags/<tag>` | `true` or `false`, as for activities |
 | `created` | Instant |
@@ -128,7 +136,8 @@ Activity times are instants: each device shows them in its own time zone.
 | `deleted` | `true` once the reminder is removed |
 
 `due` is wall time, so a reminder at 17:30 stays at 17:30 in any time zone. Occurrence dates are local dates of the
-same wall clock.
+same wall clock. A `due` without a time makes the reminder all day, and an all-day reminder ignores the time of its
+`due`.
 
 A tag is the rest of the path after the first `/`, so a tag may contain `/`. A field path a reader does not know is
 kept in the merged state and passed on, so newer apps can add fields within version 1.
@@ -144,6 +153,9 @@ changes get the same state, whatever order they read them in and however many ti
 - **Incomplete records** are hidden while a required field is missing: an activity without `start` or `project`,
   a reminder without `title` or `due`. Writers never create them, but a reader can see one while a segment is still
   downloading.
+- **Values of the wrong type** count as missing when a record is read: a `start` that is not an RFC 3339 instant
+  with whole seconds, a `project` that is a number, a `count` that is not a whole number, an `every` not in the
+  canonical form. The merged state keeps them as they are, so devices still agree on it.
 - **Tags** of a record are the `tags/<tag>` fields set to `true`.
 
 ## Rules after the merge
@@ -151,7 +163,7 @@ changes get the same state, whatever order they read them in and however many ti
 Every implementation applies these to the merged state:
 
 1. **One activity runs at a time.** Two devices can each start an activity before they see each other's change. In
-   that case the running activities (`end` is `null`, not deleted) are sorted by `start`, ties broken by `uid`.
+   that case the running activities (visible, with `end` missing or `null`) are sorted by `start`, ties broken by `uid`.
    Each of them except the last stops at the `start` of the next one, as if that activity had been started on the
    same device. A device that applies this writes the new `end` values as changes. Several devices may write the
    same values, which is harmless.
@@ -174,7 +186,8 @@ Every implementation applies these to the merged state:
 - **Canonical form.** It is lowercase. Interval 1 is written by name (`weekly`, not `1w`), and weekdays are
   three-letter names in order from Monday. This is what `Repeat.Spec()` writes.
 - **Days.** The first day is the date of `due`. Occurrences fall on local dates, at the wall time of `due`, or for
-  the whole day.
+  the whole day. A wall time that a daylight saving change skips moves forward by the length of the gap: when the
+  clocks jump from 02:00 to 03:00, 02:30 becomes 03:30.
 - **`until` and `count`.** No occurrence falls after `until`. `count` limits the number of occurrences, skipped ones
   included.
 - **Status.** An occurrence is done once `done` is set. It is snoozed while `snoozed` is in the future. It is
@@ -261,13 +274,24 @@ state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes
 
 ## Test vectors
 
-Each test vector is one JSON file in `testdata/sync/`. The Go tests and the tock-ios tests run all of them.
+Each test vector is one JSON file in `testdata/sync/`. The Go tests (`internal/core/journal`) and the tock-ios tests
+run all of them.
 
-- `hlc/*.json`: clock order and the rules for new changes.
-- `merge/*.json`: `{"name", "journals": {"<dev>": ["<raw line>", ...]}, "now", "expect": {"activities": [...], "reminders": [...]}}`.
-  Journals are raw lines, so parsing, cut-off lines and order are tested too. `expect` lists the visible records in
-  `uid` order with their merged fields, after the rules.
-- `repeat/*.json`: `{"name", "tz", "reminder": {...fields...}, "from", "to", "now", "expect": [{"due", "status"}]}`.
+- `hlc/*.json`: `{"name", "valid", "invalid", "order", "last", "steps"}`, each key but `name` optional. `valid`
+  and `invalid` are clocks that parse or not; a valid one is written back unchanged. `order` lists `[hlc, dev]`
+  pairs in increasing order. `steps` run on a clock that starts at `last` (`""` is the zero clock): `{"op": "new",
+  "now", "expect"}` makes a change at `now` (ms since the epoch) and expects its clock; `{"op": "read", "hlc", "now",
+  "expect"}` reads a clock and expects the device's latest clock.
+- `merge/*.json`: `{"name", "journals": {"<dev>": [line, ...]}, "expect": {"activities", "reminders", "skipped"}}`.
+  An object line is written as compact JSON and `\n`, a string line exactly as it is, so a vector can hold a
+  malformed line or a last line cut off before its `\n`. `expect` lists the visible records in `uid` order as
+  `{"uid", "fields"}`, with every merged field after the rules, and counts the skipped lines. The result must be
+  the same whatever order the journals are read in, when they are read twice, and when they are read a few bytes
+  at a time.
+- `repeat/*.json`: `{"name", "tz", "reminder", "from", "to", "now", "expect"}`. `reminder` holds the fields of a
+  reminder, read in time zone `tz`. `expect` lists the occurrences on the days from `from` up to `to` (not
+  included) as `{"due", "status"}`, at `now` in local time; `status` is `pending`, `snoozed`, `overdue`, `missed`
+  or `done`, and skipped occurrences are left out.
 
 ## Privacy
 

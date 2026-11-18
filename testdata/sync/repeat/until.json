@@ -1,0 +1,14 @@
+{
+  "name": "no occurrence falls after until; until itself can have one",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Weekly report","due":"2026-11-16T09:00","all_day":false,"every":"weekly","until":"2026-12-07"},
+  "from": "2026-11-01",
+  "to": "2027-01-01",
+  "now": "2026-11-16T08:00",
+  "expect": [
+    {"due":"2026-11-16T09:00","status":"pending"},
+    {"due":"2026-11-23T09:00","status":"pending"},
+    {"due":"2026-11-30T09:00","status":"pending"},
+    {"due":"2026-12-07T09:00","status":"pending"}
+  ]
+}

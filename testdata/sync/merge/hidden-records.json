@@ -1,0 +1,27 @@
+{
+  "name": "records missing a required field are hidden; a value of the wrong type counts as missing; a cut-off last line is not read",
+  "journals": {
+    "7f3a9c2e5b1d4a60": [
+      {"v":1,"hlc":"0001794985200000.000000","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a1","set":{"start":"2026-11-18T09:00:00+01:00","end":null,"project":"","description":"Empty project","notes":""}},
+      {"v":1,"hlc":"0001794985200000.000001","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a2","set":{"start":"2026-11-18T09:00:00.500+01:00","end":"2026-11-18T10:00:00+01:00","project":"Ops","description":"Fractional seconds","notes":""}},
+      {"v":1,"hlc":"0001794985200000.000002","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a3","set":{"description":"An edit that arrived before the record"}},
+      {"v":1,"hlc":"0001794985200000.000003","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a4","set":{"start":"2026-11-18T09:00:00+01:00","end":"2026-11-18T10:00:00+01:00","project":42,"description":"Project is a number","notes":""}},
+      {"v":1,"hlc":"0001794985200000.000004","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a5","set":{"start":"2026-11-18T11:00:00+01:00","end":"later","project":"Ops","description":7,"notes":""}},
+      {"v":1,"hlc":"0001794985200000.000005","dev":"7f3a9c2e5b1d4a60","type":"activity","uid":"019a9b3c-0000-7000-8000-0000000000a6","set":{"start":"2026-11-18","end":null,"project":"Ops","description":"Start is a date","notes":""}},
+      {"v":1,"hlc":"0001794985260000.000000","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b1","set":{"title":"No due date","all_day":false,"every":""}},
+      {"v":1,"hlc":"0001794985260000.000001","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b2","set":{"title":"No such day","due":"2026-11-31T10:00","all_day":false,"every":""}},
+      {"v":1,"hlc":"0001794985260000.000002","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b3","set":{"title":"","due":"2026-11-20T10:00","all_day":false,"every":""}},
+      {"v":1,"hlc":"0001794985260000.000003","dev":"7f3a9c2e5b1d4a60","type":"reminder","uid":"019a9b3c-0000-7000-8000-0000000000b4","set":{"title":"Rule not in canonical form","due":"2026-11-20T10:00","all_day":false,"every":"Daily"}},
+      "{\"v\":1,\"hlc\":\"0001794985320000.000000\",\"dev\":\"7f3a9c2e5b1d4a60\",\"type\":\"activity\",\"uid\":\"019a9b3c-0000-7000-8000-0000000000a7\",\"set\":{\"start\":\"2026-11-18T12:00:00+01:00\",\"end\":null,\"project\":\"Ops\",\"description\":\"Cut off\",\"notes\":\"\"}}"
+    ]
+  },
+  "expect": {
+    "activities": [
+      {"uid":"019a9b3c-0000-7000-8000-0000000000a5","fields":{"start":"2026-11-18T11:00:00+01:00","end":"later","project":"Ops","description":7,"notes":""}}
+    ],
+    "reminders": [
+      {"uid":"019a9b3c-0000-7000-8000-0000000000b4","fields":{"title":"Rule not in canonical form","due":"2026-11-20T10:00","all_day":false,"every":"Daily"}}
+    ],
+    "skipped": 0
+  }
+}

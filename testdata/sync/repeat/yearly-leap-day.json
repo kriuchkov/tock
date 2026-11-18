@@ -1,0 +1,15 @@
+{
+  "name": "yearly on 29 February falls on 28 February in other years",
+  "tz": "Europe/Berlin",
+  "reminder": {"title":"Leap day","due":"2028-02-29","all_day":true,"every":"yearly"},
+  "from": "2028-01-01",
+  "to": "2033-01-01",
+  "now": "2028-01-01T00:00",
+  "expect": [
+    {"due":"2028-02-29","status":"pending"},
+    {"due":"2029-02-28","status":"pending"},
+    {"due":"2030-02-28","status":"pending"},
+    {"due":"2031-02-28","status":"pending"},
+    {"due":"2032-02-29","status":"pending"}
+  ]
+}
