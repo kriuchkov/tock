@@ -18,10 +18,10 @@ test vectors in `testdata/sync/`, and tock-ios pins them to a tock release.
 
 ```text
 <sync dir>/
-  format.json                        {"format": "tock-sync", "version": 1}
-  devices/<device>.json              who the device is
-  journal/<device>/<YYYY-MM>.jsonl   the device's changes, append-only
-  snapshots/<device>.json            the device's merged state, optional
+  format.json                          {"format": "tock-sync", "version": 1}
+  devices/<device>.json                who the device is
+  journal/<device>/<YYYY-MM>.jsonl     the device's changes this month, append-only
+  journal/<device>/<YYYY-MM>.jsonl.gz  a closed month, compressed
 ```
 
 On macOS the default sync dir is `~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync`. This is the
@@ -35,10 +35,11 @@ sync:
 
 - **Device ID.** Each device makes a random ID once: 16 lowercase hex characters. It is stored outside the sync dir
   (`~/.tock/sync/` on macOS, the Keychain with a this-device-only attribute on iOS) and is never reused.
-- **Writers.** A device writes only `devices/<own id>.json`, `snapshots/<own id>.json` and the files under
-  `journal/<own id>/`. It also creates `format.json` if it is missing. Everything else is read-only to it.
+- **Writers.** A device writes only `devices/<own id>.json` and the files under `journal/<own id>/`. It also creates
+  `format.json` if it is missing. Everything else is read-only to it.
 - **Segments.** A device appends each change to the segment named after the UTC month of the change's HLC wall time
-  (see [Clock](#clock)). Older segments are never written again. A month of changes is roughly 150 KB.
+  (see [Clock](#clock)). Older segments are never written again, only compressed (see
+  [Reading incrementally](#reading-incrementally)). A month of changes is roughly 150 KB.
 - **Whole lines.** A writer appends whole lines, each ending in `\n`, with one write call, and syncs the file to disk.
   A reader skips a last line that has no `\n`: its writer may still be writing it.
 - **Files not yet downloaded.** iCloud can leave a placeholder (`.<name>.icloud`) in place of a file. A reader asks
@@ -195,21 +196,16 @@ new changes to a kept state takes about 50 µs.
 - **Cursors.** For every segment, the device stores how many bytes of it it has applied. A sync reads each segment
   from its cursor to the last complete line, and skips a segment whose size has not changed. Changes are applied to
   the cache by the merge rule, so the result is the same as a full merge.
-- **Snapshots.** A device may write its cache to `snapshots/<own id>.json`, replacing its previous snapshot:
-
-  ```json
-  {"v":1,"dev":"7f3a9c2e5b1d4a60","covers":{"7f3a9c2e5b1d4a60":"0001795025074932.000000","2b91c4d7e0f3a815":"0001795024990000.000003"},"records":[{"type":"activity","uid":"019a9b3c-7d2e-7c41-9a55-3e1f0b6d2a10","fields":{"project":{"hlc":"0001795025074932.000000","dev":"7f3a9c2e5b1d4a60","val":"Backend"}}}]}
-  ```
-
-  `covers` holds, for each device, the latest `hlc` of that device's changes the snapshot includes. A device writes
-  its changes in increasing `hlc` order, so these changes are exactly the ones up to that `hlc`. A snapshot merges
-  into a cache field by field, by the same rule as a change. A new device merges every snapshot, then reads from
-  each journal only the changes after the largest `covers` entry for that device. Its first sync therefore does not
-  read the whole history.
-- **Deleted records stay in snapshots** with all their fields. Dropping them would let a device that was offline
-  bring a deleted record back from its cache, and an undo would have nothing to restore.
-- **Segments are never deleted in version 1.** Deleting the segments a snapshot covers needs format version 2. That
-  way a reader that does not use snapshots stops instead of missing changes.
+- **Closed months are compressed.** A month's segment is closed once its device writes a change in a later month;
+  the clock never goes back, so the device never writes to it again. The device then writes the segment gzipped as
+  `<YYYY-MM>.jsonl.gz` (to a temporary file, then renamed) and removes `<YYYY-MM>.jsonl`. Cursors count bytes of the
+  uncompressed content, so a device that had not finished a segment carries on at the same place in the `.gz`. A
+  reader that sees both files for a month uses either; they hold the same changes. On the data above, gzip makes the
+  journals 9 times smaller: 4.9 MB instead of 45 MB.
+- **Nothing is deleted.** Segments stay, and so do deleted records in the cache, with all their fields. Without them a
+  device that was offline could bring a deleted record back, and an undo would have nothing to restore.
+- **First sync.** A new device reads the whole history once: on the data above, a 4.9 MB download and about 3 s of
+  reading in Swift.
 
 ## Mac: the CLI's backends
 
@@ -280,6 +276,9 @@ Nothing else leaves the device.
 
 ## Open questions
 
-- **Compaction.** Deleting the segments that snapshots cover, in format version 2.
+- **Snapshots.** Version 1 has none. On tock's data a snapshot of the merged state is larger than the journals it
+  replaces (49 MB against 45 MB), because most records are written once or twice and a snapshot keeps an `hlc` per
+  field. If records start being rewritten often, a later version can add snapshots and delete the segments they
+  cover.
 - **Real time.** Starting a Live Activity on the iPhone when tracking starts on the Mac needs push notifications
   (APNs), so it waits for a relay server in version 2.
