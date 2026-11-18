@@ -105,7 +105,7 @@ func (m *calendarModel) dayReminders() []models.ReminderOccurrence {
 		}
 	}
 	if sameDay(m.currentDate, reminderNow()) {
-		return mergeOccurrences(m.rem.data.overdue, day)
+		return models.MergeOccurrences(m.rem.data.overdue, day)
 	}
 	return day
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
@@ -131,29 +130,10 @@ func findLastActivity(ctx context.Context, svc ports.ActivityResolver) (models.A
 	return *last, nil
 }
 
-func findActivityByIndex(ctx context.Context, svc ports.ActivityResolver, index string) (models.Activity, error) {
-	date, seq, parseErr := models.ParseActivityKey(index)
-	if parseErr != nil {
-		return models.Activity{}, errors.Wrap(parseErr, "parse index")
-	}
-
-	fromDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-	toDate := fromDate.AddDate(0, 0, 1)
-
-	filter := models.ActivityFilter{
-		FromDate: &fromDate,
-		ToDate:   &toDate,
-	}
-
-	activities, err := svc.List(ctx, filter)
+func findActivityByIndex(ctx context.Context, svc ports.ActivityResolver, key string) (models.Activity, error) {
+	activity, err := svc.GetByKey(ctx, key)
 	if err != nil {
-		return models.Activity{}, errors.Wrap(err, "list activities")
+		return models.Activity{}, errors.Wrap(err, "find activity")
 	}
-
-	activity, sequenceErr := models.ActivityForSequence(models.ActivitiesStartingOn(activities, date), seq)
-	if sequenceErr != nil {
-		return models.Activity{}, errors.Errorf("activity #%d not found on %s", seq, date.Format("2006-01-02"))
-	}
-
-	return activity, nil
+	return *activity, nil
 }

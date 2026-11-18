@@ -202,7 +202,7 @@ func (m *calendarModel) renderHeader() string {
 // activity and the totals.
 func (m *calendarModel) rulerSummary() []rulerItem {
 	var items []rulerItem
-	if overdue := len(overdueOnly(m.rem.data.overdue, reminderNow())); m.remindersEnabled() && overdue > 0 {
+	if overdue := len(models.OverdueOnly(m.rem.data.overdue, reminderNow())); m.remindersEnabled() && overdue > 0 {
 		items = append(items, m.ui.overdueItem(m.loc.Format("tui.summary.overdue", overdue), overdue))
 	}
 	if activity, ok := m.runningActivity(); ok {

@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -29,6 +30,52 @@ type stubActivityResolver struct {
 	addNoteFn   func(context.Context, models.Activity, string) (*models.Activity, error)
 	addTagsFn   func(context.Context, models.Activity, []string) (*models.Activity, error)
 	removeFn    func(context.Context, models.Activity) error
+	continueFn  func(context.Context, models.ContinueActivityRequest) (*models.Activity, error)
+	stopAfterFn func(context.Context, models.WorkingHours, time.Time) (*models.Activity, error)
+	getByKeyFn  func(context.Context, string) (*models.Activity, error)
+}
+
+// GetByKey falls back to numbering what listFn returns for the key's day, like the service does.
+func (s stubActivityResolver) GetByKey(ctx context.Context, key string) (*models.Activity, error) {
+	if s.getByKeyFn != nil {
+		return s.getByKeyFn(ctx, key)
+	}
+	if s.listFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+
+	date, seq, err := models.ParseActivityKey(key)
+	if err != nil {
+		return nil, err
+	}
+	to := date.AddDate(0, 0, 1)
+	activities, err := s.listFn(ctx, models.ActivityFilter{FromDate: &date, ToDate: &to})
+	if err != nil {
+		return nil, err
+	}
+	activity, err := models.ActivityForSequence(models.ActivitiesStartingOn(activities, date), seq)
+	if err != nil {
+		return nil, err
+	}
+	return &activity, nil
+}
+
+func (s stubActivityResolver) Continue(ctx context.Context, req models.ContinueActivityRequest) (*models.Activity, error) {
+	if s.continueFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+	return s.continueFn(ctx, req)
+}
+
+func (s stubActivityResolver) StopAfterWorkingHours(
+	ctx context.Context,
+	hours models.WorkingHours,
+	now time.Time,
+) (*models.Activity, error) {
+	if s.stopAfterFn == nil {
+		return nil, stubMethodNotConfigured()
+	}
+	return s.stopAfterFn(ctx, hours, now)
 }
 
 func (s stubActivityResolver) Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error) {

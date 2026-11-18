@@ -19,6 +19,17 @@ type StopActivityRequest struct {
 	Tags    []string
 }
 
+// ContinueActivityRequest starts one of the recent activities again. Empty fields keep its values.
+type ContinueActivityRequest struct {
+	// Index picks the activity in GetRecent order, 0 being the latest.
+	Index       int
+	Description string
+	Project     string
+	StartTime   time.Time
+	Notes       string
+	Tags        []string
+}
+
 type AddActivityRequest struct {
 	Description string
 	Project     string

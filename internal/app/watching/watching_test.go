@@ -76,6 +76,18 @@ func (s stubResolver) AddTags(context.Context, models.Activity, []string) (*mode
 	return nil, unconfiguredResolverCall()
 }
 
+func (s stubResolver) Continue(context.Context, models.ContinueActivityRequest) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
+func (s stubResolver) StopAfterWorkingHours(context.Context, models.WorkingHours, time.Time) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
+func (s stubResolver) GetByKey(context.Context, string) (*models.Activity, error) {
+	return nil, unconfiguredResolverCall()
+}
+
 func (s stubResolver) Remove(context.Context, models.Activity) error {
 	return unconfiguredResolverCall()
 }

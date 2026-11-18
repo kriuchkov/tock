@@ -1,6 +1,7 @@
 package activity
 
 import (
+	"cmp"
 	"context"
 	"slices"
 	"strings"
@@ -114,6 +115,53 @@ func (s *service) Stop(ctx context.Context, req models.StopActivityRequest) (*mo
 		}
 	}
 	return last, nil
+}
+
+func (s *service) Continue(ctx context.Context, req models.ContinueActivityRequest) (*models.Activity, error) {
+	if req.Index < 0 {
+		return nil, errors.Errorf("invalid activity number %d", req.Index)
+	}
+
+	recent, err := s.GetRecent(ctx, req.Index+1)
+	if err != nil {
+		return nil, errors.Wrap(err, "get recent activities")
+	}
+	if req.Index >= len(recent) {
+		return nil, errors.Errorf("activity number %d not found (only %d recent activities available)", req.Index, len(recent))
+	}
+
+	base := recent[req.Index]
+	return s.Start(ctx, models.StartActivityRequest{
+		Description: cmp.Or(req.Description, base.Description),
+		Project:     cmp.Or(req.Project, base.Project),
+		StartTime:   req.StartTime,
+		Notes:       req.Notes,
+		Tags:        req.Tags,
+	})
+}
+
+func (s *service) StopAfterWorkingHours(ctx context.Context, hours models.WorkingHours, now time.Time) (*models.Activity, error) {
+	isRunning := true
+	running, err := s.repo.Find(ctx, models.ActivityFilter{IsRunning: &isRunning})
+	if err != nil {
+		return nil, errors.Wrap(err, "find running activities")
+	}
+	if len(running) == 0 {
+		return nil, nil //nolint:nilnil // nothing to stop is not an error
+	}
+
+	latest := running[0]
+	for _, act := range running[1:] {
+		if act.StartTime.After(latest.StartTime) {
+			latest = act
+		}
+	}
+
+	stopTime, ok := hours.StopTime(latest.StartTime, now)
+	if !ok {
+		return nil, nil //nolint:nilnil // nothing to stop is not an error
+	}
+	return s.Stop(ctx, models.StopActivityRequest{EndTime: stopTime})
 }
 
 func (s *service) Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error) {
@@ -300,6 +348,26 @@ func (s *service) GetRecent(ctx context.Context, limit int) ([]models.Activity, 
 
 func (s *service) GetLast(ctx context.Context) (*models.Activity, error) {
 	return s.repo.FindLast(ctx)
+}
+
+func (s *service) GetByKey(ctx context.Context, key string) (*models.Activity, error) {
+	date, seq, err := models.ParseActivityKey(key)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse activity key")
+	}
+
+	from := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+	to := from.AddDate(0, 0, 1)
+	activities, err := s.List(ctx, models.ActivityFilter{FromDate: &from, ToDate: &to})
+	if err != nil {
+		return nil, errors.Wrap(err, "list activities")
+	}
+
+	activity, err := models.ActivityForSequence(models.ActivitiesStartingOn(activities, date), seq)
+	if err != nil {
+		return nil, errors.Wrapf(coreErrors.ErrActivityNotFound, "activity #%d on %s", seq, date.Format(time.DateOnly))
+	}
+	return &activity, nil
 }
 
 // Update applies a partial change to an existing activity. When the start time

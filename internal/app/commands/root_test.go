@@ -90,13 +90,9 @@ func TestRootPersistentPreRunAutoStopsActivityOutsideWorkingHours(t *testing.T) 
 	}
 
 	svc := &stubActivityResolver{
-		listFn: func(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
-			require.NotNil(t, filter.IsRunning)
-			assert.True(t, *filter.IsRunning)
-			return []models.Activity{running}, nil
-		},
-		stopFn: func(_ context.Context, req models.StopActivityRequest) (*models.Activity, error) {
-			end := req.EndTime
+		stopAfterFn: func(_ context.Context, hours models.WorkingHours, now time.Time) (*models.Activity, error) {
+			end, ok := hours.StopTime(running.StartTime, now)
+			require.True(t, ok)
 			assert.True(t, end.Equal(time.Date(2026, time.April, 21, 17, 30, 0, 0, time.Local)))
 			running.EndTime = &end
 			return &running, nil

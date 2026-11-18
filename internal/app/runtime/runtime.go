@@ -108,6 +108,31 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 	return rt, nil
 }
 
+// WorkingHours returns the configured end of the working day; enabled is false when it isn't set.
+func (rt *Runtime) WorkingHours() (models.WorkingHours, bool, error) {
+	if rt.Config == nil {
+		return models.WorkingHours{}, false, nil
+	}
+	cfg := rt.Config.WorkingHours
+	if !cfg.Enabled || strings.TrimSpace(cfg.StopAt) == "" {
+		return models.WorkingHours{}, false, nil
+	}
+
+	formatter := rt.TimeFormatter
+	if formatter == nil {
+		formatter = timeutil.NewFormatter("24")
+	}
+	stopAt, err := formatter.ParseTime(cfg.StopAt)
+	if err != nil {
+		return models.WorkingHours{}, false, errors.Wrap(err, "parse working hours stop time")
+	}
+	weekdays, err := models.ParseWorkingWeekdays(cfg.Weekdays)
+	if err != nil {
+		return models.WorkingHours{}, false, err
+	}
+	return models.WorkingHours{StopHour: stopAt.Hour(), StopMinute: stopAt.Minute(), Weekdays: weekdays}, true, nil
+}
+
 // buildTagColors merges per-tag colors from two sources. Config-defined colors
 // are the base; backend-specific colors (e.g. TimeWarrior tags.*.color) are
 // overlaid on top so that the backend's own palette takes precedence unless

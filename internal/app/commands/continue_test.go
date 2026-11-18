@@ -14,18 +14,12 @@ import (
 
 func TestRunContinueCmdUsesRecentActivityAndOverrides(t *testing.T) {
 	service := &stubActivityResolver{
-		getRecentFn: func(_ context.Context, limit int) ([]models.Activity, error) {
-			assert.Equal(t, 2, limit)
-			return []models.Activity{
-				{Project: "core", Description: "first"},
-				{Project: "ops", Description: "second"},
-			}, nil
-		},
-		startFn: func(_ context.Context, req models.StartActivityRequest) (*models.Activity, error) {
+		continueFn: func(_ context.Context, req models.ContinueActivityRequest) (*models.Activity, error) {
+			assert.Equal(t, 1, req.Index)
 			assert.Equal(t, "renamed", req.Description)
-			assert.Equal(t, "ops", req.Project)
+			assert.Empty(t, req.Project)
 			assert.Equal(t, []string{"done"}, req.Tags)
-			return &models.Activity{Project: req.Project, Description: req.Description, StartTime: req.StartTime}, nil
+			return &models.Activity{Project: "ops", Description: req.Description, StartTime: req.StartTime}, nil
 		},
 	}
 
@@ -40,11 +34,9 @@ func TestRunContinueCmdUsesRecentActivityAndOverrides(t *testing.T) {
 
 func TestRunContinueCmdJSONUsesCommandWriter(t *testing.T) {
 	service := &stubActivityResolver{
-		getRecentFn: func(_ context.Context, _ int) ([]models.Activity, error) {
-			return []models.Activity{{Project: "core", Description: "first"}}, nil
-		},
-		startFn: func(_ context.Context, req models.StartActivityRequest) (*models.Activity, error) {
-			return &models.Activity{Project: req.Project, Description: req.Description, StartTime: time.Now()}, nil
+		continueFn: func(_ context.Context, req models.ContinueActivityRequest) (*models.Activity, error) {
+			assert.Equal(t, 0, req.Index)
+			return &models.Activity{Project: "core", Description: "first", StartTime: time.Now()}, nil
 		},
 	}
 
