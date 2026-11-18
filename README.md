@@ -45,7 +45,7 @@
 
 ## Features
 
-<img src="assets/demo.png" width="820px" />
+<img src="assets/demo.svg" width="100%" alt="tock in the terminal: the calendar, a reminder marked done, then the reminders, list and analyze tabs" />
 
 **Tock** is a powerful time tracking tool for the command line. It saves activity logs as plaintext files and provides an interactive terminal UI for viewing your time.
 

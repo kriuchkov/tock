@@ -1,4 +1,4 @@
-# Takes assets/demo.png, the calendar screenshot at the top of the README.
+# Takes assets/demo.png, a still of the calendar (the README opens with the animated demo.svg, see demo_svg.sh).
 # Run from the repository root: vhs demo/screenshot.tape (data lives in a temp dir, see demo_seed.sh).
 
 Output demo/screenshot.gif

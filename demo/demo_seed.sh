@@ -1,4 +1,4 @@
-# Sourced by demo/*.tape: builds tock into a temp dir and seeds sample data there.
+# Sourced by demo/*.tape and demo/demo_svg.sh: builds tock into a temp dir and seeds sample data there.
 # HOME points at the temp dir before anything runs, so even a failed build never lets
 # another tock on PATH read or write real data.
 
