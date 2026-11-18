@@ -21,6 +21,7 @@ test vectors in `testdata/sync/`, and tock-ios pins them to a tock release.
   format.json                        {"format": "tock-sync", "version": 1}
   devices/<device>.json              who the device is
   journal/<device>/<YYYY-MM>.jsonl   the device's changes, append-only
+  snapshots/<device>.json            the device's merged state, optional
 ```
 
 On macOS the default sync dir is `~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync`. This is the
@@ -34,8 +35,8 @@ sync:
 
 - **Device ID.** Each device makes a random ID once: 16 lowercase hex characters. It is stored outside the sync dir
   (`~/.tock/sync/` on macOS, the Keychain with a this-device-only attribute on iOS) and is never reused.
-- **Writers.** A device writes only `devices/<own id>.json` and the files under `journal/<own id>/`. It also creates
-  `format.json` if it is missing. Everything else is read-only to it.
+- **Writers.** A device writes only `devices/<own id>.json`, `snapshots/<own id>.json` and the files under
+  `journal/<own id>/`. It also creates `format.json` if it is missing. Everything else is read-only to it.
 - **Segments.** A device appends each change to the segment named after the UTC month of the change's HLC wall time
   (see [Clock](#clock)). Older segments are never written again. A month of changes is roughly 150 KB.
 - **Whole lines.** A writer appends whole lines, each ending in `\n`, with one write call, and syncs the file to disk.
@@ -182,34 +183,78 @@ Every implementation applies these to the merged state:
 The Go implementation is `internal/core/models/reminder_repeat.go` and `reminder_occurrence.go`. Where this text and
 the code disagree, the test vectors decide.
 
+## Reading incrementally
+
+A device does not reread every journal on each sync. Measured on a Mac with synthetic data, 100,000 activities and
+25,000 reminder changes make 45 MB of journals. Reading all of them takes 0.5 s in Go and 3.3 s in Swift. Applying 20
+new changes to a kept state takes about 50 µs.
+
+- **Cache.** A device keeps the merged state in a local database: every record, deleted ones included, with every
+  field's value, `hlc` and `dev`. On macOS this is `~/.tock/sync/state.db` (SQLite); on iOS it is SQLite in the app
+  container. Screens read from it by date range.
+- **Cursors.** For every segment, the device stores how many bytes of it it has applied. A sync reads each segment
+  from its cursor to the last complete line, and skips a segment whose size has not changed. Changes are applied to
+  the cache by the merge rule, so the result is the same as a full merge.
+- **Snapshots.** A device may write its cache to `snapshots/<own id>.json`, replacing its previous snapshot:
+
+  ```json
+  {"v":1,"dev":"7f3a9c2e5b1d4a60","covers":{"7f3a9c2e5b1d4a60":"0001795025074932.000000","2b91c4d7e0f3a815":"0001795024990000.000003"},"records":[{"type":"activity","uid":"019a9b3c-7d2e-7c41-9a55-3e1f0b6d2a10","fields":{"project":{"hlc":"0001795025074932.000000","dev":"7f3a9c2e5b1d4a60","val":"Backend"}}}]}
+  ```
+
+  `covers` holds, for each device, the latest `hlc` of that device's changes the snapshot includes. A device writes
+  its changes in increasing `hlc` order, so these changes are exactly the ones up to that `hlc`. A snapshot merges
+  into a cache field by field, by the same rule as a change. A new device merges every snapshot, then reads from
+  each journal only the changes after the largest `covers` entry for that device. Its first sync therefore does not
+  read the whole history.
+- **Deleted records stay in snapshots** with all their fields. Dropping them would let a device that was offline
+  bring a deleted record back from its cache, and an undo would have nothing to restore.
+- **Segments are never deleted in version 1.** Deleting the segments a snapshot covers needs format version 2. That
+  way a reader that does not use snapshots stops instead of missing changes.
+
 ## Mac: the CLI's backends
 
-The CLI keeps its backend (file, todotxt, timewarrior or sqlite) as the place you read and edit. Sync connects the
-backend to the journals:
+The CLI keeps its backend (file, todotxt, timewarrior or sqlite) as the place you read and edit. The bridge between
+the backend and the journals goes through the same ports as the activity service (`ActivityRepository`,
+`NotesRepository`, `ReminderRepository`), so it does not depend on any file format.
 
-1. Read the backend.
-2. Compare it with the state saved after the last sync, and write a change for every field that differs. This also
-   picks up edits made by hand in `tock.txt`.
-3. Read all journals, merge them and apply the rules above.
-4. Write the merged state to the backend where it differs, and save it as the new last-sync state.
+- **Changes made through tock** (the CLI, the TUI, the MCP server, the tray) go to the journal as they happen.
+  `runtime` wraps the repositories in a decorator that records every save and removal.
+- **Changes made outside tock** (by hand in `tock.txt`, with `timew`, with `sqlite3`) are found by comparing the
+  backend with the last-sync state. A sync only compares when the backend's change token differs from the one saved
+  after tock's own last write. A full compare of 100,000 activities takes about 0.1 s, the same as a `tock report`
+  over that data.
+- **Changes from other devices** are written to the backend where it differs, and the result becomes the new
+  last-sync state.
 
+| Backend | Where `uid` lives | Time precision | Change token |
+|---|---|---|---|
+| file (`tock.txt`) | `state.db`, by start time | minute, local time | Size and modification time of `tock.txt` |
+| todotxt | `state.db`, by start time | second | Size and modification time of the file |
+| timewarrior | `state.db`, by start time | second, UTC | Size and modification time of each `YYYY-MM.data`; only the months that changed are reread |
+| sqlite | `uid` column in `activities` and `reminders` | as stored | Triggers log the changed rows, so nothing is compared |
+
+- **Sidecar files.** The file, todotxt and timewarrior backends keep reminders in `.tock/reminders.yaml`, which gets
+  a `uid` per reminder, and notes in `.tock/notes/<date>/`. Editing a note in place does not change its folder, so a
+  sync checks the note files of the last 7 days. `tock tray` checks all of them once an hour, and so does
+  `tock sync --full`.
+- **Matching activities.** An activity in the backend matches its last-sync state by start time, at the backend's
+  precision. An activity that disappeared and a new one with the same project and description count as one activity
+  whose start moved.
+- **Precision.** Comparisons use the backend's precision, so writing the merged state back does not create new
+  changes.
+- **Switching backends.** `state.db` records which backend and path it was built for. After a switch, the bridge
+  matches the new backend's records to the cache by start time, project and description, and writes no changes for
+  the ones that match. Otherwise moving from file to sqlite would reach every device as 100,000 deletions and
+  creations.
 - **Where it runs.** After every command that changes data, on `tock sync`, and in `tock tray` once a minute and when
   the sync folder changes.
-- **Where IDs live.** The file-based backends have nowhere to keep a `uid`. `~/.tock/sync/state.json` maps each `uid`
-  to the activity's start time, alongside the last-sync state and the clock. The reminder file and sqlite get a `uid`
-  field.
-- **Matching activities.** An activity in the backend matches its last-sync state by start time. An activity that
-  disappeared and a new one with the same project and description count as one activity whose start moved.
-- **Precision.** The file and todotxt backends store minutes. Comparisons use the backend's precision, so writing
-  the merged state back does not create new changes.
 
 ## iOS
 
 The app's bundle ID is `com.kriuchkov.tock`, and its iCloud container is `iCloud.com.kriuchkov.tock`, with its
-documents scope public. That makes its folder
-visible in iCloud Drive on the Mac, where the CLI reads and writes it. The app watches the folder with
-`NSMetadataQuery`, reads and writes through `NSFileCoordinator`, keeps a local cache of the merged state and writes
-only its own journal.
+documents scope public. That makes its folder visible in iCloud Drive on the Mac, where the CLI reads and writes it.
+The app watches the folder with `NSMetadataQuery`, reads and writes through `NSFileCoordinator`, keeps the merged
+state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes only its own journal.
 
 ## Versions
 
@@ -235,6 +280,6 @@ Nothing else leaves the device.
 
 ## Open questions
 
-- **Compaction.** Old segments are kept forever in version 1. A later version can add snapshots.
+- **Compaction.** Deleting the segments that snapshots cover, in format version 2.
 - **Real time.** Starting a Live Activity on the iPhone when tracking starts on the Mac needs push notifications
   (APNs), so it waits for a relay server in version 2.
