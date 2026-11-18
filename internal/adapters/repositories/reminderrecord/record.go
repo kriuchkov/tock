@@ -17,6 +17,7 @@ const (
 // Record is the storage form of a reminder, shared by the reminders (YAML) and sqlite backends.
 type Record struct {
 	ID          int                    `yaml:"id"                    json:"id"`
+	UID         string                 `yaml:"uid,omitempty"         json:"uid,omitempty"`
 	Title       string                 `yaml:"title"                 json:"title"`
 	Project     string                 `yaml:"project,omitempty"     json:"project,omitempty"`
 	Due         string                 `yaml:"due"                   json:"due"`
@@ -43,6 +44,7 @@ type StateRecord struct {
 func NewRecord(reminder models.Reminder) Record {
 	record := Record{
 		ID:      reminder.ID,
+		UID:     reminder.UID,
 		Title:   reminder.Title,
 		Project: reminder.Project,
 		AllDay:  reminder.AllDay,
@@ -113,6 +115,7 @@ func (r Record) Reminder() (models.Reminder, error) {
 
 	reminder := models.Reminder{
 		ID:      r.ID,
+		UID:     r.UID,
 		Title:   r.Title,
 		Project: r.Project,
 		Due:     due,

@@ -3,8 +3,10 @@ package reminders
 import (
 	"context"
 	"os"
+	"slices"
 
 	"github.com/go-faster/errors"
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
@@ -68,22 +70,22 @@ func (r *repository) save(reminder models.Reminder) (*models.Reminder, error) {
 	}
 	doc.NextID = max(doc.NextID, reminder.ID+1)
 
-	record := reminderrecord.NewRecord(reminder)
-	replaced := false
-	for i := range doc.Reminders {
-		if doc.Reminders[i].ID == reminder.ID {
-			doc.Reminders[i] = record
-			replaced = true
-			break
-		}
+	index := slices.IndexFunc(doc.Reminders, func(record reminderrecord.Record) bool { return record.ID == reminder.ID })
+	if index >= 0 && reminder.UID == "" {
+		reminder.UID = doc.Reminders[index].UID
 	}
-	if !replaced {
+	record := reminderrecord.NewRecord(reminder)
+	if index < 0 {
+		index = len(doc.Reminders)
 		doc.Reminders = append(doc.Reminders, record)
+	} else {
+		doc.Reminders[index] = record
 	}
 
-	if err = r.store(doc); err != nil {
+	if err = r.store(&doc); err != nil {
 		return nil, err
 	}
+	reminder.UID = doc.Reminders[index].UID
 	return &reminder, nil
 }
 
@@ -107,7 +109,7 @@ func (r *repository) remove(id int) error {
 		return coreErrors.ErrReminderNotFound
 	}
 	doc.Reminders = kept
-	return r.store(doc)
+	return r.store(&doc)
 }
 
 func (d document) nextID() int {
@@ -134,8 +136,20 @@ func (r *repository) load() (document, error) {
 	return doc, nil
 }
 
-// store writes the file atomically, so a reader never sees half of it.
-func (r *repository) store(doc document) error {
+// store writes the file atomically, so a reader never sees half of it. It first gives a uid to every
+// reminder without one: reminders from before uids get theirs on the first write.
+func (r *repository) store(doc *document) error {
+	for i := range doc.Reminders {
+		if doc.Reminders[i].UID != "" {
+			continue
+		}
+		uid, err := uuid.NewV7()
+		if err != nil {
+			return errors.Wrap(err, "make reminder uid")
+		}
+		doc.Reminders[i].UID = uid.String()
+	}
+
 	payload, err := yaml.Marshal(doc)
 	if err != nil {
 		return errors.Wrap(err, "encode reminders")
