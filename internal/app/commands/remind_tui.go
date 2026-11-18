@@ -118,7 +118,7 @@ func (m *remindModel) load(q remindQuery) remindLoaded {
 		return remindLoaded{query: q, err: err}
 	}
 	rows = sortReminderRows(rows, q.now)
-	return remindLoaded{query: q, rows: rows, tracked: m.loadTracked(rows), overdue: len(overdueOnly(overdue, q.now))}
+	return remindLoaded{query: q, rows: rows, tracked: m.loadTracked(rows), overdue: len(models.OverdueOnly(overdue, q.now))}
 }
 
 // apply shows what a reload found.
@@ -131,7 +131,7 @@ func (m *remindModel) apply(loaded remindLoaded) {
 	m.rows, m.tracked, m.overdue, m.next = loaded.rows, loaded.tracked, loaded.overdue, nextMemo{}
 	m.cursor = min(m.cursor, max(len(m.rows)-1, 0))
 	if hadSelection {
-		m.keepSelection(occurrenceID(selected))
+		m.keepSelection(selected.ID())
 	}
 }
 
@@ -139,7 +139,7 @@ func (m *remindModel) apply(loaded remindLoaded) {
 // done or snoozing it can move it in the sort order.
 func (m *remindModel) keepSelection(id string) {
 	for i, row := range m.rows {
-		if occurrenceID(row) == id {
+		if row.ID() == id {
 			m.cursor = i
 			return
 		}
@@ -150,7 +150,7 @@ func (m *remindModel) loadRows(q remindQuery, overdue []models.ReminderOccurrenc
 	now := q.now
 	switch q.view {
 	case remindViewOverdue:
-		return overdueOnly(overdue, now), nil
+		return models.OverdueOnly(overdue, now), nil
 	case remindViewAll:
 		reminders, err := m.svc.List(m.ctx)
 		if err != nil {
@@ -183,7 +183,7 @@ func (m *remindModel) loadRows(q remindQuery, overdue []models.ReminderOccurrenc
 
 	today, _ := timeutil.LocalDayBounds(now)
 	if !today.Before(from) && today.Before(to) {
-		return mergeOccurrences(overdue, occurrences), nil
+		return models.MergeOccurrences(overdue, occurrences), nil
 	}
 	return occurrences, nil
 }

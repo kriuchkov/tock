@@ -10,11 +10,18 @@ import (
 type ActivityResolver interface {
 	Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error)
 	Stop(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error)
+	// Continue starts a recent activity again, stopping the running one like Start does.
+	Continue(ctx context.Context, req models.ContinueActivityRequest) (*models.Activity, error)
+	// StopAfterWorkingHours stops the running activity at the last end of a working day it ran past.
+	// It returns the stopped activity, or nil when nothing had to stop.
+	StopAfterWorkingHours(ctx context.Context, hours models.WorkingHours, now time.Time) (*models.Activity, error)
 	Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error)
 	List(ctx context.Context, filter models.ActivityFilter) ([]models.Activity, error)
 	GetReport(ctx context.Context, filter models.ActivityFilter) (*models.Report, error)
 	GetRecent(ctx context.Context, limit int) ([]models.Activity, error)
 	GetLast(ctx context.Context) (*models.Activity, error)
+	// GetByKey returns the activity with a DATE-INDEX key such as 2026-11-18-02.
+	GetByKey(ctx context.Context, key string) (*models.Activity, error)
 	Update(ctx context.Context, original models.Activity, req models.UpdateActivityRequest) (*models.Activity, error)
 	AddNote(ctx context.Context, activity models.Activity, note string) (*models.Activity, error)
 	AddTags(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error)

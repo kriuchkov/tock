@@ -155,7 +155,7 @@ func (r *trayReminders) renderSlots(now time.Time) {
 			tomorrowRows = append(tomorrowRows, occurrence)
 		}
 	}
-	todayRows = mergeOccurrences(r.overdue, todayRows)
+	todayRows = models.MergeOccurrences(r.overdue, todayRows)
 
 	r.fillSlots(r.slots[:trayReminderTodaySlots], todayRows, now)
 	r.fillSlots(r.slots[trayReminderTodaySlots:], tomorrowRows, now)
@@ -210,7 +210,7 @@ func (r *trayReminders) tick(ctx context.Context, now time.Time) {
 	r.updateNext(now)
 
 	overdue := 0
-	for _, occurrence := range mergeOccurrences(r.overdue, r.occurrences) {
+	for _, occurrence := range models.MergeOccurrences(r.overdue, r.occurrences) {
 		if occurrence.Status(now) == models.ReminderOverdue {
 			overdue++
 		}
@@ -232,7 +232,7 @@ func (r *trayReminders) tick(ctx context.Context, now time.Time) {
 
 	if r.notifier != nil {
 		// Overdue covers occurrences older than the loaded window, e.g. one snoozed for two days.
-		for _, notification := range r.notifier.due(mergeOccurrences(r.overdue, r.occurrences), now) {
+		for _, notification := range r.notifier.due(models.MergeOccurrences(r.overdue, r.occurrences), now) {
 			postNotification(ctx, notification)
 		}
 	}

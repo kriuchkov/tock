@@ -3,15 +3,14 @@ package todotxt
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
 
+	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -93,6 +92,10 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 }
 
 func (r *repository) Save(_ context.Context, activity models.Activity) error {
+	return fileio.Update(r.filePath, func() error { return r.save(activity) })
+}
+
+func (r *repository) save(activity models.Activity) error {
 	lines, err := r.readLines()
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -126,6 +129,10 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 }
 
 func (r *repository) Remove(_ context.Context, activity models.Activity) error {
+	return fileio.Update(r.filePath, func() error { return r.remove(activity) })
+}
+
+func (r *repository) remove(activity models.Activity) error {
 	lines, err := r.readLines()
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -193,26 +200,13 @@ func (r *repository) readLines() ([]string, error) {
 }
 
 func (r *repository) writeLines(lines []string) error {
-	dir := filepath.Dir(r.filePath)
-	if err := os.MkdirAll(dir, 0750); err != nil {
-		return errors.Wrap(err, "create directory")
-	}
-
-	f, err := os.Create(r.filePath)
-	if err != nil {
-		return errors.Wrap(err, "create file")
-	}
-	defer f.Close()
-
-	writer := bufio.NewWriter(f)
+	var sb strings.Builder
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		fmt.Fprintln(writer, line)
+		sb.WriteString(line)
+		sb.WriteByte('\n')
 	}
-	if err = writer.Flush(); err != nil {
-		return errors.Wrap(err, "flush writer")
-	}
-	return nil
+	return fileio.WriteAtomic(r.filePath, []byte(sb.String()))
 }

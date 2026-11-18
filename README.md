@@ -19,6 +19,9 @@
   <a href="docs/openclaw.md">
     <img src="https://img.shields.io/badge/OpenClaw-ready-0A84FF?style=flat-square" alt="OpenClaw" />
   </a>
+  <a href="docs/mcp.md">
+    <img src="https://img.shields.io/badge/MCP-server-0A84FF?style=flat-square&logo=modelcontextprotocol&logoColor=white" alt="MCP" />
+  </a>
 </p>
 
 <p align="center">
@@ -29,6 +32,8 @@
   <a href="#commands"><strong>Commands</strong></a>
   <span>&nbsp;•&nbsp;</span>
   <a href="#openclaw"><strong>OpenClaw</strong></a>
+  <span>&nbsp;•&nbsp;</span>
+  <a href="#mcp-server"><strong>MCP</strong></a>
   <br />
   <a href="#configuration"><strong>Configuration</strong></a>
   <span>&nbsp;•&nbsp;</span>
@@ -301,6 +306,8 @@ Notes are stored as individual files in `~/.tock/notes/` (or relative to your co
 - `TOCK_THEME_NAME`: Theme name (`dark`, `light`, `ansi_dark`, `ansi_light`, `mocha`, `custom`)
 - `TOCK_WEEKLY_TARGET`: Weekly workload target as a duration (e.g., `40h`, `37h30m`)
 - `TOCK_CHECK_UPDATES`: Check for updates (default: `true`)
+- `TOCK_MCP_ENABLED`: Enable the MCP server, `tock mcp` (default: `false`)
+- `TOCK_MCP_READ_ONLY`: Leave out the MCP tools that change data (default: `false`)
 
 ### Storage Backends
 
@@ -556,6 +563,23 @@ Notes:
 - Input accepts both zero-padded ("03:04 PM") and non-padded ("3:04 PM") formats
 - 24-hour input (e.g., "15:04") is still accepted in 12-hour mode as a fallback
 
+## MCP Server
+
+`tock mcp` is a local [MCP](https://modelcontextprotocol.io) server, so AI clients like Claude Code or opencode
+can start and stop timers, read reports and manage reminders. It is off by default:
+
+```yaml
+# ~/.config/tock/tock.yaml
+mcp:
+  enabled: true
+```
+
+```bash
+tock mcp install --client claude-code   # or: --client opencode
+```
+
+Tools, prompts and manual setup are described in [docs/mcp.md](docs/mcp.md).
+
 ## Commands
 
 ```bash
@@ -578,6 +602,7 @@ Available Commands:
   ical        Generate iCal (.ics) file for a specific task, all tasks in a day, or all tasks.
   last        List recent unique activities
   list        List activities: daily calendar view, or a weekly/monthly/yearly summary
+  mcp         Serve tock to AI clients over MCP (stdin/stdout)
   note        Append a note to an existing activity
   tag         Append tags to an existing activity
   remind      Manage reminders: things to do on a day or at a time

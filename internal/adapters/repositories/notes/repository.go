@@ -1,8 +1,8 @@
 package notes
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,14 +12,11 @@ import (
 	"github.com/go-faster/errors"
 	"gopkg.in/yaml.v3"
 
+	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
 	"github.com/kriuchkov/tock/internal/core/ports"
 )
 
-const (
-	fileExtension = ".txt"
-	directoryMode = 0750
-	fileMode      = 0644
-)
+const fileExtension = ".txt"
 
 type repository struct {
 	basePath string
@@ -38,33 +35,17 @@ func (r *repository) notePath(activityID string, date time.Time) string {
 }
 
 func (r *repository) Save(_ context.Context, activityID string, date time.Time, notes string, tags []string) error {
-	filePath := r.notePath(activityID, date)
-	if err := os.MkdirAll(filepath.Dir(filePath), directoryMode); err != nil {
-		return errors.Wrap(err, "mkdir all")
-	}
-
-	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fileMode)
-	if err != nil {
-		return errors.Wrap(err, "create file")
-	}
-	defer f.Close()
-
+	var buf bytes.Buffer
 	if len(tags) > 0 {
-		if _, err = fmt.Fprintf(f, "---\n"); err != nil {
-			return err
-		}
-
-		data := noteData{Tags: tags}
-		if err = yaml.NewEncoder(f).Encode(data); err != nil {
+		buf.WriteString("---\n")
+		if err := yaml.NewEncoder(&buf).Encode(noteData{Tags: tags}); err != nil {
 			return errors.Wrap(err, "encode tags")
 		}
-
-		if _, err = fmt.Fprintf(f, "---\n"); err != nil {
-			return errors.Wrap(err, "write tags")
-		}
+		buf.WriteString("---\n")
 	}
+	buf.WriteString(notes)
 
-	if _, err = fmt.Fprintf(f, "%s", notes); err != nil {
+	if err := fileio.WriteAtomic(r.notePath(activityID, date), buf.Bytes()); err != nil {
 		return errors.Wrap(err, "write notes")
 	}
 	return nil

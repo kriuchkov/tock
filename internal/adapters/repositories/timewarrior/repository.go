@@ -16,6 +16,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/samber/lo"
 
+	"github.com/kriuchkov/tock/internal/adapters/repositories/fileio"
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -153,7 +154,10 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 func (r *repository) Save(_ context.Context, activity models.Activity) error {
 	// TimeWarrior stores data by start time month
 	filePath := r.getMonthFilePath(activity.StartTime)
+	return fileio.Update(filePath, func() error { return r.save(filePath, activity) })
+}
 
+func (r *repository) save(filePath string, activity models.Activity) error {
 	// Read existing to check if we are updating
 	intervals, err := r.readIntervalsFromFile(filePath)
 	if err != nil && !os.IsNotExist(err) {
@@ -186,7 +190,10 @@ func (r *repository) Save(_ context.Context, activity models.Activity) error {
 
 func (r *repository) Remove(_ context.Context, activity models.Activity) error {
 	filePath := r.getMonthFilePath(activity.StartTime)
+	return fileio.Update(filePath, func() error { return r.remove(filePath, activity) })
+}
 
+func (r *repository) remove(filePath string, activity models.Activity) error {
 	intervals, err := r.readIntervalsFromFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -286,23 +293,12 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 }
 
 func (r *repository) writeIntervalsToFile(path string, intervals []twInterval) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0750); err != nil {
-		return errors.Wrap(err, "create dir")
-	}
-
-	f, err := os.Create(path)
-	if err != nil {
-		return errors.Wrap(err, "create file")
-	}
-	defer f.Close()
-
-	w := bufio.NewWriter(f)
+	var sb strings.Builder
 	for _, iv := range intervals {
-		line := formatIncLine(iv)
-		fmt.Fprintln(w, line)
+		sb.WriteString(formatIncLine(iv))
+		sb.WriteByte('\n')
 	}
-	return w.Flush()
+	return fileio.WriteAtomic(path, []byte(sb.String()))
 }
 
 func formatIncLine(iv twInterval) string {

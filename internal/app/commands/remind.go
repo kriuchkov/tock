@@ -240,7 +240,7 @@ func listedOccurrences(
 		return nil, errors.Wrap(err, "list overdue reminders")
 	}
 	if opts.Overdue {
-		return overdueOnly(overdue, now), nil
+		return models.OverdueOnly(overdue, now), nil
 	}
 
 	from, _ := timeutil.LocalDayBounds(now)
@@ -253,39 +253,7 @@ func listedOccurrences(
 	if err != nil {
 		return nil, errors.Wrap(err, "list reminders")
 	}
-	return mergeOccurrences(overdue, upcoming), nil
-}
-
-// overdueOnly drops the occurrences Overdue returns because they are snoozed past their due time:
-// they stay listed, but are not counted or shown as overdue.
-func overdueOnly(occurrences []models.ReminderOccurrence, now time.Time) []models.ReminderOccurrence {
-	var overdue []models.ReminderOccurrence
-	for _, occurrence := range occurrences {
-		if occurrence.Status(now) == models.ReminderOverdue {
-			overdue = append(overdue, occurrence)
-		}
-	}
-	return overdue
-}
-
-// mergeOccurrences appends upcoming to overdue, dropping the ones already listed as overdue.
-func mergeOccurrences(overdue, upcoming []models.ReminderOccurrence) []models.ReminderOccurrence {
-	seen := make(map[string]bool, len(overdue))
-	merged := make([]models.ReminderOccurrence, 0, len(overdue)+len(upcoming))
-	for _, occurrence := range overdue {
-		seen[occurrenceID(occurrence)] = true
-		merged = append(merged, occurrence)
-	}
-	for _, occurrence := range upcoming {
-		if !seen[occurrenceID(occurrence)] {
-			merged = append(merged, occurrence)
-		}
-	}
-	return merged
-}
-
-func occurrenceID(occurrence models.ReminderOccurrence) string {
-	return strconv.Itoa(occurrence.Reminder.ID) + "@" + occurrence.Key()
+	return models.MergeOccurrences(overdue, upcoming), nil
 }
 
 func listAllReminders(cmd *cobra.Command, svc ports.ReminderResolver, jsonOutput bool, now time.Time) error {
@@ -347,7 +315,7 @@ func printOverdueReminders(cmd *cobra.Command) {
 	if err != nil {
 		return
 	}
-	if overdue = overdueOnly(overdue, now); len(overdue) == 0 {
+	if overdue = models.OverdueOnly(overdue, now); len(overdue) == 0 {
 		return
 	}
 

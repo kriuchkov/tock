@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -41,18 +42,13 @@ func TestRunRemoveCmdUsesCommandWriter(t *testing.T) {
 	assert.Equal(t, "Activity removed.\n", out.String())
 }
 
-func TestFindActivityByIndexNumbersByStartDayLikeList(t *testing.T) {
-	overnightStart := time.Date(2026, time.March, 13, 23, 0, 0, 0, time.Local)
-	overnightEnd := overnightStart.Add(2 * time.Hour)
-	morning := time.Date(2026, time.March, 14, 9, 0, 0, 0, time.Local)
-
-	// File-like backends return every entry overlapping the day, including one from the day before.
+func TestFindActivityByIndexUsesServiceLookup(t *testing.T) {
 	service := &stubActivityResolver{
-		listFn: func(context.Context, models.ActivityFilter) ([]models.Activity, error) {
-			return []models.Activity{
-				{Project: "overnight", StartTime: overnightStart, EndTime: &overnightEnd},
-				{Project: "morning", StartTime: morning},
-			}, nil
+		getByKeyFn: func(_ context.Context, key string) (*models.Activity, error) {
+			if key == "2026-03-14-01" {
+				return &models.Activity{Project: "morning"}, nil
+			}
+			return nil, coreErrors.ErrActivityNotFound
 		},
 	}
 
@@ -61,7 +57,7 @@ func TestFindActivityByIndexNumbersByStartDayLikeList(t *testing.T) {
 	assert.Equal(t, "morning", activity.Project)
 
 	_, err = findActivityByIndex(context.Background(), service, "2026-03-14-02")
-	require.Error(t, err)
+	require.ErrorIs(t, err, coreErrors.ErrActivityNotFound)
 }
 
 func TestConfirmRemovalAbort(t *testing.T) {

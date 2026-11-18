@@ -86,24 +86,6 @@ func runContinueCmd(cmd *cobra.Command, args []string, opts *continueOptions) er
 		}
 	}
 
-	activities, err := service.GetRecent(cmd.Context(), number+1)
-	if err != nil {
-		return errors.Wrap(err, "get recent activities")
-	}
-	if number >= len(activities) {
-		return errors.Errorf("activity number %d not found (only %d recent activities available)", number, len(activities))
-	}
-
-	activityToContinue := activities[number]
-	newDescription := activityToContinue.Description
-	if opts.Description != "" {
-		newDescription = opts.Description
-	}
-	newProject := activityToContinue.Project
-	if opts.Project != "" {
-		newProject = opts.Project
-	}
-
 	startTime := time.Now()
 	if opts.At != "" {
 		var parseErr error
@@ -113,15 +95,16 @@ func runContinueCmd(cmd *cobra.Command, args []string, opts *continueOptions) er
 		}
 	}
 
-	startedActivity, err := service.Start(cmd.Context(), models.StartActivityRequest{
-		Description: newDescription,
-		Project:     newProject,
+	startedActivity, err := service.Continue(cmd.Context(), models.ContinueActivityRequest{
+		Index:       number,
+		Description: opts.Description,
+		Project:     opts.Project,
 		StartTime:   startTime,
 		Notes:       opts.Notes,
 		Tags:        opts.Tags,
 	})
 	if err != nil {
-		return errors.Wrap(err, "start activity")
+		return errors.Wrap(err, "continue activity")
 	}
 
 	// Bring up the menu bar icon in the background if configured (macOS only).

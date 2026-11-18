@@ -6,6 +6,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/kriuchkov/tock/internal/core/models"
 	mock "github.com/stretchr/testify/mock"
@@ -259,6 +260,142 @@ func (_c *MockActivityResolver_AddTags_Call) Return(activity1 *models.Activity, 
 }
 
 func (_c *MockActivityResolver_AddTags_Call) RunAndReturn(run func(ctx context.Context, activity models.Activity, tags []string) (*models.Activity, error)) *MockActivityResolver_AddTags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Continue provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) Continue(ctx context.Context, req models.ContinueActivityRequest) (*models.Activity, error) {
+	ret := _mock.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Continue")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ContinueActivityRequest) (*models.Activity, error)); ok {
+		return returnFunc(ctx, req)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.ContinueActivityRequest) *models.Activity); ok {
+		r0 = returnFunc(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.ContinueActivityRequest) error); ok {
+		r1 = returnFunc(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_Continue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Continue'
+type MockActivityResolver_Continue_Call struct {
+	*mock.Call
+}
+
+// Continue is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req models.ContinueActivityRequest
+func (_e *MockActivityResolver_Expecter) Continue(ctx any, req any) *MockActivityResolver_Continue_Call {
+	return &MockActivityResolver_Continue_Call{Call: _e.mock.On("Continue", ctx, req)}
+}
+
+func (_c *MockActivityResolver_Continue_Call) Run(run func(ctx context.Context, req models.ContinueActivityRequest)) *MockActivityResolver_Continue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.ContinueActivityRequest
+		if args[1] != nil {
+			arg1 = args[1].(models.ContinueActivityRequest)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_Continue_Call) Return(activity *models.Activity, err error) *MockActivityResolver_Continue_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_Continue_Call) RunAndReturn(run func(ctx context.Context, req models.ContinueActivityRequest) (*models.Activity, error)) *MockActivityResolver_Continue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetByKey provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) GetByKey(ctx context.Context, key string) (*models.Activity, error) {
+	ret := _mock.Called(ctx, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByKey")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*models.Activity, error)); ok {
+		return returnFunc(ctx, key)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *models.Activity); ok {
+		r0 = returnFunc(ctx, key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_GetByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByKey'
+type MockActivityResolver_GetByKey_Call struct {
+	*mock.Call
+}
+
+// GetByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *MockActivityResolver_Expecter) GetByKey(ctx any, key any) *MockActivityResolver_GetByKey_Call {
+	return &MockActivityResolver_GetByKey_Call{Call: _e.mock.On("GetByKey", ctx, key)}
+}
+
+func (_c *MockActivityResolver_GetByKey_Call) Run(run func(ctx context.Context, key string)) *MockActivityResolver_GetByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_GetByKey_Call) Return(activity *models.Activity, err error) *MockActivityResolver_GetByKey_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_GetByKey_Call) RunAndReturn(run func(ctx context.Context, key string) (*models.Activity, error)) *MockActivityResolver_GetByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -718,6 +855,80 @@ func (_c *MockActivityResolver_Stop_Call) Return(activity *models.Activity, err 
 }
 
 func (_c *MockActivityResolver_Stop_Call) RunAndReturn(run func(ctx context.Context, req models.StopActivityRequest) (*models.Activity, error)) *MockActivityResolver_Stop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StopAfterWorkingHours provides a mock function for the type MockActivityResolver
+func (_mock *MockActivityResolver) StopAfterWorkingHours(ctx context.Context, hours models.WorkingHours, now time.Time) (*models.Activity, error) {
+	ret := _mock.Called(ctx, hours, now)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StopAfterWorkingHours")
+	}
+
+	var r0 *models.Activity
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.WorkingHours, time.Time) (*models.Activity, error)); ok {
+		return returnFunc(ctx, hours, now)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, models.WorkingHours, time.Time) *models.Activity); ok {
+		r0 = returnFunc(ctx, hours, now)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Activity)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, models.WorkingHours, time.Time) error); ok {
+		r1 = returnFunc(ctx, hours, now)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockActivityResolver_StopAfterWorkingHours_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopAfterWorkingHours'
+type MockActivityResolver_StopAfterWorkingHours_Call struct {
+	*mock.Call
+}
+
+// StopAfterWorkingHours is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hours models.WorkingHours
+//   - now time.Time
+func (_e *MockActivityResolver_Expecter) StopAfterWorkingHours(ctx any, hours any, now any) *MockActivityResolver_StopAfterWorkingHours_Call {
+	return &MockActivityResolver_StopAfterWorkingHours_Call{Call: _e.mock.On("StopAfterWorkingHours", ctx, hours, now)}
+}
+
+func (_c *MockActivityResolver_StopAfterWorkingHours_Call) Run(run func(ctx context.Context, hours models.WorkingHours, now time.Time)) *MockActivityResolver_StopAfterWorkingHours_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 models.WorkingHours
+		if args[1] != nil {
+			arg1 = args[1].(models.WorkingHours)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockActivityResolver_StopAfterWorkingHours_Call) Return(activity *models.Activity, err error) *MockActivityResolver_StopAfterWorkingHours_Call {
+	_c.Call.Return(activity, err)
+	return _c
+}
+
+func (_c *MockActivityResolver_StopAfterWorkingHours_Call) RunAndReturn(run func(ctx context.Context, hours models.WorkingHours, now time.Time) (*models.Activity, error)) *MockActivityResolver_StopAfterWorkingHours_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -28,7 +28,7 @@ func NewAddCmd() *cobra.Command {
 	var opts addOptions
 
 	cmd := &cobra.Command{
-		Use:   "add",
+		Use:   cliAdd,
 		Short: "Add a completed activity",
 		ValidArgsFunction: func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 			var completions []string

@@ -21,6 +21,9 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(t, "file", cfg.Backend)
 	assert.Equal(t, "eng", cfg.Language)
 	assert.Equal(t, 7, cfg.Calendar.UpcomingDays)
+	assert.False(t, cfg.MCP.Enabled)
+	assert.False(t, cfg.MCP.ReadOnly)
+	assert.Empty(t, cfg.MCP.DisabledTools)
 	assert.FileExists(t, configFile)
 }
 
@@ -226,4 +229,22 @@ func TestThemeColorEnvironment(t *testing.T) {
 	assert.Equal(t, "236", cfg.Theme.Surface)
 	assert.Equal(t, "120", cfg.Theme.OK)
 	assert.Equal(t, "208", cfg.Theme.Warn)
+}
+
+func TestLoadMCPFromFileAndEnv(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "tock.yaml")
+	configContent := `mcp:
+  enabled: false
+  disabled_tools: [remove, remind_remove]
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
+	t.Setenv("TOCK_MCP_ENABLED", "true")
+	t.Setenv("TOCK_MCP_READ_ONLY", "true")
+
+	cfg, _, err := Load(WithConfigFile(configPath))
+	require.NoError(t, err)
+
+	assert.True(t, cfg.MCP.Enabled)
+	assert.True(t, cfg.MCP.ReadOnly)
+	assert.Equal(t, []string{"remove", "remind_remove"}, cfg.MCP.DisabledTools)
 }
