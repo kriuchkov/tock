@@ -1,5 +1,7 @@
-// Command sync-vectors writes the sync test vectors of docs/sync.md as JSON files, one per vector,
-// into <out>/hlc, <out>/merge and <out>/repeat. tock-ios runs them against its Swift code.
+// sync_vectors writes the sync test vectors of docs/sync.md as JSON files, one per vector, into
+// <out>/hlc, <out>/merge and <out>/repeat. tock-ios runs them against its Swift code.
+//
+//	go run ./scripts/sync_vectors.go -out <dir>   (or: make sync-vectors OUT=<dir>)
 package main
 
 import (
@@ -18,11 +20,11 @@ func main() {
 	out := flag.String("out", "", "directory to write the vectors to")
 	flag.Parse()
 	if *out == "" {
-		fmt.Fprintln(os.Stderr, "usage: sync-vectors -out <dir>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./scripts/sync_vectors.go -out <dir>")
 		os.Exit(2)
 	}
 	if err := write(*out); err != nil {
-		fmt.Fprintln(os.Stderr, "sync-vectors:", err)
+		fmt.Fprintln(os.Stderr, "sync_vectors:", err)
 		os.Exit(1)
 	}
 }

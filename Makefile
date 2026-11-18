@@ -22,7 +22,7 @@ build:
 # Write the sync test vectors (docs/sync.md) as JSON files for tock-ios:
 #   make sync-vectors OUT=../tock-ios/Tests/Vectors
 sync-vectors:
-	go run ./cmd/sync-vectors -out $(or $(OUT),$(error set OUT to the directory to write to))
+	go run ./scripts/sync_vectors.go -out $(or $(OUT),$(error set OUT to the directory to write to))
 
 # Refresh test data by running the script that generates it. 
 # By default, it refreshes data for the last 1 day, 
