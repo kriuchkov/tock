@@ -45,27 +45,28 @@
 
 ## Features
 
-<img src="assets/demo.svg" width="100%" alt="tock in the terminal: the calendar, a reminder marked done, then the reminders, list and analyze tabs" />
+<a href="https://raw.githubusercontent.com/kriuchkov/tock/master/assets/demo.svg#cal"><img src="assets/demo.svg" width="100%" alt="tock in the terminal: the calendar, a reminder marked done, then the reminders, list and analyze tabs" /></a>
+<p align="center"><sub>Click the demo to explore it: the tabs and the underlined keys switch screens.</sub></p>
 
 <details>
 <summary><b>calendar</b>: step through days and months, add a reminder</summary>
 <br />
-<img src="assets/demo_calendar.svg" width="100%" alt="tock calendar: today, the day before, tomorrow, the next month and the new reminder form" />
+<a href="https://raw.githubusercontent.com/kriuchkov/tock/master/assets/demo.svg#cal"><img src="assets/demo_calendar.svg" width="100%" alt="tock calendar: today, the day before, tomorrow, the next month and the new reminder form" /></a>
 </details>
 <details>
 <summary><b>reminders</b>: today, the week ahead, overdue or all of them, edit one in place</summary>
 <br />
-<img src="assets/demo_reminders.svg" width="100%" alt="tock remind: the day, week, overdue and all views and the edit form" />
+<a href="https://raw.githubusercontent.com/kriuchkov/tock/master/assets/demo.svg#rem"><img src="assets/demo_reminders.svg" width="100%" alt="tock remind: the day, week, overdue and all views and the edit form" /></a>
 </details>
 <details>
 <summary><b>list</b>: a day of entries, fix one in place, then a week, a month or a year by project</summary>
 <br />
-<img src="assets/demo_list.svg" width="100%" alt="tock list: the day view, the edit form and the week, month and year views" />
+<a href="https://raw.githubusercontent.com/kriuchkov/tock/master/assets/demo.svg#list"><img src="assets/demo_list.svg" width="100%" alt="tock list: the day view, the edit form and the week, month and year views" /></a>
 </details>
 <details>
 <summary><b>analyze</b>: focus, rhythm, context switching and where the time goes</summary>
 <br />
-<img src="assets/demo_analyze.svg" width="100%" alt="The analyze tab: deep work score, chronotype, context switching, projects and weekdays" />
+<a href="https://raw.githubusercontent.com/kriuchkov/tock/master/assets/demo.svg#ana"><img src="assets/demo_analyze.svg" width="100%" alt="The analyze tab: deep work score, chronotype, context switching, projects and weekdays" /></a>
 </details>
 
 **Tock** is a powerful time tracking tool for the command line. It saves activity logs as plaintext files and provides an interactive terminal UI for viewing your time.

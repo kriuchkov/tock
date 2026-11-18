@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Turns tmux screen captures into one animated SVG, assets/demo.svg at the top of the README.
+"""Turns tmux screen captures into an animated SVG, like assets/demo.svg at the top of the README.
 
-Usage: ansi_svg.py scenes.tsv [--type COMMAND] [--title TITLE] > demo.svg
+Usage: ansi_svg.py screens.tsv [--type COMMAND] [--title TITLE] > demo.svg
 
-Each line of scenes.tsv is a scene: a capture (tmux capture-pane -e -p) relative to the tsv,
-the seconds it stays on screen, the key that led to it and a caption. The SVG cuts from scene
-to scene in a loop, after typing COMMAND at a prompt if given. Without animation (reduced
-motion, static renderers) it shows the first scene.
+Each line of screens.tsv is a screen: a name, a capture (tmux capture-pane -e -p) relative to
+the tsv, the seconds it stays on screen in the loop (0 keeps it out), the key that leads to it,
+a caption and its links. The SVG cuts from screen to screen in a loop, after typing COMMAND at
+a prompt if given. Without animation (reduced motion, static renderers) it shows the first one.
+
+Links make the SVG explorable when it is opened on its own (an <img> gets no clicks): each is
+"label=target", separated by ";". The label is text on the screen, searched from the bottom
+row up, or in the top row with a leading ^; [brackets] mark the part that is clickable. A click
+goes to #target, and CSS :target shows that screen instead of the loop. No script is needed,
+so it works where scripts are blocked, as on raw.githubusercontent.com.
 
 Text keeps the terminal grid: every run sits at its column and is stretched to its width, so
 any monospace font lines up. Lines, bars and blocks become shapes, so they join without the
@@ -45,7 +51,7 @@ ANSI16 = (
 SGR = re.compile(r"\x1b\[([0-9;:]*)m")
 Style = namedtuple("Style", "fg bg bold dim italic underline reverse")
 PLAIN = Style(None, None, False, False, False, False, False)
-Scene = namedtuple("Scene", "screen seconds key caption")
+Screen = namedtuple("Screen", "name rows seconds key caption links")
 SGR_FLAGS = {
     1: ("bold", True), 2: ("dim", True), 3: ("italic", True), 4: ("underline", True), 7: ("reverse", True),
     23: ("italic", False), 24: ("underline", False), 27: ("reverse", False),
@@ -271,65 +277,121 @@ def pct(t, total):
     return "%.3f%%" % (100 * t / total)
 
 
-def build(scenes, command, title):
-    cols = max(len(row) for s in scenes for row in s.screen)
-    lines = max(len(s.screen) for s in scenes)
+def find_label(screen, spec):
+    """Returns the row, first column and width of the clickable part of a link label."""
+    header = spec.startswith("^")
+    spec = spec[1:] if header else spec
+    m = re.fullmatch(r"(.*)\[(.*)\](.*)", spec)
+    text, lo, width = (m[1] + m[2] + m[3], len(m[1]), len(m[2])) if m else (spec, 0, len(spec))
+    rows = [0] if header else range(len(screen.rows) - 1, -1, -1)
+    for r in rows:
+        col = "".join(ch or "\0" for ch, _ in screen.rows[r]).find(text)
+        if col >= 0:
+            return r, col + lo, width
+    sys.exit("ansi_svg: %s: %r is not on the screen" % (screen.name, spec))
+
+
+def render_links(screen, by_name):
+    out = []
+    for spec, target in screen.links:
+        r, col, width = find_label(screen, spec)
+        dest = by_name[target]
+        tip = "%s: %s" % (dest.key, dest.caption) if dest.key else dest.caption
+        out.append('<a href="#%s"><title>%s</title><rect class="hit" x="%s" y="%s" width="%s" height="%s" rx="3"/></a>'
+                   % (target, html.escape(tip, quote=False), num((col - 0.5) * CW), num(r * CH), num((width + 1) * CW), CH))
+        out.append('<rect class="ul" x="%s" y="%s" width="%s" height="1"/>' % (num(col * CW), num(r * CH + CH - 1.5), num(width * CW)))
+    return out
+
+
+def window(width, height, cap_y):
+    return [
+        '<rect width="%s" height="%s" rx="10" fill="%s" stroke="%s"/>' % (num(width), num(height), BG, EDGE),
+        '<path d="M0.5,%s V10.5 A10,10 0 0 1 10.5,0.5 H%s A10,10 0 0 1 %s,10.5 V%s Z" fill="%s"/>'
+        % (TITLE_H, num(width - 10.5), num(width - 0.5), TITLE_H, CHROME),
+        '<path d="M0.5,%s V%s A10,10 0 0 0 10.5,%s H%s A10,10 0 0 0 %s,%s V%s Z" fill="%s"/>'
+        % (num(cap_y), num(height - 10.5), num(height - 0.5), num(width - 10.5), num(width - 0.5), num(height - 10.5),
+           num(cap_y), CHROME),
+        '<path d="M0,%sH%sM0,%sH%s" stroke="%s"/>' % (TITLE_H, num(width), num(cap_y), num(width), EDGE),
+        *('<circle cx="%s" cy="%s" r="6" fill="%s"/>' % (20 + 20 * i, TITLE_H / 2, c) for i, c in enumerate(LIGHTS)),
+        '<text class="ti" x="%s" y="%s" text-anchor="middle">tock</text>' % (num(width / 2), num(TITLE_H / 2 + 4.5)),
+    ]
+
+
+def build(screens, command, title):
+    by_name = {s.name: s for s in screens}
+    tour = [s for s in screens if s.seconds > 0] or screens[:1]
+    targets = list(dict.fromkeys(t for s in screens for _, t in s.links))
+    for t in targets:
+        if t not in by_name:
+            sys.exit("ansi_svg: no screen %r to link to" % t)
+
+    cols = max(len(row) for s in screens for row in s.rows)
+    lines = max(len(s.rows) for s in screens)
     width = cols * CW + 2 * PAD
     term_y = TITLE_H + PAD * 0.7
     cap_y = term_y + lines * CH + PAD * 0.7
     height = cap_y + CAPTION_H
     intro = INTRO_S if command else 0
-    total = intro + sum(s.seconds for s in scenes)
+    total = intro + sum(s.seconds for s in tour)
+    looping = command or len(tour) > 1
 
     tclass, fclass, sclass = Classes("t"), Classes("f"), Classes("s")
-    css, body = [], []
+    css = []
+    # Markers come first: a link targets one, and CSS reaches the rest through it (#x:target ~ ...).
+    body = ['<g id="%s" class="mk"/>' % t for t in targets]
+    body += window(width, height, cap_y)
 
-    starts, t = [], intro
-    for s in scenes:
-        starts.append(t)
+    if targets:
+        hint_y = num(TITLE_H / 2 + 4)
+        body.append('<g class="hint"><a href="#%s"><text class="hn he" x="%s" y="%s" text-anchor="end">\u25b8 click to explore</text></a>'
+                    '<a href="#tour"><text class="hn hp" x="%s" y="%s" text-anchor="end">\u25b6 play the tour</text></a></g>'
+                    % (targets[0], num(width - PAD), hint_y, num(width - PAD), hint_y))
+        body.append('<text class="cap ex" x="%s" y="%s" text-anchor="end">click a tab or an underlined key</text>'
+                    % (num(width - PAD), num(cap_y + CAPTION_H / 2 + 5)))
+
+    starts, t = {}, intro
+    for s in tour:
+        starts[s.name] = t
         t += s.seconds
 
-    # Window: frame, title bar, caption bar.
-    body.append('<rect width="%s" height="%s" rx="10" fill="%s" stroke="%s"/>' % (num(width), num(height), BG, EDGE))
-    body.append('<path d="M0.5,%s V10.5 A10,10 0 0 1 10.5,0.5 H%s A10,10 0 0 1 %s,10.5 V%s Z" fill="%s"/>'
-                % (TITLE_H, num(width - 10.5), num(width - 0.5), TITLE_H, CHROME))
-    body.append('<path d="M0.5,%s V%s A10,10 0 0 0 10.5,%s H%s A10,10 0 0 0 %s,%s V%s Z" fill="%s"/>'
-                % (num(cap_y), num(height - 10.5), num(height - 0.5), num(width - 10.5), num(width - 0.5),
-                   num(height - 10.5), num(cap_y), CHROME))
-    body.append('<path d="M0,%sH%sM0,%sH%s" stroke="%s"/>' % (TITLE_H, num(width), num(cap_y), num(width), EDGE))
-    for i, color in enumerate(LIGHTS):
-        body.append('<circle cx="%s" cy="%s" r="6" fill="%s"/>' % (20 + 20 * i, TITLE_H / 2, color))
-    body.append('<text class="ti" x="%s" y="%s" text-anchor="middle">tock</text>' % (num(width / 2), num(TITLE_H / 2 + 4.5)))
-
-    # Progress: a segment per scene that fills while it is on screen.
-    seg_w, gap = 26, 6
-    seg_x = width - PAD - len(scenes) * (seg_w + gap) + gap
-    seg_y = cap_y + CAPTION_H / 2 - 2
-    for i, s in enumerate(scenes if len(scenes) > 1 else []):
-        x = seg_x + i * (seg_w + gap)
-        body.append('<rect x="%s" y="%s" width="%s" height="4" rx="2" fill="%s"/>' % (num(x), num(seg_y), seg_w, EDGE))
-        body.append('<rect class="pg p%d" x="%s" y="%s" width="%s" height="4" rx="2"/>' % (i, num(x), num(seg_y), seg_w))
-        a, b = starts[i], starts[i] + s.seconds
-        css.append("@keyframes p%d{0%%,%s{transform:scaleX(0)}%s,100%%{transform:scaleX(1)}}.p%d{animation-name:p%d}"
-                   % (i, pct(a, total), pct(b, total), i, i))
+    # Progress: a segment per screen of the loop that fills while it is on screen.
+    if len(tour) > 1:
+        seg_w, gap = 26, 6
+        seg_x = width - PAD - len(tour) * (seg_w + gap) + gap
+        seg_y = cap_y + CAPTION_H / 2 - 2
+        body.append('<g class="tour">')
+        for i, s in enumerate(tour):
+            x = seg_x + i * (seg_w + gap)
+            a, b = starts[s.name], starts[s.name] + s.seconds
+            body.append('<rect x="%s" y="%s" width="%s" height="4" rx="2" fill="%s"/>' % (num(x), num(seg_y), seg_w, EDGE))
+            body.append('<rect class="pg p%d" x="%s" y="%s" width="%s" height="4" rx="2"/>' % (i, num(x), num(seg_y), seg_w))
+            css.append("@keyframes p%d{0%%,%s{transform:scaleX(0)}%s,100%%{transform:scaleX(1)}}.p%d{animation-name:p%d}"
+                       % (i, pct(a, total), pct(b, total), i, i))
+        body.append("</g>")
 
     if command:
         body += intro_scene(command, term_y, cap_y)
         typed = len(command) * TYPE_STEP
-        css.append("@keyframes intro{0%%{opacity:1}%s,100%%{opacity:0}}.intro{animation-name:intro}" % pct(intro, total))
+        css.append("@keyframes intro{0%%{visibility:visible}%s,100%%{visibility:hidden}}.intro{animation-name:intro}"
+                   % pct(intro, total))
         css.append("@keyframes ty{0%%,%s{transform:translateX(0);animation-timing-function:steps(%d,end)}%s,100%%"
                    "{transform:translateX(%spx)}}.ty{animation:ty %ss linear infinite}"
                    % (pct(TYPE_FROM, total), len(command), pct(TYPE_FROM + typed, total), num(len(command) * CW), num(total)))
 
-    for i, s in enumerate(scenes):
-        a, b = starts[i], starts[i] + s.seconds
-        if command or len(scenes) > 1:
-            shown = "%s{opacity:1}" % pct(a, total) if a else ""
-            css.append("@keyframes k%d{0%%{opacity:%d}%s%s,100%%{opacity:0}}.k%d{animation-name:k%d}"
-                       % (i, 0 if a else 1, shown, pct(b, total), i, i))
-        body.append('<g class="sc k%d%s">' % (i, " poster" if i == 0 else ""))
+    for i, s in enumerate(screens):
+        cls = ["sc"]
+        if s is tour[0]:
+            cls.append("poster")
+        if s.name in starts and looping:
+            a, b = starts[s.name], starts[s.name] + s.seconds
+            shown = "%s{visibility:visible}" % pct(a, total) if a else ""
+            css.append("@keyframes k%d{0%%{visibility:%s}%s%s,100%%{visibility:hidden}}.k%d{animation-name:k%d}"
+                       % (i, "hidden" if a else "visible", shown, pct(b, total), i, i))
+            cls.append("k%d" % i)
+        body.append('<g id="s-%s" class="%s">' % (s.name, " ".join(cls)))
         body.append('<g transform="translate(%s,%s)">' % (PAD, num(term_y)))
-        body += render_screen(s.screen, tclass, fclass, sclass)
+        body += render_screen(s.rows, tclass, fclass, sclass)
+        body += render_links(s, by_name)
         body.append("</g>")
         body.append(caption_bar(s.key, s.caption, cap_y))
         body.append("</g>")
@@ -341,12 +403,24 @@ def build(scenes, command, title):
         ".cap{font-family:%s;font-size:14px;fill:%s}" % (SANS, MUTED),
         ".key{fill:%s;stroke:%s}.kt{fill:#fff;font-size:13px;font-weight:700}" % (EDGE, "#40435a"),
         ".fa{opacity:.45}",
-        ".sc{opacity:0;animation-duration:%ss;animation-timing-function:step-end;animation-iteration-count:infinite}" % num(total),
-        ".poster{opacity:1}",
+        ".sc{visibility:hidden;animation-duration:%ss;animation-timing-function:step-end;animation-iteration-count:infinite}"
+        % num(total),
+        ".poster{visibility:visible}",
         ".pg{fill:%s;transform:scaleX(0);transform-box:fill-box;transform-origin:0 50%%;"
         "animation-duration:%ss;animation-timing-function:linear;animation-iteration-count:infinite}" % (ACCENT, num(total)),
         ".cur{animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}",
     ]
+    if targets:
+        style += [
+            "a{cursor:pointer}.hit{fill:%s;fill-opacity:0;pointer-events:visibleFill}a:hover .hit{fill-opacity:.3}" % ACCENT,
+            ".ul{fill:%s;display:none}" % ACCENT,
+            ".hn{font-family:%s;font-size:14px;font-weight:600;fill:#9d9dff}a:hover .hn{fill:#fff}.hp,.ex{display:none}" % SANS,
+            # A screen picked by a link replaces the loop; #tour (no such id) starts the loop again.
+            ".mk:target~.sc{animation:none;visibility:hidden}.mk:target~.intro .ty{animation:none}",
+            ".mk:target~.tour,.mk:target~.hint .he{display:none}",
+            ".mk:target~.sc .ul,.mk:target~.hint .hp,.mk:target~.ex{display:inline}",
+            "".join("#%s:target~#s-%s{visibility:visible}" % (t, t) for t in targets),
+        ]
     style += [".%s{fill:%s%s%s%s}" % (name, k[0], ";font-weight:700" if k[1] else "", ";font-style:italic" if k[2] else "",
                                        ";text-decoration:underline" if k[3] else "") for k, name in tclass.names.items()]
     style += [".%s{fill:%s}" % (name, fill) for fill, name in fclass.names.items()]
@@ -395,17 +469,22 @@ def caption_bar(key, caption, cap_y):
     return "".join(out)
 
 
+def read_screens(tsv):
+    screens = []
+    for line in tsv.read_text(encoding="utf-8").splitlines():
+        name, capture, seconds, key, caption, links = line.split("\t")
+        pairs = [tuple(item.rsplit("=", 1)) for item in links.split(";") if item]
+        screens.append(Screen(name, read_screen(tsv.parent / capture), float(seconds), key, caption, pairs))
+    return screens
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Turns tmux screen captures into one animated SVG.")
-    parser.add_argument("scenes", type=Path, help="tsv: capture, seconds, key, caption")
+    parser = argparse.ArgumentParser(description="Turns tmux screen captures into an animated SVG.")
+    parser.add_argument("screens", type=Path, help="tsv: name, capture, seconds, key, caption, links")
     parser.add_argument("--type", metavar="COMMAND", help="type this command at a prompt first")
     parser.add_argument("--title", default="tock in the terminal", help="the SVG title")
     args = parser.parse_args()
-    scenes = []
-    for line in args.scenes.read_text(encoding="utf-8").splitlines():
-        name, seconds, key, caption = line.split("\t")
-        scenes.append(Scene(read_screen(args.scenes.parent / name), float(seconds), key, caption))
-    sys.stdout.write(build(scenes, args.type, args.title))
+    sys.stdout.write(build(read_screens(args.screens), args.type, args.title))
 
 
 if __name__ == "__main__":

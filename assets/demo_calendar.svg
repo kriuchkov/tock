@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1216" height="618" viewBox="0 0 1216 618" role="img">
 <title>tock calendar: days, months and adding a reminder</title>
-<style>text{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;font-size:14px;white-space:pre}.ti{fill:#9a9caa;font-size:13px}.pr{fill:#87ff87}.cm{fill:#d0d0d0}.cur{fill:#d0d0d0}.cap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;fill:#9a9caa}.key{fill:#2c2e3a;stroke:#40435a}.kt{fill:#fff;font-size:13px;font-weight:700}.fa{opacity:.45}.sc{opacity:0;animation-duration:13.6s;animation-timing-function:step-end;animation-iteration-count:infinite}.poster{opacity:1}.pg{fill:#5f5fff;transform:scaleX(0);transform-box:fill-box;transform-origin:0 50%;animation-duration:13.6s;animation-timing-function:linear;animation-iteration-count:infinite}.cur{animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}.t0{fill:#ffaf00}.t1{fill:#eeeeee;font-weight:700}.t2{fill:#a8a8a8}.t3{fill:#ffaf00;font-weight:700}.t4{fill:#87ff87}.t5{fill:#a8a8a8;font-weight:700}.t6{fill:#eeeeee}.t7{fill:#5fd7ff}.f0{fill:#303030}.f1{fill:#585858}.f2{fill:#5f5fff}.f3{fill:#ffaf00}.s0{fill:none;stroke:#585858}.s1{fill:none;stroke:#ffaf00}@keyframes p0{0%,0.000%{transform:scaleX(0)}22.059%,100%{transform:scaleX(1)}}.p0{animation-name:p0}@keyframes p1{0%,22.059%{transform:scaleX(0)}41.176%,100%{transform:scaleX(1)}}.p1{animation-name:p1}@keyframes p2{0%,41.176%{transform:scaleX(0)}60.294%,100%{transform:scaleX(1)}}.p2{animation-name:p2}@keyframes p3{0%,60.294%{transform:scaleX(0)}77.941%,100%{transform:scaleX(1)}}.p3{animation-name:p3}@keyframes p4{0%,77.941%{transform:scaleX(0)}100.000%,100%{transform:scaleX(1)}}.p4{animation-name:p4}@keyframes k0{0%{opacity:1}22.059%,100%{opacity:0}}.k0{animation-name:k0}@keyframes k1{0%{opacity:0}22.059%{opacity:1}41.176%,100%{opacity:0}}.k1{animation-name:k1}@keyframes k2{0%{opacity:0}41.176%{opacity:1}60.294%,100%{opacity:0}}.k2{animation-name:k2}@keyframes k3{0%{opacity:0}60.294%{opacity:1}77.941%,100%{opacity:0}}.k3{animation-name:k3}@keyframes k4{0%{opacity:0}77.941%{opacity:1}100.000%,100%{opacity:0}}.k4{animation-name:k4}@media (prefers-reduced-motion:reduce){.sc,.pg,.ty,.cur{animation:none}}</style>
+<style>text{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;font-size:14px;white-space:pre}.ti{fill:#9a9caa;font-size:13px}.pr{fill:#87ff87}.cm{fill:#d0d0d0}.cur{fill:#d0d0d0}.cap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;fill:#9a9caa}.key{fill:#2c2e3a;stroke:#40435a}.kt{fill:#fff;font-size:13px;font-weight:700}.fa{opacity:.45}.sc{visibility:hidden;animation-duration:13.6s;animation-timing-function:step-end;animation-iteration-count:infinite}.poster{visibility:visible}.pg{fill:#5f5fff;transform:scaleX(0);transform-box:fill-box;transform-origin:0 50%;animation-duration:13.6s;animation-timing-function:linear;animation-iteration-count:infinite}.cur{animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}.t0{fill:#ffaf00}.t1{fill:#eeeeee;font-weight:700}.t2{fill:#a8a8a8}.t3{fill:#ffaf00;font-weight:700}.t4{fill:#87ff87}.t5{fill:#a8a8a8;font-weight:700}.t6{fill:#eeeeee}.t7{fill:#5fd7ff}.f0{fill:#303030}.f1{fill:#585858}.f2{fill:#5f5fff}.f3{fill:#ffaf00}.s0{fill:none;stroke:#585858}.s1{fill:none;stroke:#ffaf00}@keyframes p0{0%,0.000%{transform:scaleX(0)}22.059%,100%{transform:scaleX(1)}}.p0{animation-name:p0}@keyframes p1{0%,22.059%{transform:scaleX(0)}41.176%,100%{transform:scaleX(1)}}.p1{animation-name:p1}@keyframes p2{0%,41.176%{transform:scaleX(0)}60.294%,100%{transform:scaleX(1)}}.p2{animation-name:p2}@keyframes p3{0%,60.294%{transform:scaleX(0)}77.941%,100%{transform:scaleX(1)}}.p3{animation-name:p3}@keyframes p4{0%,77.941%{transform:scaleX(0)}100.000%,100%{transform:scaleX(1)}}.p4{animation-name:p4}@keyframes k0{0%{visibility:visible}22.059%,100%{visibility:hidden}}.k0{animation-name:k0}@keyframes k1{0%{visibility:hidden}22.059%{visibility:visible}41.176%,100%{visibility:hidden}}.k1{animation-name:k1}@keyframes k2{0%{visibility:hidden}41.176%{visibility:visible}60.294%,100%{visibility:hidden}}.k2{animation-name:k2}@keyframes k3{0%{visibility:hidden}60.294%{visibility:visible}77.941%,100%{visibility:hidden}}.k3{animation-name:k3}@keyframes k4{0%{visibility:hidden}77.941%{visibility:visible}100.000%,100%{visibility:hidden}}.k4{animation-name:k4}@media (prefers-reduced-motion:reduce){.sc,.pg,.ty,.cur{animation:none}}</style>
 <rect width="1216" height="618" rx="10" fill="#16171d" stroke="#2c2e3a"/>
 <path d="M0.5,34 V10.5 A10,10 0 0 1 10.5,0.5 H1205.5 A10,10 0 0 1 1215.5,10.5 V34 Z" fill="#1e1f27"/>
 <path d="M0.5,572 V607.5 A10,10 0 0 0 10.5,617.5 H1205.5 A10,10 0 0 0 1215.5,607.5 V572 Z" fill="#1e1f27"/>
@@ -9,6 +9,7 @@
 <circle cx="40" cy="17.0" r="6" fill="#febc2e"/>
 <circle cx="60" cy="17.0" r="6" fill="#28c840"/>
 <text class="ti" x="608" y="21.5" text-anchor="middle">tock</text>
+<g class="tour">
 <rect x="1042" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
 <rect class="pg p0" x="1042" y="593" width="26" height="4" rx="2"/>
 <rect x="1074" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
@@ -19,7 +20,8 @@
 <rect class="pg p3" x="1138" y="593" width="26" height="4" rx="2"/>
 <rect x="1170" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
 <rect class="pg p4" x="1170" y="593" width="26" height="4" rx="2"/>
-<g class="sc k0 poster">
+</g>
+<g id="s-1" class="sc poster k0">
 <g transform="translate(20,48)">
 <rect class="f0" x="75.6" y="153" width="33.6" height="17"/>
 <rect class="f0" x="84" y="0" width="84" height="17"/>
@@ -94,7 +96,7 @@
 <text class="t0" x="285.6" y="131.6">◆</text>
 <text class="t6" x="302.4" y="131.6" textLength="42">13:00</text>
 <text class="t6" x="386.4" y="131.6" textLength="100.8">Send invoice</text>
-<text class="t0" x="688.8" y="131.6" textLength="109.2">overdue 1h53m</text>
+<text class="t0" x="688.8" y="131.6" textLength="109.2">overdue 2h30m</text>
 <text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
 <text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
 <text class="t2" x="25.2" y="148.6">9</text>
@@ -170,7 +172,7 @@
 <text class="t2" x="823.2" y="250.6" textLength="42">Su 15</text>
 <text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
 <text class="t4" x="285.6" y="267.6">●</text>
-<text class="t2" x="302.4" y="267.6" textLength="50.4">14:28–</text>
+<text class="t2" x="302.4" y="267.6" textLength="50.4">15:05–</text>
 <text class="t4" x="352.8" y="267.6" textLength="25.2">now</text>
 <text class="t6" x="411.6" y="267.6" textLength="109.2">Project Alpha</text>
 <text class="t6" x="537.6" y="267.6" textLength="109.2">Release notes</text>
@@ -225,7 +227,7 @@
 </g>
 <rect class="key" x="20" y="583" width="127.2" height="24" rx="5"/><text class="kt" x="83.6" y="599.5" text-anchor="middle">tock calendar</text><text class="cap" x="159.2" y="600">today: reminders, tracked time and the week</text>
 </g>
-<g class="sc k1">
+<g id="s-2" class="sc k1">
 <g transform="translate(20,48)">
 <rect class="f0" x="42" y="153" width="33.6" height="17"/>
 <rect class="f0" x="84" y="0" width="84" height="17"/>
@@ -264,7 +266,7 @@
 <text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
 <text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
 <text class="t4" x="747.6" y="29.6">●</text>
-<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 26m</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
 <text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
 <text class="t5" x="8.4" y="63.6" textLength="109.2">NOVEMBER 2026</text>
 <text class="t1" x="277.2" y="63.6" textLength="210">Tuesday, 17 November 2026</text>
@@ -409,7 +411,7 @@
 </g>
 <rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">←</text><text class="cap" x="58.4" y="600">the day before</text>
 </g>
-<g class="sc k2">
+<g id="s-3" class="sc k2">
 <g transform="translate(20,48)">
 <rect class="f0" x="84" y="0" width="84" height="17"/>
 <rect class="f0" x="109.2" y="153" width="33.6" height="17"/>
@@ -446,7 +448,7 @@
 <text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
 <text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
 <text class="t4" x="747.6" y="29.6">●</text>
-<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 26m</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
 <text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
 <text class="t5" x="8.4" y="63.6" textLength="109.2">NOVEMBER 2026</text>
 <text class="t1" x="277.2" y="63.6" textLength="218.4">Thursday, 19 November 2026</text>
@@ -482,7 +484,7 @@
 <text class="t7" x="285.6" y="131.6">○</text>
 <text class="t6" x="302.4" y="131.6" textLength="42">09:30</text>
 <text class="t6" x="386.4" y="131.6" textLength="58.8">Standup</text>
-<text class="t2" x="722.4" y="131.6" textLength="75.6">in 18h36m</text>
+<text class="t2" x="722.4" y="131.6" textLength="75.6">in 18h00m</text>
 <text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
 <text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
 <text class="t2" x="25.2" y="148.6">9</text>
@@ -495,7 +497,7 @@
 <text class="t7" x="285.6" y="148.6">○</text>
 <text class="t6" x="302.4" y="148.6" textLength="42">11:00</text>
 <text class="t6" x="386.4" y="148.6" textLength="75.6">Team sync</text>
-<text class="t2" x="722.4" y="148.6" textLength="75.6">in 20h06m</text>
+<text class="t2" x="722.4" y="148.6" textLength="75.6">in 19h30m</text>
 <text class="t2" x="823.2" y="148.6" textLength="50.4">mon 23</text>
 <text class="t6" x="890.4" y="148.6" textLength="151.2">Standup, Team sync</text>
 <text class="t1" x="16.8" y="165.6" textLength="16.8">16</text>
@@ -513,6 +515,7 @@
 <text class="t7" x="285.6" y="165.6">○</text>
 <text class="t6" x="302.4" y="165.6" textLength="42">15:00</text>
 <text class="t6" x="386.4" y="165.6" textLength="58.8">Dentist</text>
+<text class="t2" x="722.4" y="165.6" textLength="75.6">in 23h30m</text>
 <text class="t2" x="16.8" y="182.6" textLength="16.8">23</text>
 <text class="t7" x="33.6" y="182.6">•</text>
 <text class="t2" x="50.4" y="182.6" textLength="16.8">24</text>
@@ -587,7 +590,7 @@
 </g>
 <rect class="key" x="20" y="583" width="43.2" height="24" rx="5"/><text class="kt" x="41.6" y="599.5" text-anchor="middle">→ →</text><text class="cap" x="75.2" y="600">tomorrow: what is due and when</text>
 </g>
-<g class="sc k3">
+<g id="s-4" class="sc k3">
 <g transform="translate(20,48)">
 <rect class="f0" x="84" y="0" width="84" height="17"/>
 <rect class="f0" x="142.8" y="136" width="33.6" height="17"/>
@@ -615,8 +618,8 @@
 <text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
 <text class="t3" x="663.6" y="29.6" textLength="92.4">◆ 2 overdue</text>
 <text class="t4" x="781.2" y="29.6">●</text>
-<text class="t2" x="798" y="29.6" textLength="142.8">Project Alpha 26m</text>
-<text class="t2" x="966" y="29.6" textLength="184.8">today 4h11m · month 0m</text>
+<text class="t2" x="798" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="966" y="29.6" textLength="184.8">today 4h10m · month 0m</text>
 <text class="t5" x="8.4" y="63.6" textLength="109.2">DECEMBER 2026</text>
 <text class="t1" x="277.2" y="63.6" textLength="201.6">Friday, 18 December 2026</text>
 <text class="t2" x="621.6" y="63.6" textLength="176.4">0 of 2 reminders done</text>
@@ -744,7 +747,7 @@
 </g>
 <rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">n</text><text class="cap" x="58.4" y="600">next month</text>
 </g>
-<g class="sc k4">
+<g id="s-5" class="sc k4">
 <g transform="translate(20,48)">
 <rect class="f0" x="50.4" y="102" width="537.6" height="17"/>
 <rect class="f0" x="84" y="0" width="84" height="17"/>
@@ -772,8 +775,8 @@
 <text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
 <text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
 <text class="t4" x="747.6" y="29.6">●</text>
-<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 26m</text>
-<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h11m · month 33h11m</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
 <text class="t3" x="50.4" y="80.6" textLength="100.8">New reminder</text>
 <text class="t5" x="613.2" y="80.6" textLength="109.2">NOVEMBER 2026</text>
 <text class="t2" x="621.6" y="97.6" textLength="16.8">Mo</text>
