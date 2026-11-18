@@ -1,0 +1,850 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1216" height="618" viewBox="0 0 1216 618" role="img">
+<title>tock calendar: days, months and adding a reminder</title>
+<style>text{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;font-size:14px;white-space:pre}.ti{fill:#9a9caa;font-size:13px}.pr{fill:#87ff87}.cm{fill:#d0d0d0}.cur{fill:#d0d0d0}.cap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;fill:#9a9caa}.key{fill:#2c2e3a;stroke:#40435a}.kt{fill:#fff;font-size:13px;font-weight:700}.fa{opacity:.45}.sc{visibility:hidden;animation-duration:13.6s;animation-timing-function:step-end;animation-iteration-count:infinite}.poster{visibility:visible}.pg{fill:#5f5fff;transform:scaleX(0);transform-box:fill-box;transform-origin:0 50%;animation-duration:13.6s;animation-timing-function:linear;animation-iteration-count:infinite}.cur{animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}.t0{fill:#ffaf00}.t1{fill:#eeeeee;font-weight:700}.t2{fill:#a8a8a8}.t3{fill:#ffaf00;font-weight:700}.t4{fill:#87ff87}.t5{fill:#a8a8a8;font-weight:700}.t6{fill:#eeeeee}.t7{fill:#5fd7ff}.f0{fill:#303030}.f1{fill:#585858}.f2{fill:#5f5fff}.f3{fill:#ffaf00}.s0{fill:none;stroke:#585858}.s1{fill:none;stroke:#ffaf00}@keyframes p0{0%,0.000%{transform:scaleX(0)}22.059%,100%{transform:scaleX(1)}}.p0{animation-name:p0}@keyframes p1{0%,22.059%{transform:scaleX(0)}41.176%,100%{transform:scaleX(1)}}.p1{animation-name:p1}@keyframes p2{0%,41.176%{transform:scaleX(0)}60.294%,100%{transform:scaleX(1)}}.p2{animation-name:p2}@keyframes p3{0%,60.294%{transform:scaleX(0)}77.941%,100%{transform:scaleX(1)}}.p3{animation-name:p3}@keyframes p4{0%,77.941%{transform:scaleX(0)}100.000%,100%{transform:scaleX(1)}}.p4{animation-name:p4}@keyframes k0{0%{visibility:visible}22.059%,100%{visibility:hidden}}.k0{animation-name:k0}@keyframes k1{0%{visibility:hidden}22.059%{visibility:visible}41.176%,100%{visibility:hidden}}.k1{animation-name:k1}@keyframes k2{0%{visibility:hidden}41.176%{visibility:visible}60.294%,100%{visibility:hidden}}.k2{animation-name:k2}@keyframes k3{0%{visibility:hidden}60.294%{visibility:visible}77.941%,100%{visibility:hidden}}.k3{animation-name:k3}@keyframes k4{0%{visibility:hidden}77.941%{visibility:visible}100.000%,100%{visibility:hidden}}.k4{animation-name:k4}@media (prefers-reduced-motion:reduce){.sc,.pg,.ty,.cur{animation:none}}</style>
+<rect width="1216" height="618" rx="10" fill="#16171d" stroke="#2c2e3a"/>
+<path d="M0.5,34 V10.5 A10,10 0 0 1 10.5,0.5 H1205.5 A10,10 0 0 1 1215.5,10.5 V34 Z" fill="#1e1f27"/>
+<path d="M0.5,572 V607.5 A10,10 0 0 0 10.5,617.5 H1205.5 A10,10 0 0 0 1215.5,607.5 V572 Z" fill="#1e1f27"/>
+<path d="M0,34H1216M0,572H1216" stroke="#2c2e3a"/>
+<circle cx="20" cy="17.0" r="6" fill="#ff5f57"/>
+<circle cx="40" cy="17.0" r="6" fill="#febc2e"/>
+<circle cx="60" cy="17.0" r="6" fill="#28c840"/>
+<text class="ti" x="608" y="21.5" text-anchor="middle">tock</text>
+<g class="tour">
+<rect x="1042" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
+<rect class="pg p0" x="1042" y="593" width="26" height="4" rx="2"/>
+<rect x="1074" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
+<rect class="pg p1" x="1074" y="593" width="26" height="4" rx="2"/>
+<rect x="1106" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
+<rect class="pg p2" x="1106" y="593" width="26" height="4" rx="2"/>
+<rect x="1138" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
+<rect class="pg p3" x="1138" y="593" width="26" height="4" rx="2"/>
+<rect x="1170" y="593" width="26" height="4" rx="2" fill="#2c2e3a"/>
+<rect class="pg p4" x="1170" y="593" width="26" height="4" rx="2"/>
+</g>
+<g id="s-1" class="sc poster k0">
+<g transform="translate(20,48)">
+<rect class="f0" x="75.6" y="153" width="33.6" height="17"/>
+<rect class="f0" x="84" y="0" width="84" height="17"/>
+<rect class="f1" x="0" y="25" width="621.6" height="1"/>
+<rect class="f1" x="3.7" y="442" width="1" height="34"/>
+<rect class="f1" x="8.4" y="433" width="1159.2" height="1"/>
+<rect class="f1" x="8.4" y="484" width="1159.2" height="1"/>
+<rect class="f1" x="264.1" y="51" width="1" height="374"/>
+<rect class="f1" x="730.8" y="25" width="8.4" height="1"/>
+<rect class="f1" x="810.1" y="51" width="1" height="374"/>
+<rect class="f1" x="915.6" y="25" width="8.4" height="1"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f1" x="1171.3" y="442" width="1" height="34"/>
+<rect class="f2" x="949.2" y="394.5" width="2" height="10" rx="0.5"/>
+<rect class="f2" x="428.4" y="343.5" width="16.8" height="10" rx="1.5"/>
+<rect class="f2" x="428.4" y="326.5" width="67.2" height="10" rx="1.5"/>
+<rect class="f2" x="428.4" y="309.5" width="302.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="292.5" width="117.6" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="224.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="275.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="377.5" width="33.6" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="360.5" width="142.8" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="343.5" width="159.6" height="10" rx="1.5"/>
+<path class="s0" d="M4.2,442V437.7A4.2,4.2 0 0 1 8.4,433.5H8.4"/>
+<path class="s0" d="M1167.6,433.5H1167.6A4.2,4.2 0 0 1 1171.8,437.7V442"/>
+<path class="s0" d="M4.2,476V480.3A4.2,4.2 0 0 0 8.4,484.5H8.4"/>
+<path class="s0" d="M1167.6,484.5H1167.6A4.2,4.2 0 0 0 1171.8,480.3V476"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t1" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t2" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1024.8" y="12.6" textLength="109.2">November 2026</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
+<text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
+<text class="t4" x="747.6" y="29.6">●</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
+<text class="t5" x="8.4" y="63.6" textLength="109.2">NOVEMBER 2026</text>
+<text class="t1" x="277.2" y="63.6" textLength="226.8">Wednesday, 18 November 2026</text>
+<text class="t2" x="688.8" y="63.6" textLength="109.2">4h10m tracked</text>
+<text class="t5" x="823.2" y="63.6" textLength="109.2">UPCOMING · 10</text>
+<text class="t2" x="823.2" y="80.6" textLength="33.6">tmrw</text>
+<text class="t6" x="890.4" y="80.6" textLength="285.6">Water plants, Standup, Team sync,…</text>
+<text class="t2" x="16.8" y="97.6" textLength="16.8">Mo</text>
+<text class="t2" x="50.4" y="97.6" textLength="16.8">Tu</text>
+<text class="t2" x="84" y="97.6" textLength="16.8">We</text>
+<text class="t2" x="117.6" y="97.6" textLength="16.8">Th</text>
+<text class="t2" x="151.2" y="97.6" textLength="16.8">Fr</text>
+<text class="t2" x="184.8" y="97.6" textLength="16.8">Sa</text>
+<text class="t2" x="218.4" y="97.6" textLength="16.8">Su</text>
+<text class="t5" x="277.2" y="97.6" textLength="126">REMINDERS · 1/4</text>
+<text class="t2" x="823.2" y="97.6" textLength="50.4">fri 20</text>
+<text class="t6" x="890.4" y="97.6" textLength="58.8">Standup</text>
+<text class="t2" x="226.8" y="114.6">1</text>
+<text class="t0" x="285.6" y="114.6">◆</text>
+<text class="t6" x="302.4" y="114.6" textLength="50.4">Mon 16</text>
+<text class="t6" x="386.4" y="114.6" textLength="100.8">Water plants</text>
+<text class="t0" x="714" y="114.6" textLength="84">overdue 1d</text>
+<text class="t2" x="823.2" y="114.6" textLength="50.4">sat 21</text>
+<text class="t6" x="890.4" y="114.6" textLength="100.8">Release v1.9</text>
+<text class="t2" x="25.2" y="131.6">2</text>
+<text class="t2" x="58.8" y="131.6">3</text>
+<text class="t2" x="92.4" y="131.6">4</text>
+<text class="t2" x="126" y="131.6">5</text>
+<text class="t2" x="159.6" y="131.6">6</text>
+<text class="t2" x="193.2" y="131.6">7</text>
+<text class="t2" x="226.8" y="131.6">8</text>
+<text class="t0" x="285.6" y="131.6">◆</text>
+<text class="t6" x="302.4" y="131.6" textLength="42">13:00</text>
+<text class="t6" x="386.4" y="131.6" textLength="100.8">Send invoice</text>
+<text class="t0" x="688.8" y="131.6" textLength="109.2">overdue 2h30m</text>
+<text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
+<text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
+<text class="t2" x="25.2" y="148.6">9</text>
+<text class="t2" x="50.4" y="148.6" textLength="16.8">10</text>
+<text class="t2" x="84" y="148.6" textLength="16.8">11</text>
+<text class="t2" x="117.6" y="148.6" textLength="16.8">12</text>
+<text class="t2" x="151.2" y="148.6" textLength="16.8">13</text>
+<text class="t1" x="184.8" y="148.6" textLength="16.8">14</text>
+<text class="t1" x="218.4" y="148.6" textLength="16.8">15</text>
+<text class="t7" x="285.6" y="148.6">○</text>
+<text class="t6" x="302.4" y="148.6" textLength="58.8">all day</text>
+<text class="t6" x="386.4" y="148.6" textLength="100.8">Renew domain</text>
+<text class="t2" x="756" y="148.6" textLength="42">today</text>
+<text class="t2" x="823.2" y="148.6" textLength="50.4">mon 23</text>
+<text class="t6" x="890.4" y="148.6" textLength="151.2">Standup, Team sync</text>
+<text class="t1" x="16.8" y="165.6" textLength="16.8">16</text>
+<text class="t0" x="33.6" y="165.6">◆</text>
+<text class="t1" x="50.4" y="165.6" textLength="16.8">17</text>
+<text class="t3" x="84" y="165.6" textLength="16.8">18</text>
+<text class="t0" x="100.8" y="165.6">◆</text>
+<text class="t2" x="117.6" y="165.6" textLength="16.8">19</text>
+<text class="t7" x="134.4" y="165.6">•</text>
+<text class="t2" x="151.2" y="165.6" textLength="16.8">20</text>
+<text class="t2" x="184.8" y="165.6" textLength="16.8">21</text>
+<text class="t7" x="201.6" y="165.6">•</text>
+<text class="t2" x="218.4" y="165.6" textLength="16.8">22</text>
+<text class="t7" x="235.2" y="165.6">•</text>
+<text class="t4" x="285.6" y="165.6">✓</text>
+<text class="t2" x="302.4" y="165.6" textLength="42">09:30</text>
+<text class="t2" x="386.4" y="165.6" textLength="58.8">Standup</text>
+<text class="t2" x="705.6" y="165.6" textLength="92.4">tracked 15m</text>
+<text class="t2" x="16.8" y="182.6" textLength="16.8">23</text>
+<text class="t7" x="33.6" y="182.6">•</text>
+<text class="t2" x="50.4" y="182.6" textLength="16.8">24</text>
+<text class="t2" x="84" y="182.6" textLength="16.8">25</text>
+<text class="t7" x="100.8" y="182.6">•</text>
+<text class="t2" x="117.6" y="182.6" textLength="16.8">26</text>
+<text class="t7" x="134.4" y="182.6">•</text>
+<text class="t2" x="151.2" y="182.6" textLength="16.8">27</text>
+<text class="t2" x="184.8" y="182.6" textLength="16.8">28</text>
+<text class="t7" x="201.6" y="182.6">•</text>
+<text class="t2" x="218.4" y="182.6" textLength="16.8">29</text>
+<text class="t5" x="823.2" y="182.6" textLength="168">LAST 7 DAYS · 33h10m</text>
+<text class="t2" x="16.8" y="199.6" textLength="16.8">30</text>
+<text class="t7" x="33.6" y="199.6">•</text>
+<text class="t5" x="277.2" y="199.6" textLength="159.6">TRACKED · 4 · 4h10m</text>
+<text class="t2" x="823.2" y="199.6" textLength="42">Th 12</text>
+<text class="t2" x="1167.6" y="199.6">—</text>
+<text class="t2" x="302.4" y="216.6" textLength="92.4">08:30–09:15</text>
+<text class="t6" x="411.6" y="216.6" textLength="42">Admin</text>
+<text class="t6" x="537.6" y="216.6" textLength="134.4">Email &amp; planning</text>
+<text class="t6" x="772.8" y="216.6" textLength="25.2">45m</text>
+<text class="t2" x="823.2" y="216.6" textLength="42">Fr 13</text>
+<text class="t2" x="1167.6" y="216.6">—</text>
+<text class="t1" x="8.4" y="233.6" textLength="16.8">14</text>
+<text class="t2" x="33.6" y="233.6" textLength="58.8">tracked</text>
+<text class="t7" x="117.6" y="233.6">•</text>
+<text class="t2" x="134.4" y="233.6" textLength="67.2">reminder</text>
+<text class="t2" x="302.4" y="233.6" textLength="92.4">09:30–09:45</text>
+<text class="t6" x="411.6" y="233.6" textLength="84">Management</text>
+<text class="t6" x="537.6" y="233.6" textLength="58.8">Standup</text>
+<text class="t6" x="772.8" y="233.6" textLength="25.2">15m</text>
+<text class="t2" x="823.2" y="233.6" textLength="42">Sa 14</text>
+<text class="t6" x="1134" y="233.6" textLength="42">7h15m</text>
+<text class="t3" x="8.4" y="250.6" textLength="16.8">18</text>
+<text class="t2" x="33.6" y="250.6" textLength="42">today</text>
+<text class="t0" x="117.6" y="250.6">◆</text>
+<text class="t2" x="134.4" y="250.6" textLength="58.8">overdue</text>
+<text class="t2" x="302.4" y="250.6" textLength="92.4">10:00–12:45</text>
+<text class="t6" x="411.6" y="250.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="537.6" y="250.6" textLength="117.6">Implementation</text>
+<text class="t6" x="756" y="250.6" textLength="42">2h45m</text>
+<text class="t2" x="823.2" y="250.6" textLength="42">Su 15</text>
+<text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
+<text class="t4" x="285.6" y="267.6">●</text>
+<text class="t2" x="302.4" y="267.6" textLength="50.4">15:05–</text>
+<text class="t4" x="352.8" y="267.6" textLength="25.2">now</text>
+<text class="t6" x="411.6" y="267.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="537.6" y="267.6" textLength="109.2">Release notes</text>
+<text class="t4" x="772.8" y="267.6" textLength="25.2">25m</text>
+<text class="t2" x="823.2" y="267.6" textLength="42">Mo 16</text>
+<text class="t6" x="1134" y="267.6" textLength="42">7h15m</text>
+<text class="t5" x="8.4" y="284.6" textLength="117.6">MONTH · 33h10m</text>
+<text class="t2" x="823.2" y="284.6" textLength="42">Tu 17</text>
+<text class="t6" x="1134" y="284.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="301.6" textLength="58.8">avg/day</text>
+<text class="t6" x="92.4" y="301.6" textLength="42">6h38m</text>
+<text class="t5" x="277.2" y="301.6" textLength="84">BY PROJECT</text>
+<text class="t3" x="823.2" y="301.6" textLength="42">We 18</text>
+<text class="t6" x="1134" y="301.6" textLength="42">4h10m</text>
+<text class="t2" x="8.4" y="318.6" textLength="58.8">max/day</text>
+<text class="t6" x="92.4" y="318.6" textLength="42">7h15m</text>
+<text class="t6" x="302.4" y="318.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="756" y="318.6" textLength="42">3h10m</text>
+<text class="t2" x="8.4" y="335.6" textLength="50.4">streak</text>
+<text class="t6" x="92.4" y="335.6" textLength="50.4">5 days</text>
+<text class="t6" x="302.4" y="335.6" textLength="42">Admin</text>
+<text class="t6" x="772.8" y="335.6" textLength="25.2">45m</text>
+<text class="t5" x="823.2" y="335.6" textLength="193.2">TOP PROJECTS · NOVEMBER</text>
+<text class="t6" x="302.4" y="352.6" textLength="84">Management</text>
+<text class="t6" x="772.8" y="352.6" textLength="25.2">15m</text>
+<text class="t6" x="823.2" y="352.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="1125.6" y="352.6" textLength="50.4">15h10m</text>
+<text class="t6" x="823.2" y="369.6" textLength="100.8">Project Beta</text>
+<text class="t6" x="1150.8" y="369.6" textLength="25.2">14h</text>
+<text class="t6" x="823.2" y="386.6" textLength="84">Management</text>
+<text class="t6" x="1134" y="386.6" textLength="42">3h15m</text>
+<text class="t6" x="823.2" y="403.6" textLength="42">Admin</text>
+<text class="t6" x="1150.8" y="403.6" textLength="25.2">45m</text>
+<text class="t5" x="16.8" y="454.6" textLength="42">focus</text>
+<text class="t2" x="75.6" y="454.6" textLength="268.8">j/k selects a row, tab a section</text>
+<text class="t2" x="8.4" y="505.6" textLength="16.8">←→</text>
+<text class="t6" x="33.6" y="505.6" textLength="25.2">day</text>
+<text class="t2" x="84" y="505.6" textLength="16.8">↑↓</text>
+<text class="t6" x="109.2" y="505.6" textLength="33.6">week</text>
+<text class="t2" x="168" y="505.6" textLength="25.2">n/p</text>
+<text class="t6" x="201.6" y="505.6" textLength="42">month</text>
+<text class="t2" x="268.8" y="505.6" textLength="25.2">j/k</text>
+<text class="t6" x="302.4" y="505.6" textLength="50.4">select</text>
+<text class="t2" x="378" y="505.6" textLength="25.2">tab</text>
+<text class="t6" x="411.6" y="505.6" textLength="58.8">section</text>
+<text class="t2" x="495.6" y="505.6">a</text>
+<text class="t6" x="512.4" y="505.6" textLength="100.8">add reminder</text>
+<text class="t2" x="638.4" y="505.6" textLength="25.2">1–4</text>
+<text class="t6" x="672" y="505.6" textLength="33.6">tabs</text>
+<text class="t2" x="730.8" y="505.6">q</text>
+<text class="t6" x="747.6" y="505.6" textLength="33.6">quit</text>
+</g>
+<rect class="key" x="20" y="583" width="127.2" height="24" rx="5"/><text class="kt" x="83.6" y="599.5" text-anchor="middle">tock calendar</text><text class="cap" x="159.2" y="600">today: reminders, tracked time and the week</text>
+</g>
+<g id="s-2" class="sc k1">
+<g transform="translate(20,48)">
+<rect class="f0" x="42" y="153" width="33.6" height="17"/>
+<rect class="f0" x="84" y="0" width="84" height="17"/>
+<rect class="f1" x="0" y="25" width="621.6" height="1"/>
+<rect class="f1" x="3.7" y="442" width="1" height="34"/>
+<rect class="f1" x="8.4" y="433" width="1159.2" height="1"/>
+<rect class="f1" x="8.4" y="484" width="1159.2" height="1"/>
+<rect class="f1" x="264.1" y="51" width="1" height="374"/>
+<rect class="f1" x="730.8" y="25" width="8.4" height="1"/>
+<rect class="f1" x="810.1" y="51" width="1" height="374"/>
+<rect class="f1" x="915.6" y="25" width="8.4" height="1"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f1" x="1171.3" y="442" width="1" height="34"/>
+<rect class="f2" x="949.2" y="394.5" width="2" height="10" rx="0.5"/>
+<rect class="f2" x="428.4" y="224.5" width="58.8" height="10" rx="1.5"/>
+<rect class="f2" x="428.4" y="207.5" width="252" height="10" rx="1.5"/>
+<rect class="f2" x="428.4" y="190.5" width="302.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="275.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="292.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="377.5" width="33.6" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="360.5" width="142.8" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="343.5" width="159.6" height="10" rx="1.5"/>
+<path class="s0" d="M4.2,442V437.7A4.2,4.2 0 0 1 8.4,433.5H8.4"/>
+<path class="s0" d="M1167.6,433.5H1167.6A4.2,4.2 0 0 1 1171.8,437.7V442"/>
+<path class="s0" d="M4.2,476V480.3A4.2,4.2 0 0 0 8.4,484.5H8.4"/>
+<path class="s0" d="M1167.6,484.5H1167.6A4.2,4.2 0 0 0 1171.8,480.3V476"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t1" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t2" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1024.8" y="12.6" textLength="109.2">November 2026</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
+<text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
+<text class="t4" x="747.6" y="29.6">●</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
+<text class="t5" x="8.4" y="63.6" textLength="109.2">NOVEMBER 2026</text>
+<text class="t1" x="277.2" y="63.6" textLength="210">Tuesday, 17 November 2026</text>
+<text class="t2" x="688.8" y="63.6" textLength="109.2">7h15m tracked</text>
+<text class="t5" x="823.2" y="63.6" textLength="109.2">UPCOMING · 11</text>
+<text class="t2" x="823.2" y="80.6" textLength="42">today</text>
+<text class="t2" x="890.4" y="80.6" textLength="58.8">all day</text>
+<text class="t6" x="974.4" y="80.6" textLength="100.8">Renew domain</text>
+<text class="t2" x="1083.6" y="80.6">↻</text>
+<text class="t2" x="16.8" y="97.6" textLength="16.8">Mo</text>
+<text class="t2" x="50.4" y="97.6" textLength="16.8">Tu</text>
+<text class="t2" x="84" y="97.6" textLength="16.8">We</text>
+<text class="t2" x="117.6" y="97.6" textLength="16.8">Th</text>
+<text class="t2" x="151.2" y="97.6" textLength="16.8">Fr</text>
+<text class="t2" x="184.8" y="97.6" textLength="16.8">Sa</text>
+<text class="t2" x="218.4" y="97.6" textLength="16.8">Su</text>
+<text class="t5" x="277.2" y="97.6" textLength="159.6">TRACKED · 3 · 7h15m</text>
+<text class="t2" x="823.2" y="97.6" textLength="33.6">tmrw</text>
+<text class="t6" x="890.4" y="97.6" textLength="285.6">Water plants, Standup, Team sync,…</text>
+<text class="t2" x="226.8" y="114.6">1</text>
+<text class="t2" x="302.4" y="114.6" textLength="92.4">09:00–12:00</text>
+<text class="t6" x="411.6" y="114.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="537.6" y="114.6" textLength="58.8">Scoping</text>
+<text class="t6" x="781.2" y="114.6" textLength="16.8">3h</text>
+<text class="t2" x="823.2" y="114.6" textLength="50.4">fri 20</text>
+<text class="t6" x="890.4" y="114.6" textLength="58.8">Standup</text>
+<text class="t2" x="25.2" y="131.6">2</text>
+<text class="t2" x="58.8" y="131.6">3</text>
+<text class="t2" x="92.4" y="131.6">4</text>
+<text class="t2" x="126" y="131.6">5</text>
+<text class="t2" x="159.6" y="131.6">6</text>
+<text class="t2" x="193.2" y="131.6">7</text>
+<text class="t2" x="226.8" y="131.6">8</text>
+<text class="t2" x="302.4" y="131.6" textLength="92.4">12:30–13:15</text>
+<text class="t6" x="411.6" y="131.6" textLength="84">Management</text>
+<text class="t6" x="537.6" y="131.6" textLength="75.6">Team sync</text>
+<text class="t6" x="772.8" y="131.6" textLength="25.2">45m</text>
+<text class="t2" x="823.2" y="131.6" textLength="50.4">sat 21</text>
+<text class="t6" x="890.4" y="131.6" textLength="100.8">Release v1.9</text>
+<text class="t2" x="25.2" y="148.6">9</text>
+<text class="t2" x="50.4" y="148.6" textLength="16.8">10</text>
+<text class="t2" x="84" y="148.6" textLength="16.8">11</text>
+<text class="t2" x="117.6" y="148.6" textLength="16.8">12</text>
+<text class="t2" x="151.2" y="148.6" textLength="16.8">13</text>
+<text class="t1" x="184.8" y="148.6" textLength="16.8">14</text>
+<text class="t1" x="218.4" y="148.6" textLength="16.8">15</text>
+<text class="t2" x="302.4" y="148.6" textLength="92.4">14:00–17:30</text>
+<text class="t6" x="411.6" y="148.6" textLength="100.8">Project Beta</text>
+<text class="t6" x="537.6" y="148.6" textLength="84">API design</text>
+<text class="t6" x="756" y="148.6" textLength="42">3h30m</text>
+<text class="t2" x="823.2" y="148.6" textLength="50.4">sun 22</text>
+<text class="t6" x="890.4" y="148.6" textLength="100.8">Water plants</text>
+<text class="t1" x="16.8" y="165.6" textLength="16.8">16</text>
+<text class="t0" x="33.6" y="165.6">◆</text>
+<text class="t1" x="50.4" y="165.6" textLength="16.8">17</text>
+<text class="t3" x="84" y="165.6" textLength="16.8">18</text>
+<text class="t0" x="100.8" y="165.6">◆</text>
+<text class="t2" x="117.6" y="165.6" textLength="16.8">19</text>
+<text class="t7" x="134.4" y="165.6">•</text>
+<text class="t2" x="151.2" y="165.6" textLength="16.8">20</text>
+<text class="t2" x="184.8" y="165.6" textLength="16.8">21</text>
+<text class="t7" x="201.6" y="165.6">•</text>
+<text class="t2" x="218.4" y="165.6" textLength="16.8">22</text>
+<text class="t7" x="235.2" y="165.6">•</text>
+<text class="t2" x="16.8" y="182.6" textLength="16.8">23</text>
+<text class="t7" x="33.6" y="182.6">•</text>
+<text class="t2" x="50.4" y="182.6" textLength="16.8">24</text>
+<text class="t2" x="84" y="182.6" textLength="16.8">25</text>
+<text class="t7" x="100.8" y="182.6">•</text>
+<text class="t2" x="117.6" y="182.6" textLength="16.8">26</text>
+<text class="t7" x="134.4" y="182.6">•</text>
+<text class="t2" x="151.2" y="182.6" textLength="16.8">27</text>
+<text class="t2" x="184.8" y="182.6" textLength="16.8">28</text>
+<text class="t7" x="201.6" y="182.6">•</text>
+<text class="t2" x="218.4" y="182.6" textLength="16.8">29</text>
+<text class="t5" x="277.2" y="182.6" textLength="84">BY PROJECT</text>
+<text class="t5" x="823.2" y="182.6" textLength="142.8">LAST 7 DAYS · 29h</text>
+<text class="t2" x="16.8" y="199.6" textLength="16.8">30</text>
+<text class="t7" x="33.6" y="199.6">•</text>
+<text class="t6" x="302.4" y="199.6" textLength="100.8">Project Beta</text>
+<text class="t6" x="756" y="199.6" textLength="42">3h30m</text>
+<text class="t2" x="823.2" y="199.6" textLength="42">We 11</text>
+<text class="t2" x="1167.6" y="199.6">—</text>
+<text class="t6" x="302.4" y="216.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="781.2" y="216.6" textLength="16.8">3h</text>
+<text class="t2" x="823.2" y="216.6" textLength="42">Th 12</text>
+<text class="t2" x="1167.6" y="216.6">—</text>
+<text class="t1" x="8.4" y="233.6" textLength="16.8">14</text>
+<text class="t2" x="33.6" y="233.6" textLength="58.8">tracked</text>
+<text class="t7" x="117.6" y="233.6">•</text>
+<text class="t2" x="134.4" y="233.6" textLength="67.2">reminder</text>
+<text class="t6" x="302.4" y="233.6" textLength="84">Management</text>
+<text class="t6" x="772.8" y="233.6" textLength="25.2">45m</text>
+<text class="t2" x="823.2" y="233.6" textLength="42">Fr 13</text>
+<text class="t2" x="1167.6" y="233.6">—</text>
+<text class="t3" x="8.4" y="250.6" textLength="16.8">18</text>
+<text class="t2" x="33.6" y="250.6" textLength="42">today</text>
+<text class="t0" x="117.6" y="250.6">◆</text>
+<text class="t2" x="134.4" y="250.6" textLength="58.8">overdue</text>
+<text class="t2" x="823.2" y="250.6" textLength="42">Sa 14</text>
+<text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
+<text class="t2" x="823.2" y="267.6" textLength="42">Su 15</text>
+<text class="t6" x="1134" y="267.6" textLength="42">7h15m</text>
+<text class="t5" x="8.4" y="284.6" textLength="117.6">MONTH · 33h10m</text>
+<text class="t2" x="823.2" y="284.6" textLength="42">Mo 16</text>
+<text class="t6" x="1134" y="284.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="301.6" textLength="58.8">avg/day</text>
+<text class="t6" x="92.4" y="301.6" textLength="42">6h38m</text>
+<text class="t3" x="823.2" y="301.6" textLength="42">Tu 17</text>
+<text class="t6" x="1134" y="301.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="318.6" textLength="58.8">max/day</text>
+<text class="t6" x="92.4" y="318.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="335.6" textLength="50.4">streak</text>
+<text class="t6" x="92.4" y="335.6" textLength="50.4">5 days</text>
+<text class="t5" x="823.2" y="335.6" textLength="193.2">TOP PROJECTS · NOVEMBER</text>
+<text class="t6" x="823.2" y="352.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="1125.6" y="352.6" textLength="50.4">15h10m</text>
+<text class="t6" x="823.2" y="369.6" textLength="100.8">Project Beta</text>
+<text class="t6" x="1150.8" y="369.6" textLength="25.2">14h</text>
+<text class="t6" x="823.2" y="386.6" textLength="84">Management</text>
+<text class="t6" x="1134" y="386.6" textLength="42">3h15m</text>
+<text class="t6" x="823.2" y="403.6" textLength="42">Admin</text>
+<text class="t6" x="1150.8" y="403.6" textLength="25.2">45m</text>
+<text class="t5" x="16.8" y="454.6" textLength="42">focus</text>
+<text class="t2" x="75.6" y="454.6" textLength="268.8">j/k selects a row, tab a section</text>
+<text class="t2" x="8.4" y="505.6" textLength="16.8">←→</text>
+<text class="t6" x="33.6" y="505.6" textLength="25.2">day</text>
+<text class="t2" x="84" y="505.6" textLength="16.8">↑↓</text>
+<text class="t6" x="109.2" y="505.6" textLength="33.6">week</text>
+<text class="t2" x="168" y="505.6" textLength="25.2">n/p</text>
+<text class="t6" x="201.6" y="505.6" textLength="42">month</text>
+<text class="t2" x="268.8" y="505.6" textLength="25.2">j/k</text>
+<text class="t6" x="302.4" y="505.6" textLength="50.4">select</text>
+<text class="t2" x="378" y="505.6" textLength="25.2">tab</text>
+<text class="t6" x="411.6" y="505.6" textLength="58.8">section</text>
+<text class="t2" x="495.6" y="505.6">a</text>
+<text class="t6" x="512.4" y="505.6" textLength="100.8">add reminder</text>
+<text class="t2" x="638.4" y="505.6" textLength="25.2">1–4</text>
+<text class="t6" x="672" y="505.6" textLength="33.6">tabs</text>
+<text class="t2" x="730.8" y="505.6">q</text>
+<text class="t6" x="747.6" y="505.6" textLength="33.6">quit</text>
+</g>
+<rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">←</text><text class="cap" x="58.4" y="600">the day before</text>
+</g>
+<g id="s-3" class="sc k2">
+<g transform="translate(20,48)">
+<rect class="f0" x="84" y="0" width="84" height="17"/>
+<rect class="f0" x="109.2" y="153" width="33.6" height="17"/>
+<rect class="f1" x="0" y="25" width="621.6" height="1"/>
+<rect class="f1" x="3.7" y="442" width="1" height="34"/>
+<rect class="f1" x="8.4" y="433" width="1159.2" height="1"/>
+<rect class="f1" x="8.4" y="484" width="1159.2" height="1"/>
+<rect class="f1" x="264.1" y="51" width="1" height="374"/>
+<rect class="f1" x="730.8" y="25" width="8.4" height="1"/>
+<rect class="f1" x="810.1" y="51" width="1" height="374"/>
+<rect class="f1" x="915.6" y="25" width="8.4" height="1"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f1" x="1171.3" y="442" width="1" height="34"/>
+<rect class="f2" x="949.2" y="394.5" width="2" height="10" rx="0.5"/>
+<rect class="f2" x="890.4" y="275.5" width="117.6" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="207.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="224.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="241.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="890.4" y="258.5" width="218.4" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="377.5" width="33.6" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="360.5" width="142.8" height="10" rx="1.5"/>
+<rect class="f2" x="949.2" y="343.5" width="159.6" height="10" rx="1.5"/>
+<path class="s0" d="M4.2,442V437.7A4.2,4.2 0 0 1 8.4,433.5H8.4"/>
+<path class="s0" d="M1167.6,433.5H1167.6A4.2,4.2 0 0 1 1171.8,437.7V442"/>
+<path class="s0" d="M4.2,476V480.3A4.2,4.2 0 0 0 8.4,484.5H8.4"/>
+<path class="s0" d="M1167.6,484.5H1167.6A4.2,4.2 0 0 0 1171.8,480.3V476"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t1" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t2" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1024.8" y="12.6" textLength="109.2">November 2026</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
+<text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
+<text class="t4" x="747.6" y="29.6">●</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
+<text class="t5" x="8.4" y="63.6" textLength="109.2">NOVEMBER 2026</text>
+<text class="t1" x="277.2" y="63.6" textLength="218.4">Thursday, 19 November 2026</text>
+<text class="t2" x="621.6" y="63.6" textLength="176.4">0 of 4 reminders done</text>
+<text class="t5" x="823.2" y="63.6" textLength="100.8">UPCOMING · 7</text>
+<text class="t2" x="823.2" y="80.6" textLength="42">today</text>
+<text class="t2" x="890.4" y="80.6" textLength="58.8">all day</text>
+<text class="t6" x="974.4" y="80.6" textLength="100.8">Renew domain</text>
+<text class="t2" x="1083.6" y="80.6">↻</text>
+<text class="t2" x="16.8" y="97.6" textLength="16.8">Mo</text>
+<text class="t2" x="50.4" y="97.6" textLength="16.8">Tu</text>
+<text class="t2" x="84" y="97.6" textLength="16.8">We</text>
+<text class="t2" x="117.6" y="97.6" textLength="16.8">Th</text>
+<text class="t2" x="151.2" y="97.6" textLength="16.8">Fr</text>
+<text class="t2" x="184.8" y="97.6" textLength="16.8">Sa</text>
+<text class="t2" x="218.4" y="97.6" textLength="16.8">Su</text>
+<text class="t5" x="277.2" y="97.6" textLength="126">REMINDERS · 0/4</text>
+<text class="t2" x="823.2" y="97.6" textLength="50.4">fri 20</text>
+<text class="t6" x="890.4" y="97.6" textLength="58.8">Standup</text>
+<text class="t2" x="226.8" y="114.6">1</text>
+<text class="t7" x="285.6" y="114.6">○</text>
+<text class="t6" x="302.4" y="114.6" textLength="58.8">all day</text>
+<text class="t6" x="386.4" y="114.6" textLength="100.8">Water plants</text>
+<text class="t2" x="823.2" y="114.6" textLength="50.4">sat 21</text>
+<text class="t6" x="890.4" y="114.6" textLength="100.8">Release v1.9</text>
+<text class="t2" x="25.2" y="131.6">2</text>
+<text class="t2" x="58.8" y="131.6">3</text>
+<text class="t2" x="92.4" y="131.6">4</text>
+<text class="t2" x="126" y="131.6">5</text>
+<text class="t2" x="159.6" y="131.6">6</text>
+<text class="t2" x="193.2" y="131.6">7</text>
+<text class="t2" x="226.8" y="131.6">8</text>
+<text class="t7" x="285.6" y="131.6">○</text>
+<text class="t6" x="302.4" y="131.6" textLength="42">09:30</text>
+<text class="t6" x="386.4" y="131.6" textLength="58.8">Standup</text>
+<text class="t2" x="722.4" y="131.6" textLength="75.6">in 18h00m</text>
+<text class="t2" x="823.2" y="131.6" textLength="50.4">sun 22</text>
+<text class="t6" x="890.4" y="131.6" textLength="100.8">Water plants</text>
+<text class="t2" x="25.2" y="148.6">9</text>
+<text class="t2" x="50.4" y="148.6" textLength="16.8">10</text>
+<text class="t2" x="84" y="148.6" textLength="16.8">11</text>
+<text class="t2" x="117.6" y="148.6" textLength="16.8">12</text>
+<text class="t2" x="151.2" y="148.6" textLength="16.8">13</text>
+<text class="t1" x="184.8" y="148.6" textLength="16.8">14</text>
+<text class="t1" x="218.4" y="148.6" textLength="16.8">15</text>
+<text class="t7" x="285.6" y="148.6">○</text>
+<text class="t6" x="302.4" y="148.6" textLength="42">11:00</text>
+<text class="t6" x="386.4" y="148.6" textLength="75.6">Team sync</text>
+<text class="t2" x="722.4" y="148.6" textLength="75.6">in 19h30m</text>
+<text class="t2" x="823.2" y="148.6" textLength="50.4">mon 23</text>
+<text class="t6" x="890.4" y="148.6" textLength="151.2">Standup, Team sync</text>
+<text class="t1" x="16.8" y="165.6" textLength="16.8">16</text>
+<text class="t0" x="33.6" y="165.6">◆</text>
+<text class="t1" x="50.4" y="165.6" textLength="16.8">17</text>
+<text class="t3" x="84" y="165.6" textLength="16.8">18</text>
+<text class="t0" x="100.8" y="165.6">◆</text>
+<text class="t5" x="117.6" y="165.6" textLength="16.8">19</text>
+<text class="t7" x="134.4" y="165.6">•</text>
+<text class="t2" x="151.2" y="165.6" textLength="16.8">20</text>
+<text class="t2" x="184.8" y="165.6" textLength="16.8">21</text>
+<text class="t7" x="201.6" y="165.6">•</text>
+<text class="t2" x="218.4" y="165.6" textLength="16.8">22</text>
+<text class="t7" x="235.2" y="165.6">•</text>
+<text class="t7" x="285.6" y="165.6">○</text>
+<text class="t6" x="302.4" y="165.6" textLength="42">15:00</text>
+<text class="t6" x="386.4" y="165.6" textLength="58.8">Dentist</text>
+<text class="t2" x="722.4" y="165.6" textLength="75.6">in 23h30m</text>
+<text class="t2" x="16.8" y="182.6" textLength="16.8">23</text>
+<text class="t7" x="33.6" y="182.6">•</text>
+<text class="t2" x="50.4" y="182.6" textLength="16.8">24</text>
+<text class="t2" x="84" y="182.6" textLength="16.8">25</text>
+<text class="t7" x="100.8" y="182.6">•</text>
+<text class="t2" x="117.6" y="182.6" textLength="16.8">26</text>
+<text class="t7" x="134.4" y="182.6">•</text>
+<text class="t2" x="151.2" y="182.6" textLength="16.8">27</text>
+<text class="t2" x="184.8" y="182.6" textLength="16.8">28</text>
+<text class="t7" x="201.6" y="182.6">•</text>
+<text class="t2" x="218.4" y="182.6" textLength="16.8">29</text>
+<text class="t5" x="823.2" y="182.6" textLength="168">LAST 7 DAYS · 33h10m</text>
+<text class="t2" x="16.8" y="199.6" textLength="16.8">30</text>
+<text class="t7" x="33.6" y="199.6">•</text>
+<text class="t2" x="277.2" y="199.6" textLength="75.6">No events</text>
+<text class="t2" x="823.2" y="199.6" textLength="42">Fr 13</text>
+<text class="t2" x="1167.6" y="199.6">—</text>
+<text class="t2" x="823.2" y="216.6" textLength="42">Sa 14</text>
+<text class="t6" x="1134" y="216.6" textLength="42">7h15m</text>
+<text class="t1" x="8.4" y="233.6" textLength="16.8">14</text>
+<text class="t2" x="33.6" y="233.6" textLength="58.8">tracked</text>
+<text class="t7" x="117.6" y="233.6">•</text>
+<text class="t2" x="134.4" y="233.6" textLength="67.2">reminder</text>
+<text class="t2" x="823.2" y="233.6" textLength="42">Su 15</text>
+<text class="t6" x="1134" y="233.6" textLength="42">7h15m</text>
+<text class="t3" x="8.4" y="250.6" textLength="16.8">18</text>
+<text class="t2" x="33.6" y="250.6" textLength="42">today</text>
+<text class="t0" x="117.6" y="250.6">◆</text>
+<text class="t2" x="134.4" y="250.6" textLength="58.8">overdue</text>
+<text class="t2" x="823.2" y="250.6" textLength="42">Mo 16</text>
+<text class="t6" x="1134" y="250.6" textLength="42">7h15m</text>
+<text class="t2" x="823.2" y="267.6" textLength="42">Tu 17</text>
+<text class="t6" x="1134" y="267.6" textLength="42">7h15m</text>
+<text class="t5" x="8.4" y="284.6" textLength="117.6">MONTH · 33h10m</text>
+<text class="t2" x="823.2" y="284.6" textLength="42">We 18</text>
+<text class="t6" x="1134" y="284.6" textLength="42">4h10m</text>
+<text class="t2" x="8.4" y="301.6" textLength="58.8">avg/day</text>
+<text class="t6" x="92.4" y="301.6" textLength="42">6h38m</text>
+<text class="t3" x="823.2" y="301.6" textLength="42">Th 19</text>
+<text class="t2" x="1167.6" y="301.6">—</text>
+<text class="t2" x="8.4" y="318.6" textLength="58.8">max/day</text>
+<text class="t6" x="92.4" y="318.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="335.6" textLength="50.4">streak</text>
+<text class="t6" x="92.4" y="335.6" textLength="50.4">5 days</text>
+<text class="t5" x="823.2" y="335.6" textLength="193.2">TOP PROJECTS · NOVEMBER</text>
+<text class="t6" x="823.2" y="352.6" textLength="109.2">Project Alpha</text>
+<text class="t6" x="1125.6" y="352.6" textLength="50.4">15h10m</text>
+<text class="t6" x="823.2" y="369.6" textLength="100.8">Project Beta</text>
+<text class="t6" x="1150.8" y="369.6" textLength="25.2">14h</text>
+<text class="t6" x="823.2" y="386.6" textLength="84">Management</text>
+<text class="t6" x="1134" y="386.6" textLength="42">3h15m</text>
+<text class="t6" x="823.2" y="403.6" textLength="42">Admin</text>
+<text class="t6" x="1150.8" y="403.6" textLength="25.2">45m</text>
+<text class="t5" x="16.8" y="454.6" textLength="42">focus</text>
+<text class="t2" x="75.6" y="454.6" textLength="268.8">j/k selects a row, tab a section</text>
+<text class="t2" x="8.4" y="505.6" textLength="16.8">←→</text>
+<text class="t6" x="33.6" y="505.6" textLength="25.2">day</text>
+<text class="t2" x="84" y="505.6" textLength="16.8">↑↓</text>
+<text class="t6" x="109.2" y="505.6" textLength="33.6">week</text>
+<text class="t2" x="168" y="505.6" textLength="25.2">n/p</text>
+<text class="t6" x="201.6" y="505.6" textLength="42">month</text>
+<text class="t2" x="268.8" y="505.6" textLength="25.2">j/k</text>
+<text class="t6" x="302.4" y="505.6" textLength="50.4">select</text>
+<text class="t2" x="378" y="505.6" textLength="25.2">tab</text>
+<text class="t6" x="411.6" y="505.6" textLength="58.8">section</text>
+<text class="t2" x="495.6" y="505.6">a</text>
+<text class="t6" x="512.4" y="505.6" textLength="100.8">add reminder</text>
+<text class="t2" x="638.4" y="505.6" textLength="25.2">1–4</text>
+<text class="t6" x="672" y="505.6" textLength="33.6">tabs</text>
+<text class="t2" x="730.8" y="505.6">q</text>
+<text class="t6" x="747.6" y="505.6" textLength="33.6">quit</text>
+</g>
+<rect class="key" x="20" y="583" width="43.2" height="24" rx="5"/><text class="kt" x="41.6" y="599.5" text-anchor="middle">→ →</text><text class="cap" x="75.2" y="600">tomorrow: what is due and when</text>
+</g>
+<g id="s-4" class="sc k3">
+<g transform="translate(20,48)">
+<rect class="f0" x="84" y="0" width="84" height="17"/>
+<rect class="f0" x="142.8" y="136" width="33.6" height="17"/>
+<rect class="f1" x="0" y="25" width="655.2" height="1"/>
+<rect class="f1" x="3.7" y="442" width="1" height="34"/>
+<rect class="f1" x="8.4" y="433" width="1159.2" height="1"/>
+<rect class="f1" x="8.4" y="484" width="1159.2" height="1"/>
+<rect class="f1" x="264.1" y="51" width="1" height="374"/>
+<rect class="f1" x="764.4" y="25" width="8.4" height="1"/>
+<rect class="f1" x="810.1" y="51" width="1" height="374"/>
+<rect class="f1" x="949.2" y="25" width="8.4" height="1"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f1" x="1171.3" y="442" width="1" height="34"/>
+<path class="s0" d="M4.2,442V437.7A4.2,4.2 0 0 1 8.4,433.5H8.4"/>
+<path class="s0" d="M1167.6,433.5H1167.6A4.2,4.2 0 0 1 1171.8,437.7V442"/>
+<path class="s0" d="M4.2,476V480.3A4.2,4.2 0 0 0 8.4,484.5H8.4"/>
+<path class="s0" d="M1167.6,484.5H1167.6A4.2,4.2 0 0 0 1171.8,480.3V476"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t1" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t2" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1024.8" y="12.6" textLength="109.2">December 2026</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
+<text class="t3" x="663.6" y="29.6" textLength="92.4">◆ 2 overdue</text>
+<text class="t4" x="781.2" y="29.6">●</text>
+<text class="t2" x="798" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="966" y="29.6" textLength="184.8">today 4h10m · month 0m</text>
+<text class="t5" x="8.4" y="63.6" textLength="109.2">DECEMBER 2026</text>
+<text class="t1" x="277.2" y="63.6" textLength="201.6">Friday, 18 December 2026</text>
+<text class="t2" x="621.6" y="63.6" textLength="176.4">0 of 2 reminders done</text>
+<text class="t5" x="823.2" y="63.6" textLength="109.2">UPCOMING · 11</text>
+<text class="t2" x="823.2" y="80.6" textLength="42">today</text>
+<text class="t2" x="890.4" y="80.6" textLength="58.8">all day</text>
+<text class="t6" x="974.4" y="80.6" textLength="100.8">Renew domain</text>
+<text class="t2" x="1083.6" y="80.6">↻</text>
+<text class="t2" x="16.8" y="97.6" textLength="16.8">Mo</text>
+<text class="t2" x="50.4" y="97.6" textLength="16.8">Tu</text>
+<text class="t2" x="84" y="97.6" textLength="16.8">We</text>
+<text class="t2" x="117.6" y="97.6" textLength="16.8">Th</text>
+<text class="t2" x="151.2" y="97.6" textLength="16.8">Fr</text>
+<text class="t2" x="184.8" y="97.6" textLength="16.8">Sa</text>
+<text class="t2" x="218.4" y="97.6" textLength="16.8">Su</text>
+<text class="t5" x="277.2" y="97.6" textLength="126">REMINDERS · 0/2</text>
+<text class="t2" x="823.2" y="97.6" textLength="33.6">tmrw</text>
+<text class="t6" x="890.4" y="97.6" textLength="285.6">Water plants, Standup, Team sync,…</text>
+<text class="t2" x="58.8" y="114.6">1</text>
+<text class="t7" x="67.2" y="114.6">•</text>
+<text class="t2" x="92.4" y="114.6">2</text>
+<text class="t2" x="126" y="114.6">3</text>
+<text class="t7" x="134.4" y="114.6">•</text>
+<text class="t2" x="159.6" y="114.6">4</text>
+<text class="t7" x="168" y="114.6">•</text>
+<text class="t2" x="193.2" y="114.6">5</text>
+<text class="t2" x="226.8" y="114.6">6</text>
+<text class="t7" x="285.6" y="114.6">○</text>
+<text class="t6" x="302.4" y="114.6" textLength="42">09:30</text>
+<text class="t6" x="386.4" y="114.6" textLength="58.8">Standup</text>
+<text class="t2" x="823.2" y="114.6" textLength="50.4">fri 20</text>
+<text class="t6" x="890.4" y="114.6" textLength="58.8">Standup</text>
+<text class="t2" x="25.2" y="131.6">7</text>
+<text class="t7" x="33.6" y="131.6">•</text>
+<text class="t2" x="58.8" y="131.6">8</text>
+<text class="t2" x="92.4" y="131.6">9</text>
+<text class="t2" x="117.6" y="131.6" textLength="16.8">10</text>
+<text class="t7" x="134.4" y="131.6">•</text>
+<text class="t2" x="151.2" y="131.6" textLength="16.8">11</text>
+<text class="t2" x="184.8" y="131.6" textLength="16.8">12</text>
+<text class="t2" x="218.4" y="131.6" textLength="16.8">13</text>
+<text class="t7" x="235.2" y="131.6">•</text>
+<text class="t7" x="285.6" y="131.6">○</text>
+<text class="t6" x="302.4" y="131.6" textLength="42">13:00</text>
+<text class="t6" x="386.4" y="131.6" textLength="100.8">Send invoice</text>
+<text class="t2" x="823.2" y="131.6" textLength="50.4">sat 21</text>
+<text class="t6" x="890.4" y="131.6" textLength="100.8">Release v1.9</text>
+<text class="t2" x="16.8" y="148.6" textLength="16.8">14</text>
+<text class="t7" x="33.6" y="148.6">•</text>
+<text class="t2" x="50.4" y="148.6" textLength="16.8">15</text>
+<text class="t2" x="84" y="148.6" textLength="16.8">16</text>
+<text class="t7" x="100.8" y="148.6">•</text>
+<text class="t2" x="117.6" y="148.6" textLength="16.8">17</text>
+<text class="t7" x="134.4" y="148.6">•</text>
+<text class="t5" x="151.2" y="148.6" textLength="16.8">18</text>
+<text class="t7" x="168" y="148.6">•</text>
+<text class="t2" x="184.8" y="148.6" textLength="16.8">19</text>
+<text class="t7" x="201.6" y="148.6">•</text>
+<text class="t2" x="218.4" y="148.6" textLength="16.8">20</text>
+<text class="t2" x="823.2" y="148.6" textLength="50.4">sun 22</text>
+<text class="t6" x="890.4" y="148.6" textLength="100.8">Water plants</text>
+<text class="t2" x="16.8" y="165.6" textLength="16.8">21</text>
+<text class="t7" x="33.6" y="165.6">•</text>
+<text class="t2" x="50.4" y="165.6" textLength="16.8">22</text>
+<text class="t7" x="67.2" y="165.6">•</text>
+<text class="t2" x="84" y="165.6" textLength="16.8">23</text>
+<text class="t2" x="117.6" y="165.6" textLength="16.8">24</text>
+<text class="t7" x="134.4" y="165.6">•</text>
+<text class="t2" x="151.2" y="165.6" textLength="16.8">25</text>
+<text class="t7" x="168" y="165.6">•</text>
+<text class="t2" x="184.8" y="165.6" textLength="16.8">26</text>
+<text class="t2" x="218.4" y="165.6" textLength="16.8">27</text>
+<text class="t2" x="277.2" y="165.6" textLength="75.6">No events</text>
+<text class="t2" x="16.8" y="182.6" textLength="16.8">28</text>
+<text class="t7" x="33.6" y="182.6">•</text>
+<text class="t2" x="50.4" y="182.6" textLength="16.8">29</text>
+<text class="t2" x="84" y="182.6" textLength="16.8">30</text>
+<text class="t2" x="117.6" y="182.6" textLength="16.8">31</text>
+<text class="t7" x="134.4" y="182.6">•</text>
+<text class="t5" x="823.2" y="182.6" textLength="134.4">LAST 7 DAYS · 0m</text>
+<text class="t2" x="823.2" y="199.6" textLength="42">Sa 12</text>
+<text class="t2" x="1167.6" y="199.6">—</text>
+<text class="t7" x="117.6" y="216.6">•</text>
+<text class="t2" x="134.4" y="216.6" textLength="67.2">reminder</text>
+<text class="t2" x="823.2" y="216.6" textLength="42">Su 13</text>
+<text class="t2" x="1167.6" y="216.6">—</text>
+<text class="t0" x="117.6" y="233.6">◆</text>
+<text class="t2" x="134.4" y="233.6" textLength="58.8">overdue</text>
+<text class="t2" x="823.2" y="233.6" textLength="42">Mo 14</text>
+<text class="t2" x="1167.6" y="233.6">—</text>
+<text class="t2" x="823.2" y="250.6" textLength="42">Tu 15</text>
+<text class="t2" x="1167.6" y="250.6">—</text>
+<text class="t5" x="8.4" y="267.6" textLength="84">MONTH · 0m</text>
+<text class="t2" x="823.2" y="267.6" textLength="42">We 16</text>
+<text class="t2" x="1167.6" y="267.6">—</text>
+<text class="t2" x="8.4" y="284.6" textLength="58.8">avg/day</text>
+<text class="t6" x="92.4" y="284.6" textLength="16.8">0m</text>
+<text class="t2" x="823.2" y="284.6" textLength="42">Th 17</text>
+<text class="t2" x="1167.6" y="284.6">—</text>
+<text class="t2" x="8.4" y="301.6" textLength="58.8">max/day</text>
+<text class="t6" x="92.4" y="301.6" textLength="16.8">0m</text>
+<text class="t3" x="823.2" y="301.6" textLength="42">Fr 18</text>
+<text class="t2" x="1167.6" y="301.6">—</text>
+<text class="t2" x="8.4" y="318.6" textLength="50.4">streak</text>
+<text class="t6" x="92.4" y="318.6" textLength="50.4">0 days</text>
+<text class="t5" x="823.2" y="335.6" textLength="193.2">TOP PROJECTS · DECEMBER</text>
+<text class="t5" x="16.8" y="454.6" textLength="42">focus</text>
+<text class="t2" x="75.6" y="454.6" textLength="268.8">j/k selects a row, tab a section</text>
+<text class="t2" x="8.4" y="505.6" textLength="16.8">←→</text>
+<text class="t6" x="33.6" y="505.6" textLength="25.2">day</text>
+<text class="t2" x="84" y="505.6" textLength="16.8">↑↓</text>
+<text class="t6" x="109.2" y="505.6" textLength="33.6">week</text>
+<text class="t2" x="168" y="505.6" textLength="25.2">n/p</text>
+<text class="t6" x="201.6" y="505.6" textLength="42">month</text>
+<text class="t2" x="268.8" y="505.6" textLength="25.2">j/k</text>
+<text class="t6" x="302.4" y="505.6" textLength="50.4">select</text>
+<text class="t2" x="378" y="505.6" textLength="25.2">tab</text>
+<text class="t6" x="411.6" y="505.6" textLength="58.8">section</text>
+<text class="t2" x="495.6" y="505.6">a</text>
+<text class="t6" x="512.4" y="505.6" textLength="100.8">add reminder</text>
+<text class="t2" x="638.4" y="505.6" textLength="25.2">1–4</text>
+<text class="t6" x="672" y="505.6" textLength="33.6">tabs</text>
+<text class="t2" x="730.8" y="505.6">q</text>
+<text class="t6" x="747.6" y="505.6" textLength="33.6">quit</text>
+</g>
+<rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">n</text><text class="cap" x="58.4" y="600">next month</text>
+</g>
+<g id="s-5" class="sc k4">
+<g transform="translate(20,48)">
+<rect class="f0" x="50.4" y="102" width="537.6" height="17"/>
+<rect class="f0" x="84" y="0" width="84" height="17"/>
+<rect class="f1" x="0" y="25" width="621.6" height="1"/>
+<rect class="f1" x="730.8" y="25" width="8.4" height="1"/>
+<rect class="f1" x="915.6" y="25" width="8.4" height="1"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f3" x="37.3" y="68" width="1" height="255"/>
+<rect class="f3" x="42" y="59" width="1092" height="1"/>
+<rect class="f3" x="42" y="331" width="1092" height="1"/>
+<rect class="f3" x="1137.7" y="68" width="1" height="255"/>
+<rect class="f3" x="176.4" y="105.5" width="2" height="10" rx="0.5"/>
+<rect class="f3" x="51.4" y="104" width="3" height="13"/>
+<path class="s1" d="M37.8,68V63.7A4.2,4.2 0 0 1 42,59.5H42"/>
+<path class="s1" d="M1134,59.5H1134A4.2,4.2 0 0 1 1138.2,63.7V68"/>
+<path class="s1" d="M37.8,323V327.3A4.2,4.2 0 0 0 42,331.5H42"/>
+<path class="s1" d="M1134,331.5H1134A4.2,4.2 0 0 0 1138.2,327.3V323"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t1" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t2" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1024.8" y="12.6" textLength="109.2">November 2026</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">n/p</text>
+<text class="t3" x="630" y="29.6" textLength="92.4">◆ 2 overdue</text>
+<text class="t4" x="747.6" y="29.6">●</text>
+<text class="t2" x="764.4" y="29.6" textLength="142.8">Project Alpha 25m</text>
+<text class="t2" x="932.4" y="29.6" textLength="218.4">today 4h10m · month 33h10m</text>
+<text class="t3" x="50.4" y="80.6" textLength="100.8">New reminder</text>
+<text class="t5" x="613.2" y="80.6" textLength="109.2">NOVEMBER 2026</text>
+<text class="t2" x="621.6" y="97.6" textLength="16.8">Mo</text>
+<text class="t2" x="655.2" y="97.6" textLength="16.8">Tu</text>
+<text class="t2" x="688.8" y="97.6" textLength="16.8">We</text>
+<text class="t2" x="722.4" y="97.6" textLength="16.8">Th</text>
+<text class="t2" x="756" y="97.6" textLength="16.8">Fr</text>
+<text class="t2" x="789.6" y="97.6" textLength="16.8">Sa</text>
+<text class="t2" x="823.2" y="97.6" textLength="16.8">Su</text>
+<text class="t5" x="75.6" y="114.6" textLength="42">Title</text>
+<text class="t2" x="831.6" y="114.6">1</text>
+<text class="t2" x="75.6" y="131.6" textLength="58.8">Project</text>
+<text class="t2" x="630" y="131.6">2</text>
+<text class="t2" x="663.6" y="131.6">3</text>
+<text class="t2" x="697.2" y="131.6">4</text>
+<text class="t2" x="730.8" y="131.6">5</text>
+<text class="t2" x="764.4" y="131.6">6</text>
+<text class="t2" x="798" y="131.6">7</text>
+<text class="t2" x="831.6" y="131.6">8</text>
+<text class="t2" x="75.6" y="148.6" textLength="33.6">Date</text>
+<text class="t6" x="176.4" y="148.6" textLength="84">2026-11-18</text>
+<text class="t2" x="630" y="148.6">9</text>
+<text class="t2" x="655.2" y="148.6" textLength="16.8">10</text>
+<text class="t2" x="688.8" y="148.6" textLength="16.8">11</text>
+<text class="t2" x="722.4" y="148.6" textLength="16.8">12</text>
+<text class="t2" x="756" y="148.6" textLength="16.8">13</text>
+<text class="t2" x="789.6" y="148.6" textLength="16.8">14</text>
+<text class="t2" x="823.2" y="148.6" textLength="16.8">15</text>
+<text class="t2" x="75.6" y="165.6" textLength="33.6">Time</text>
+<text class="t2" x="176.4" y="165.6" textLength="58.8">all day</text>
+<text class="t2" x="621.6" y="165.6" textLength="16.8">16</text>
+<text class="t2" x="655.2" y="165.6" textLength="16.8">17</text>
+<text class="t3" x="688.8" y="165.6" textLength="16.8">18</text>
+<text class="t2" x="722.4" y="165.6" textLength="16.8">19</text>
+<text class="t2" x="756" y="165.6" textLength="16.8">20</text>
+<text class="t2" x="789.6" y="165.6" textLength="16.8">21</text>
+<text class="t2" x="823.2" y="165.6" textLength="16.8">22</text>
+<text class="t2" x="75.6" y="182.6" textLength="50.4">Repeat</text>
+<text class="t6" x="176.4" y="182.6" textLength="67.2">‹ none ›</text>
+<text class="t2" x="621.6" y="182.6" textLength="16.8">23</text>
+<text class="t2" x="655.2" y="182.6" textLength="16.8">24</text>
+<text class="t2" x="688.8" y="182.6" textLength="16.8">25</text>
+<text class="t2" x="722.4" y="182.6" textLength="16.8">26</text>
+<text class="t2" x="756" y="182.6" textLength="16.8">27</text>
+<text class="t2" x="789.6" y="182.6" textLength="16.8">28</text>
+<text class="t2" x="823.2" y="182.6" textLength="16.8">29</text>
+<text class="t2" x="75.6" y="199.6" textLength="50.4">Notify</text>
+<text class="t2" x="621.6" y="199.6" textLength="16.8">30</text>
+<text class="t2" x="75.6" y="216.6" textLength="33.6">Tags</text>
+<text class="t2" x="75.6" y="233.6" textLength="42">Notes</text>
+<text class="t5" x="613.2" y="233.6" textLength="33.6">NEXT</text>
+<text class="t1" x="613.2" y="250.6" textLength="84">Wed 18 Nov</text>
+<text class="t2" x="75.6" y="267.6" textLength="33.6">Next</text>
+<text class="t6" x="176.4" y="267.6" textLength="218.4">Once, Wed 18 Nov (all day)</text>
+<text class="t2" x="50.4" y="301.6" textLength="957.6">empty Time makes an all-day reminder · Date takes YYYY-MM-DD, today, tomorrow or mon..sun · Notify takes 10m or 1h</text>
+<text class="t2" x="50.4" y="318.6" textLength="25.2">tab</text>
+<text class="t6" x="84" y="318.6" textLength="84">next field</text>
+<text class="t2" x="193.2" y="318.6" textLength="16.8">←→</text>
+<text class="t6" x="218.4" y="318.6" textLength="50.4">option</text>
+<text class="t2" x="294" y="318.6" textLength="42">space</text>
+<text class="t6" x="344.4" y="318.6" textLength="84">day on/off</text>
+<text class="t2" x="453.6" y="318.6" textLength="42">enter</text>
+<text class="t6" x="504" y="318.6" textLength="33.6">save</text>
+<text class="t2" x="562.8" y="318.6" textLength="50.4">ctrl+u</text>
+<text class="t6" x="621.6" y="318.6" textLength="92.4">clear field</text>
+<text class="t2" x="739.2" y="318.6" textLength="25.2">esc</text>
+<text class="t6" x="772.8" y="318.6" textLength="50.4">cancel</text>
+</g>
+<rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">a</text><text class="cap" x="58.4" y="600">add a reminder</text>
+</g>
+</svg>

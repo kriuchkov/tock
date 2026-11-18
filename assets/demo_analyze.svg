@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1216" height="618" viewBox="0 0 1216 618" role="img">
+<title>tock analyze: focus, rhythm and where the time goes</title>
+<style>text{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;font-size:14px;white-space:pre}.ti{fill:#9a9caa;font-size:13px}.pr{fill:#87ff87}.cm{fill:#d0d0d0}.cur{fill:#d0d0d0}.cap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;fill:#9a9caa}.key{fill:#2c2e3a;stroke:#40435a}.kt{fill:#fff;font-size:13px;font-weight:700}.fa{opacity:.45}.sc{visibility:hidden;animation-duration:4s;animation-timing-function:step-end;animation-iteration-count:infinite}.poster{visibility:visible}.pg{fill:#5f5fff;transform:scaleX(0);transform-box:fill-box;transform-origin:0 50%;animation-duration:4s;animation-timing-function:linear;animation-iteration-count:infinite}.cur{animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}.t0{fill:#ffaf00}.t1{fill:#eeeeee;font-weight:700}.t2{fill:#a8a8a8}.t3{fill:#a8a8a8;font-weight:700}.t4{fill:#87ff87;font-weight:700}.t5{fill:#eeeeee}.f0{fill:#303030}.f1{fill:#585858}.f2{fill:#5f5fff}.f3{fill:#87ff87}@media (prefers-reduced-motion:reduce){.sc,.pg,.ty,.cur{animation:none}}</style>
+<rect width="1216" height="618" rx="10" fill="#16171d" stroke="#2c2e3a"/>
+<path d="M0.5,34 V10.5 A10,10 0 0 1 10.5,0.5 H1205.5 A10,10 0 0 1 1215.5,10.5 V34 Z" fill="#1e1f27"/>
+<path d="M0.5,572 V607.5 A10,10 0 0 0 10.5,617.5 H1205.5 A10,10 0 0 0 1215.5,607.5 V572 Z" fill="#1e1f27"/>
+<path d="M0,34H1216M0,572H1216" stroke="#2c2e3a"/>
+<circle cx="20" cy="17.0" r="6" fill="#ff5f57"/>
+<circle cx="40" cy="17.0" r="6" fill="#febc2e"/>
+<circle cx="60" cy="17.0" r="6" fill="#28c840"/>
+<text class="ti" x="608" y="21.5" text-anchor="middle">tock</text>
+<g id="s-1" class="sc poster">
+<g transform="translate(20,48)">
+<rect class="f0" x="134.4" y="34" width="75.6" height="17"/>
+<rect class="f0" x="361.2" y="0" width="75.6" height="17"/>
+<rect class="f1" x="0" y="25" width="982.8" height="1"/>
+<rect class="f1" x="432.1" y="68" width="1" height="306"/>
+<rect class="f1" x="1159.2" y="25" width="16.8" height="1"/>
+<rect class="f1 fa" x="352.8" y="105.5" width="58.8" height="10" rx="1.5"/>
+<rect class="f2" x="176.4" y="343.5" width="151.2" height="10" rx="1.5"/>
+<rect class="f2" x="495.6" y="224.5" width="344.4" height="10" rx="1.5"/>
+<rect class="f2" x="495.6" y="190.5" width="604.8" height="10" rx="1.5"/>
+<rect class="f2" x="495.6" y="207.5" width="604.8" height="10" rx="1.5"/>
+<rect class="f2" x="495.6" y="275.5" width="604.8" height="10" rx="1.5"/>
+<rect class="f2" x="495.6" y="292.5" width="604.8" height="10" rx="1.5"/>
+<rect class="f2" x="571.2" y="139.5" width="25.2" height="10" rx="1.5"/>
+<rect class="f2" x="571.2" y="122.5" width="109.2" height="10" rx="1.5"/>
+<rect class="f2" x="571.2" y="105.5" width="487.2" height="10" rx="1.5"/>
+<rect class="f2" x="571.2" y="88.5" width="529.2" height="10" rx="1.5"/>
+<rect class="f3" x="8.4" y="105.5" width="344.4" height="10" rx="1.5"/>
+<rect class="f3" x="176.4" y="360.5" width="201.6" height="10" rx="1.5"/>
+<text class="t0" x="8.4" y="12.6">≡</text>
+<text class="t1" x="25.2" y="12.6" textLength="33.6">tock</text>
+<text class="t2" x="92.4" y="12.6" textLength="67.2">calendar</text>
+<text class="t2" x="193.2" y="12.6" textLength="75.6">reminders</text>
+<text class="t2" x="302.4" y="12.6" textLength="33.6">list</text>
+<text class="t1" x="369.6" y="12.6" textLength="58.8">analyze</text>
+<text class="t1" x="1033.2" y="12.6" textLength="100.8">last 30 days</text>
+<text class="t2" x="1142.4" y="12.6" textLength="25.2">tab</text>
+<text class="t2" x="991.2" y="29.6" textLength="159.6">33h11m · 16 entries</text>
+<text class="t2" x="8.4" y="46.6" textLength="42">view:</text>
+<text class="t2" x="67.2" y="46.6" textLength="50.4">7 days</text>
+<text class="t1" x="142.8" y="46.6" textLength="58.8">30 days</text>
+<text class="t2" x="226.8" y="46.6" textLength="58.8">90 days</text>
+<text class="t2" x="310.8" y="46.6" textLength="67.2">365 days</text>
+<text class="t2" x="403.2" y="46.6" textLength="42">(tab)</text>
+<text class="t3" x="8.4" y="80.6" textLength="109.2">FOCUS QUALITY</text>
+<text class="t3" x="445.2" y="80.6" textLength="142.8">PROJECTS · 33h11m</text>
+<text class="t2" x="8.4" y="97.6" textLength="126">Deep Work Score</text>
+<text class="t4" x="176.4" y="97.6" textLength="42">86.6%</text>
+<text class="t5" x="445.2" y="97.6" textLength="109.2">Project Alpha</text>
+<text class="t5" x="1117.2" y="97.6" textLength="50.4">15h11m</text>
+<text class="t5" x="445.2" y="114.6" textLength="100.8">Project Beta</text>
+<text class="t5" x="1142.4" y="114.6" textLength="25.2">14h</text>
+<text class="t2" x="8.4" y="131.6" textLength="92.4">Avg Session</text>
+<text class="t1" x="176.4" y="131.6" textLength="42">2h04m</text>
+<text class="t5" x="445.2" y="131.6" textLength="84">Management</text>
+<text class="t5" x="1125.6" y="131.6" textLength="42">3h15m</text>
+<text class="t5" x="445.2" y="148.6" textLength="42">Admin</text>
+<text class="t5" x="1142.4" y="148.6" textLength="25.2">45m</text>
+<text class="t3" x="8.4" y="165.6" textLength="159.6">CHRONOTYPE &amp; RHYTHM</text>
+<text class="t2" x="8.4" y="182.6" textLength="33.6">Type</text>
+<text class="t1" x="176.4" y="182.6" textLength="126">Afternoon Power</text>
+<text class="t3" x="445.2" y="182.6" textLength="84">BY WEEKDAY</text>
+<text class="t2" x="8.4" y="199.6" textLength="75.6">Peak Hour</text>
+<text class="t1" x="176.4" y="199.6" textLength="92.4">14:00–15:00</text>
+<text class="t5" x="445.2" y="199.6" textLength="16.8">Mo</text>
+<text class="t5" x="1125.6" y="199.6" textLength="42">7h15m</text>
+<text class="t2" x="8.4" y="216.6" textLength="67.2">Best Day</text>
+<text class="t1" x="176.4" y="216.6" textLength="67.2">Saturday</text>
+<text class="t5" x="445.2" y="216.6" textLength="16.8">Tu</text>
+<text class="t5" x="1125.6" y="216.6" textLength="42">7h15m</text>
+<text class="t5" x="445.2" y="233.6" textLength="16.8">We</text>
+<text class="t5" x="1125.6" y="233.6" textLength="42">4h11m</text>
+<text class="t3" x="8.4" y="250.6" textLength="142.8">CONTEXT SWITCHING</text>
+<text class="t5" x="445.2" y="250.6" textLength="16.8">Th</text>
+<text class="t5" x="1159.2" y="250.6">—</text>
+<text class="t2" x="8.4" y="267.6" textLength="134.4">Avg Switches/Day</text>
+<text class="t1" x="176.4" y="267.6" textLength="25.2">2.0</text>
+<text class="t5" x="445.2" y="267.6" textLength="16.8">Fr</text>
+<text class="t5" x="1159.2" y="267.6">—</text>
+<text class="t2" x="8.4" y="284.6" textLength="58.8">Verdict</text>
+<text class="t2" x="176.4" y="284.6" textLength="134.4">Excellent focus!</text>
+<text class="t5" x="445.2" y="284.6" textLength="16.8">Sa</text>
+<text class="t5" x="1125.6" y="284.6" textLength="42">7h15m</text>
+<text class="t5" x="445.2" y="301.6" textLength="16.8">Su</text>
+<text class="t5" x="1125.6" y="301.6" textLength="42">7h15m</text>
+<text class="t3" x="8.4" y="318.6" textLength="168">SESSION DISTRIBUTION</text>
+<text class="t2" x="8.4" y="335.6" textLength="142.8">Fragmented (&lt;15m)</text>
+<text class="t5" x="411.6" y="335.6">0</text>
+<text class="t2" x="8.4" y="352.6" textLength="109.2">Flow (15m-1h)</text>
+<text class="t5" x="411.6" y="352.6">7</text>
+<text class="t2" x="8.4" y="369.6" textLength="134.4">Deep Focus (&gt;1h)</text>
+<text class="t5" x="411.6" y="369.6">9</text>
+<text class="t2" x="8.4" y="505.6" textLength="25.2">tab</text>
+<text class="t5" x="42" y="505.6" textLength="50.4">period</text>
+<text class="t2" x="117.6" y="505.6" textLength="25.2">1–4</text>
+<text class="t5" x="151.2" y="505.6" textLength="33.6">tabs</text>
+<text class="t2" x="210" y="505.6">q</text>
+<text class="t5" x="226.8" y="505.6" textLength="33.6">quit</text>
+</g>
+<rect class="key" x="20" y="583" width="26.4" height="24" rx="5"/><text class="kt" x="33.2" y="599.5" text-anchor="middle">4</text><text class="cap" x="58.4" y="600">how you really work</text>
+</g>
+</svg>
