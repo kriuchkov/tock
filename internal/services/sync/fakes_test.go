@@ -304,15 +304,32 @@ func (s *memState) AllRecords(_ context.Context, typ journal.RecordType) ([]jour
 	return out, nil
 }
 
+// RunningActivities returns, as state.db does, the visible activities with no shown end: those an
+// auto_end stops come from AutoEndedActivities.
 func (s *memState) RunningActivities(context.Context) ([]journal.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []journal.Record
 	for key, record := range s.records {
-		if key[0] != string(journal.TypeActivity) || string(record.Fields["deleted"].Value) == "true" {
+		if key[0] != string(journal.TypeActivity) {
 			continue
 		}
-		if end, ok := record.Fields["end"]; !ok || string(end.Value) == "null" {
+		if a, visible := record.Activity(); visible && a.EndTime == nil {
+			out = append(out, copyRecord(record))
+		}
+	}
+	return out, nil
+}
+
+func (s *memState) AutoEndedActivities(_ context.Context, after time.Time) ([]journal.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []journal.Record
+	for key, record := range s.records {
+		if key[0] != string(journal.TypeActivity) || record.ShownEndField() != journal.FieldAutoEnd {
+			continue
+		}
+		if a, visible := record.Activity(); visible && a.EndTime.After(after) {
 			out = append(out, copyRecord(record))
 		}
 	}

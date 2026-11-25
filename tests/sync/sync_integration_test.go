@@ -120,13 +120,20 @@ type syncStatus struct {
 	} `json:"devices"`
 }
 
+// buildTock builds the tock binary into root.
+func buildTock(t *testing.T, root string) string {
+	t.Helper()
+	bin := filepath.Join(root, "tock")
+	buildOut, err := exec.Command("go", "build", "-o", bin, "../../cmd/tock/main.go").CombinedOutput()
+	require.NoError(t, err, "build tock: %s", buildOut)
+	return bin
+}
+
 // TestSyncTwoMacsThroughOneFolder syncs a Mac with the file backend and one with sqlite through one
 // folder, as two Macs share the iCloud Drive folder: what one does shows up on the other.
 func TestSyncTwoMacsThroughOneFolder(t *testing.T) {
 	root := t.TempDir()
-	bin := filepath.Join(root, "tock")
-	buildOut, err := exec.Command("go", "build", "-o", bin, "../../cmd/tock/main.go").CombinedOutput()
-	require.NoError(t, err, "build tock: %s", buildOut)
+	bin := buildTock(t, root)
 
 	folder := filepath.Join(root, "iCloud Drive", "tock", "sync")
 	mac := newDevice(t, bin, filepath.Join(root, "mac"), "file")
@@ -167,7 +174,7 @@ func TestSyncTwoMacsThroughOneFolder(t *testing.T) {
 	mac.sync()
 	assert.Empty(t, mac.running())
 
-	startOnBothBeforeSeeingTheOther(t, mac, box)
+	startOnBothBeforeSeeingTheOther(t, folder, mac, box)
 
 	// An edit on sqlite reaches the file backend.
 	box.run("edit", "2026-11-02-01", "-d", "API review", "--duration", "2h")
@@ -191,10 +198,11 @@ func TestSyncTwoMacsThroughOneFolder(t *testing.T) {
 }
 
 // startOnBothBeforeSeeingTheOther starts an activity on each device before either has seen the other's
-// start: one activity runs on both, the earlier one stops where the later one starts, and only the
-// device that started it writes that stop. The starts are minutes apart, since the file backend keeps
-// minutes.
-func startOnBothBeforeSeeingTheOther(t *testing.T, mac, box *device) {
+// start: one activity runs on both, and the earlier one stops where the later one starts. The box sees
+// both first, in the sync after its start, and writes that stop as the auto_end of the Mac's activity;
+// the Mac, which owns it, then leaves it as it is. The starts are minutes apart, since the file backend
+// keeps minutes.
+func startOnBothBeforeSeeingTheOther(t *testing.T, folder string, mac, box *device) {
 	t.Helper()
 	now := time.Now()
 	alpha, beta := now.Add(-3*time.Minute), now.Add(-2*time.Minute)
@@ -205,7 +213,8 @@ func startOnBothBeforeSeeingTheOther(t *testing.T, mac, box *device) {
 
 	mac.run("start", "-p", "Alpha", "-d", "Started on the Mac", "-t", alpha.Format("15:04"))
 	box.run("start", "-p", "Beta", "-d", "Started on the box", "-t", beta.Format("15:04"))
-	assert.Positive(t, mac.sync().Written, "the Mac writes the stop of its own activity")
+	assert.Len(t, setsOf(t, folder, box.sync().Device, "auto_end"), 1, "the box writes the auto_end of the Mac's activity")
+	assert.Zero(t, mac.sync().Written, "the Mac leaves the auto_end as it is")
 	for _, d := range []*device{mac, box} {
 		running := d.running()
 		require.Len(t, running, 1)

@@ -20,18 +20,21 @@ const (
 	// schemaVersion is the layout of the tables, kept in PRAGMA user_version. A database of an older
 	// version is rebuilt; one of a newer version is left alone (errNewerState). Version 2 keeps activity
 	// times in images with their offset and the file backend's keys as wall times, and adds starts.
-	schemaVersion = 2
+	// Version 3 reads the shown end (end, else auto_end) and lists the activities an auto_end stops in
+	// running, with that auto_end: a tock from before it would put them back as running in the backend.
+	schemaVersion = 3
 	// busyTimeout is how long a write waits for another process's transaction.
 	busyTimeout = 10 * time.Second
 	// walLimit is the size the WAL is cut back to after a checkpoint; a full save leaves it large.
 	walLimit = 4 << 20
 )
 
-// schema is the layout of version 2.
+// schema is the layout of version 3.
 //
 //	meta          name -> value, see metaKeys; dir, device and clock outlive a rebuild
 //	fields        one row per merged field: the value as it was read, its clock and device
-//	running       uids of the activity records that run: visible, with no end
+//	running       uids of the visible activity records whose end holds no instant: those that run, with
+//	              until null, and those an auto_end stops, with that auto_end in Unix seconds as until
 //	starts        the merged start of every activity record whose start parses, in Unix seconds
 //	cursors       one row per segment read
 //	images        the last-sync image per record: its backend key and its fields as a JSON object
@@ -52,8 +55,10 @@ CREATE TABLE fields (
 	PRIMARY KEY (type, uid, path)
 ) WITHOUT ROWID;
 CREATE TABLE running (
-	uid TEXT PRIMARY KEY NOT NULL
+	uid TEXT PRIMARY KEY NOT NULL,
+	until INTEGER
 ) WITHOUT ROWID;
+CREATE INDEX running_by_until ON running (until);
 CREATE TABLE starts (
 	uid TEXT PRIMARY KEY NOT NULL,
 	start INTEGER NOT NULL

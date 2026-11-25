@@ -5,3 +5,4 @@
 {"v":1,"hlc":"0001793869200000.000000","dev":"bb00000000000001","type":"activity","uid":"019a9b3c-0000-7000-8000-000000030006","set":{"description":"Widgets","end":null,"notes":"","project":"Tock","start":"2026-11-05T10:00:00+01:00"}}
 {"v":1,"hlc":"0001793871000000.000000","dev":"bb00000000000001","type":"activity","uid":"019a9b3c-0000-7000-8000-000000030006","set":{"end":"2026-11-05T10:30:00+01:00"}}
 {"v":1,"hlc":"0001793952000000.000000","dev":"bb00000000000001","type":"activity","uid":"019a9b3c-0000-7000-8000-000000030008","set":{"description":"Release notes","end":null,"notes":"","project":"Tock","start":"2026-11-06T09:00:00+01:00"}}
+{"v":1,"hlc":"0001793966400000.000000","dev":"bb00000000000001","type":"activity","uid":"019a9b3c-0000-7000-8000-000000030011","set":{"description":"Changelog","end":null,"notes":"","project":"Tock","start":"2026-11-06T13:00:00+01:00"}}

@@ -6,6 +6,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/ports"
@@ -180,6 +181,74 @@ func (_c *MockSyncState_AllRecords_Call) Return(records []journal.Record, err er
 }
 
 func (_c *MockSyncState_AllRecords_Call) RunAndReturn(run func(ctx context.Context, typ journal.RecordType) ([]journal.Record, error)) *MockSyncState_AllRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AutoEndedActivities provides a mock function for the type MockSyncState
+func (_mock *MockSyncState) AutoEndedActivities(ctx context.Context, after time.Time) ([]journal.Record, error) {
+	ret := _mock.Called(ctx, after)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AutoEndedActivities")
+	}
+
+	var r0 []journal.Record
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) ([]journal.Record, error)); ok {
+		return returnFunc(ctx, after)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) []journal.Record); ok {
+		r0 = returnFunc(ctx, after)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]journal.Record)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = returnFunc(ctx, after)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockSyncState_AutoEndedActivities_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AutoEndedActivities'
+type MockSyncState_AutoEndedActivities_Call struct {
+	*mock.Call
+}
+
+// AutoEndedActivities is a helper method to define mock.On call
+//   - ctx context.Context
+//   - after time.Time
+func (_e *MockSyncState_Expecter) AutoEndedActivities(ctx any, after any) *MockSyncState_AutoEndedActivities_Call {
+	return &MockSyncState_AutoEndedActivities_Call{Call: _e.mock.On("AutoEndedActivities", ctx, after)}
+}
+
+func (_c *MockSyncState_AutoEndedActivities_Call) Run(run func(ctx context.Context, after time.Time)) *MockSyncState_AutoEndedActivities_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockSyncState_AutoEndedActivities_Call) Return(records []journal.Record, err error) *MockSyncState_AutoEndedActivities_Call {
+	_c.Call.Return(records, err)
+	return _c
+}
+
+func (_c *MockSyncState_AutoEndedActivities_Call) RunAndReturn(run func(ctx context.Context, after time.Time) ([]journal.Record, error)) *MockSyncState_AutoEndedActivities_Call {
 	_c.Call.Return(run)
 	return _c
 }

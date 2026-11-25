@@ -5,8 +5,10 @@
 //
 // The recorder only says what was written. The sink finds the record's uid (in the backend, or by
 // start time in the sync state for backends that keep no uids), journals only the fields that
-// differ from the merged state, and leaves out an auto-stop (ports.WithAutoStop, passed on with the
-// context) of an activity this device does not own, while a stop made on purpose is journaled.
+// differ from the merged state, and tells an auto-stop (ports.WithAutoStop, passed on with the
+// context) of an activity this device does not own from a stop made on purpose: the second goes to
+// the journal as the activity's end, the first as rule 1 of docs/sync.md says, as its auto_end when a
+// start that comes after it made it.
 //
 // The runtime wraps the repositories only while sync is on; the sync service itself writes through
 // the unwrapped ones, since what it writes are other devices' changes.

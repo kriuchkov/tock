@@ -96,10 +96,10 @@ type compareScope struct {
 	notesFrom time.Time
 	allNotes  bool
 	reminders bool
-	// moves, autoStop, removed and removedReminders are what the recorded writes tell; see
+	// moves, stops, removed and removedReminders are what the recorded writes tell; see
 	// recordedScope.
 	moves            map[string]string
-	autoStop         map[string]bool
+	stops            map[string]stopCause
 	removed          map[string]bool
 	removedReminders map[string]bool
 }
@@ -134,7 +134,7 @@ func (r *run) compare(ctx context.Context) ([]found, compareScope, error) {
 		notes:            recorded.notes,
 		reminders:        recorded.reminders,
 		moves:            recorded.moves,
-		autoStop:         recorded.autoStop,
+		stops:            recorded.stops,
 		removed:          recorded.removed,
 		removedReminders: recorded.removedReminders,
 	}

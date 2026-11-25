@@ -12,8 +12,9 @@ import (
 
 // recorded is one write made through tock in this process, waiting for the next Run.
 type recorded struct {
-	write    ports.SyncWrite
-	autoStop bool
+	write ports.SyncWrite
+	// stop is why tock saved the activity: on its own (ports.WithAutoStop) or not.
+	stop stopCause
 	// movedTo is the start an update moved the activity removed to, from the mark of ports.WithMovedTo;
 	// nil for any other write.
 	movedTo *time.Time
@@ -33,13 +34,25 @@ type recordings struct {
 }
 
 // recordWait is how long Record waits by default for a sync that holds the state's lock before it
-// writes without recording; a later sync finds the change by comparing the backend. A stop made because
-// another activity starts waits as long as it takes: only Record keeps the mark that tells it from a
-// stop made on purpose.
+// writes without recording; a later sync finds the change by comparing the backend. A stop tock makes
+// on its own waits as long as it takes: only Record keeps the mark that tells it from a stop made on
+// purpose.
 const recordWait = 10 * time.Second
 
 // maxAutoStops is how many auto-stop marks the meta keeps while no sync goes through.
 const maxAutoStops = 256
+
+// stopCause is why tock wrote an activity's end: on purpose, or on its own (ports.WithAutoStop)
+// because the activity of next started, or at the end of the working day when next is zero.
+type stopCause struct {
+	auto bool
+	next time.Time
+}
+
+// workday reports whether the end is that of the working day.
+func (c stopCause) workday() bool {
+	return c.auto && c.next.IsZero()
+}
 
 // Record runs write under the state's lock and remembers the change it made for the next Run, with
 // the auto-stop mark of ctx; see ports.SyncChangeSink. It keeps the token taken after write in
@@ -59,7 +72,7 @@ func (s *Service) Record(ctx context.Context, write func(ctx context.Context) (p
 		return writeErr
 	}
 
-	autoStop := ports.IsAutoStop(ctx)
+	next, autoStop := ports.AutoStopNext(ctx)
 	lockCtx, cancel := ctx, context.CancelFunc(func() {})
 	if !autoStop {
 		lockCtx, cancel = context.WithTimeout(ctx, s.cfg.RecordWait)
@@ -69,7 +82,7 @@ func (s *Service) Record(ctx context.Context, write func(ctx context.Context) (p
 	ran := false
 	err = s.cfg.State.Exclusive(lockCtx, func(context.Context) error {
 		ran = true
-		return s.record(ctx, write, autoStop)
+		return s.record(ctx, write, stopCause{auto: autoStop, next: next})
 	})
 	if !ran && ctx.Err() == nil && lockCtx.Err() != nil {
 		_, writeErr := write(ctx)
@@ -79,7 +92,7 @@ func (s *Service) Record(ctx context.Context, write func(ctx context.Context) (p
 }
 
 // record runs write and remembers it, under the state's lock.
-func (s *Service) record(ctx context.Context, write func(ctx context.Context) (ports.SyncWrite, error), autoStop bool) error {
+func (s *Service) record(ctx context.Context, write func(ctx context.Context) (ports.SyncWrite, error), stop stopCause) error {
 	saved, metaErr := s.cfg.State.Meta(ctx)
 	before, beforeErr := s.cfg.Backend.Token(ctx)
 	done, writeErr := write(ctx)
@@ -87,15 +100,15 @@ func (s *Service) record(ctx context.Context, write func(ctx context.Context) (p
 		return writeErr
 	}
 	after, afterErr := s.cfg.Backend.Token(ctx)
-	if autoStop && metaErr == nil && done.Kind == ports.SyncActivitySaved && done.Activity.EndTime != nil {
+	if stop.auto && metaErr == nil && done.Kind == ports.SyncActivitySaved && done.Activity.EndTime != nil {
 		// A mark that cannot be saved still lives in this process until its next Run.
-		_ = s.keepAutoStop(ctx, saved, done.Activity)
+		_ = s.keepAutoStop(ctx, saved, done.Activity, stop.next)
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec := &s.recorded
-	made := recorded{write: done, autoStop: autoStop}
+	made := recorded{write: done, stop: stop}
 	if to, moved := ports.MovedTo(ctx); moved && done.Kind == ports.SyncActivityRemoved {
 		made.movedTo = &to
 	}
@@ -114,13 +127,15 @@ func (s *Service) record(ctx context.Context, write func(ctx context.Context) (p
 	return nil
 }
 
-// keepAutoStop adds the mark of an activity stopped because another one started to the meta.
-func (s *Service) keepAutoStop(ctx context.Context, meta ports.SyncMeta, stopped models.Activity) error {
+// keepAutoStop adds the mark of an activity tock stopped on its own to the meta: because the activity
+// of next started, or at the end of the working day when next is zero.
+func (s *Service) keepAutoStop(ctx context.Context, meta ports.SyncMeta, stopped models.Activity, next time.Time) error {
 	meta.AutoStops = append(slices.Clone(meta.AutoStops), ports.SyncAutoStop{
 		Start:       stopped.StartTime,
 		End:         *stopped.EndTime,
 		Project:     stopped.Project,
 		Description: stopped.Description,
+		Next:        next,
 	})
 	if len(meta.AutoStops) > maxAutoStops {
 		meta.AutoStops = meta.AutoStops[len(meta.AutoStops)-maxAutoStops:]
@@ -153,9 +168,9 @@ type recordedScope struct {
 	keys map[string]bool
 	// notes are the activity keys whose notes were written.
 	notes map[string]bool
-	// autoStop holds the keys of activities whose last recorded save stopped them because another one
-	// started.
-	autoStop map[string]bool
+	// stops holds why the last recorded save of each activity key wrote its end (stopCause); a key
+	// without a recorded save is not there.
+	stops map[string]stopCause
 	// moves maps the key an activity was removed from to the key an update that moved its start saved
 	// it at just before (ports.WithMovedTo).
 	moves map[string]string
@@ -173,7 +188,7 @@ func scopeOf(writes []recorded, keys keying) recordedScope {
 	scope := recordedScope{
 		keys:             make(map[string]bool),
 		notes:            make(map[string]bool),
-		autoStop:         make(map[string]bool),
+		stops:            make(map[string]stopCause),
 		moves:            make(map[string]string),
 		removed:          make(map[string]bool),
 		removedReminders: make(map[string]bool),
@@ -183,7 +198,7 @@ func scopeOf(writes []recorded, keys keying) recordedScope {
 		switch w.write.Kind {
 		case ports.SyncActivitySaved:
 			scope.keys[key] = true
-			scope.autoStop[key] = w.autoStop
+			scope.stops[key] = w.stop
 		case ports.SyncActivityRemoved:
 			scope.keys[key] = true
 			if w.movedTo != nil && keys.key(*w.movedTo) != key {

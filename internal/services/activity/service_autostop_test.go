@@ -23,8 +23,16 @@ func notAutoStop(ctx context.Context) bool {
 	return !ports.IsAutoStop(ctx)
 }
 
-// Starting an activity stops the running ones under the auto-stop mark, so sync writes those ends
-// only for activities this device owns. The new activity itself is saved without the mark.
+// stoppedBy matches the context of a stop the start of an activity at next makes.
+func stoppedBy(next time.Time) func(context.Context) bool {
+	return func(ctx context.Context) bool {
+		at, ok := ports.AutoStopNext(ctx)
+		return ok && at.Equal(next)
+	}
+}
+
+// Starting an activity stops the running ones under the auto-stop mark, which carries the new start,
+// so sync tells how to journal those ends. The new activity itself is saved without the mark.
 func TestService_Start_MarksTheStopsItMakes(t *testing.T) {
 	now := time.Now()
 	start := now.Add(-10 * time.Minute)
@@ -36,7 +44,7 @@ func TestService_Start_MarksTheStopsItMakes(t *testing.T) {
 	repo := portsmocks.NewMockActivityRepository(t)
 	repo.EXPECT().Find(mock.Anything, mock.MatchedBy(isRunningFilter)).Return(running, nil)
 
-	marked := mock.MatchedBy(ports.IsAutoStop)
+	marked := mock.MatchedBy(stoppedBy(start))
 	unmarked := mock.MatchedBy(notAutoStop)
 	for _, act := range running {
 		repo.EXPECT().Save(marked, mock.MatchedBy(func(a models.Activity) bool {

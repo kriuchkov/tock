@@ -13,14 +13,26 @@ import (
 func TestAutoStopMarksOnlyItsContext(t *testing.T) {
 	ctx := context.Background()
 	assert.False(t, ports.IsAutoStop(ctx))
+	_, ok := ports.AutoStopNext(ctx)
+	assert.False(t, ok)
 
-	marked := ports.WithAutoStop(ctx)
+	next := time.Date(2026, time.November, 18, 9, 10, 0, 0, time.UTC)
+	marked := ports.WithAutoStop(ctx, next)
 	assert.True(t, ports.IsAutoStop(marked))
 	assert.False(t, ports.IsAutoStop(ctx))
+	got, ok := ports.AutoStopNext(marked)
+	assert.True(t, ok)
+	assert.True(t, got.Equal(next), "the start that stopped the activity")
 
 	derived, cancel := context.WithCancel(marked)
 	defer cancel()
 	assert.True(t, ports.IsAutoStop(derived))
+
+	workday := ports.WithAutoStop(ctx, time.Time{})
+	assert.True(t, ports.IsAutoStop(workday))
+	got, ok = ports.AutoStopNext(workday)
+	assert.True(t, ok)
+	assert.True(t, got.IsZero(), "the end of the working day")
 }
 
 func TestSyncTokenEqual(t *testing.T) {

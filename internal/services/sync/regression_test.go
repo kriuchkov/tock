@@ -175,7 +175,9 @@ func TestStartInThePhoneActivityMinuteKeepsBoth(t *testing.T) {
 }
 
 // A stop tock writes because another activity starts is told from one made on purpose by a later
-// sync in another process too: the Mac does not journal the end of the phone's activity.
+// sync in another process too: the Mac journals the end of the phone's activity as its auto_end, even
+// though the activity that stopped it stopped too before that sync, and the phone's activity stays
+// stopped.
 func TestAutoStopOutlivesTheProcess(t *testing.T) {
 	clock := &testClock{now: at(0)}
 	mac := newFileDevice(t, "mac", newMemFolder(), clock)
@@ -193,7 +195,10 @@ func TestAutoStopOutlivesTheProcess(t *testing.T) {
 	require.NoError(t, err)
 	mac.sync(t)
 	assert.Empty(t, endsWritten(mac, alphaUID))
+	assertInstants(t, []time.Time{at(60)}, valuesWritten(mac, alphaUID, journal.FieldAutoEnd))
 	assert.Empty(t, mac.state.meta.AutoStops, "the marks go once a sync went through")
+	assertEnd(t, mac, "Work", at(60))
+	assertQuiet(t, mac)
 }
 
 // The end of the working day leaves another device's activity to its owner: it is not stopped in
@@ -220,6 +225,7 @@ func TestWorkingHoursStopIsNotJournaledForOthers(t *testing.T) {
 		assert.Zero(t, mac.sync(t).Applied, "nothing to put back")
 	}
 	assert.Empty(t, endsWritten(mac, alphaUID))
+	assert.Empty(t, valuesWritten(mac, alphaUID, journal.FieldAutoEnd))
 }
 
 // The end of the working day stops an activity this Mac owns, and that stop is journaled.
@@ -478,6 +484,52 @@ func TestUnsavedImageIsAdoptedByAPlainRun(t *testing.T) {
 	assert.Empty(t, mac.folder.lines(mac.deviceID()))
 	assert.Len(t, visibleFrom(mac.folder, mac.deviceID(), phone), 1)
 	assertQuiet(t, mac)
+}
+
+// A run that wrote another device's new activity into the backend as running and failed before it
+// saved its state leaves a line with no image. The next run takes that line for the record without
+// journaling it as an edit, even when the activity was stopped since by its owner's end or another
+// device's auto_end: the line is the merged view as the run wrote it, which the write-back moves on.
+// Only a stop tock recorded for it since goes to the journal.
+func TestInterruptedRunLineIsNoEdit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		stop func(t *testing.T, mac *device, clock *testClock)
+		// ends are the ends the Mac journals for the phone's activity.
+		ends []time.Time
+	}{
+		{name: "an auto_end arrives", stop: func(t *testing.T, mac *device, clock *testClock) {
+			deviceWrite(t, mac.folder, clock, tablet, 0, alphaUID, map[string]any{"auto_end": at(5).Format(time.RFC3339)})
+		}},
+		{name: "the owner's end arrives", stop: func(t *testing.T, mac *device, clock *testClock) {
+			phoneWrite(t, mac.folder, clock, 0, alphaUID, map[string]any{"end": at(5).Format(time.RFC3339)})
+		}},
+		{name: "a stop through tock", stop: func(t *testing.T, mac *device, _ *testClock) {
+			stopOn(t, mac, 5)
+		}, ends: []time.Time{at(5)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clock := &testClock{now: at(0)}
+			mac := newFileDevice(t, "mac", newMemFolder(), clock)
+			mac.init(t)
+			phoneStart(t, mac, clock, alphaUID, "Alpha", at(0))
+			clock.advance(time.Minute)
+			mac.state.failAt = len(mac.state.saves) + 1
+			_, err := mac.svc.Run(context.Background(), ports.SyncOptions{})
+			require.Error(t, err)
+			require.Nil(t, endOf(t, mac, "Work"), "the run wrote the phone's activity as running")
+			mac.state.failAt = 0
+
+			clock.now = at(5)
+			tc.stop(t, mac, clock)
+			clock.advance(time.Minute)
+			mac.sync(t)
+			assertInstants(t, tc.ends, valuesWritten(mac, alphaUID, journal.FieldEnd))
+			assert.Empty(t, valuesWritten(mac, alphaUID, journal.FieldAutoEnd), "no reopen clears the auto_end")
+			assertEnd(t, mac, "Work", at(5))
+			assertQuiet(t, mac)
+		})
+	}
 }
 
 // failingBatch fails every batch while failing is set.

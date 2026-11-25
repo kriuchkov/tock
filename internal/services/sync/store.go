@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/go-faster/errors"
 
@@ -33,6 +34,9 @@ type store struct {
 	complete bool
 	// dirty holds the records changed since they were loaded, to save.
 	dirty map[ref]bool
+	// autoEndedAfter is the instant the activities an auto_end stops were last loaded from; zero
+	// before.
+	autoEndedAfter time.Time
 }
 
 func newStore(state ports.SyncState) *store {
@@ -93,6 +97,47 @@ func (s *store) loadRunning(ctx context.Context) error {
 		s.seed(record)
 	}
 	return nil
+}
+
+// loadAutoEnded loads the activities an auto_end stops later than the earliest start among the
+// running activities the store holds: rule 1 stops such an activity earlier when one that runs starts
+// inside it (journal.RulesFor). Call it once what the run read or found is merged, as that can add an
+// earlier running one.
+func (s *store) loadAutoEnded(ctx context.Context) error {
+	if s.complete {
+		return nil
+	}
+	earliest, ok := s.earliestRunning()
+	if !ok || (!s.autoEndedAfter.IsZero() && !earliest.Before(s.autoEndedAfter)) {
+		return nil
+	}
+	records, err := s.state.AutoEndedActivities(ctx, earliest)
+	if err != nil {
+		return errors.Wrap(err, "load the activities an auto_end stops")
+	}
+	for _, record := range records {
+		record.Type = journal.TypeActivity
+		s.loaded[ref{typ: journal.TypeActivity, uid: record.UID}] = true
+		s.seed(record)
+	}
+	s.autoEndedAfter = earliest
+	return nil
+}
+
+// earliestRunning returns the earliest start among the running activities the store holds; ok is
+// false when none runs.
+func (s *store) earliestRunning() (time.Time, bool) {
+	var earliest time.Time
+	found := false
+	for r, record := range s.records {
+		if r.typ != journal.TypeActivity {
+			continue
+		}
+		if a, visible := record.Activity(); visible && a.EndTime == nil && (!found || a.StartTime.Before(earliest)) {
+			earliest, found = a.StartTime, true
+		}
+	}
+	return earliest, found
 }
 
 // loadStartingIn loads the activity records state.db holds with a start in span and returns those the
@@ -200,19 +245,16 @@ func (s *store) changed(all bool) []journal.Record {
 	return out
 }
 
-// rules applies the rules after the merge, as device dev does, to the running activities the store
-// holds: the ends every device shows, and those dev writes.
+// rules applies the rules after the merge, as device dev does, to the activities the store holds
+// that run or are stopped by their auto_end: the ends every device shows, and those dev writes.
 func (s *store) rules(dev string) journal.Rules {
-	var running []journal.Record
+	var open []journal.Record
 	for r, record := range s.records {
-		if r.typ != journal.TypeActivity {
-			continue
-		}
-		if activity, ok := record.Activity(); ok && activity.EndTime == nil {
-			running = append(running, *record)
+		if r.typ == journal.TypeActivity && record.ShownEndField() != journal.FieldEnd {
+			open = append(open, *record)
 		}
 	}
-	return journal.RulesFor(running, dev)
+	return journal.RulesFor(open, dev)
 }
 
 // stopEnds returns the ends of stops by uid.

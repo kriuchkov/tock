@@ -114,7 +114,7 @@ func TestScopeOfRecordedWrites(t *testing.T) {
 	start := time.Date(2026, 11, 18, 10, 0, 37, 0, time.UTC)
 	moved := start.Add(time.Hour)
 	scope := scopeOf([]recorded{
-		{write: writeOf(1, start), autoStop: true},
+		{write: writeOf(1, start), stop: stopCause{auto: true, next: moved}},
 		{write: writeOf(1, moved)},
 		{write: writeOf(2, start), movedTo: &moved},
 		{write: writeOf(3, moved)},
@@ -127,7 +127,8 @@ func TestScopeOfRecordedWrites(t *testing.T) {
 	assert.Equal(t, map[string]bool{movedKey: true}, scope.notes)
 	assert.Equal(t, map[string]string{startKey: movedKey}, scope.moves)
 	assert.Empty(t, scope.removed)
-	assert.True(t, scope.autoStop[startKey])
+	assert.Equal(t, stopCause{auto: true, next: moved}, scope.stops[startKey], "why the last save wrote the end")
+	assert.Equal(t, stopCause{}, scope.stops[movedKey], "a save made on purpose")
 	assert.True(t, scope.reminders)
 
 	// A removal right after a save without the mark of an update is a deletion, not a move.

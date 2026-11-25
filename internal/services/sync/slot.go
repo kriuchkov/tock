@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -17,19 +18,20 @@ import (
 // until the key is free. Nothing is journaled for it: its image goes with it, so the comparison sees
 // no deletion.
 
-// shown returns a merged activity as this device shows it: with the end rule 1 gives it while it
-// runs, which only its owner journals.
+// shown returns a merged activity as this device shows it: with the end rule 1 gives it, which this
+// device journals only once it read every segment, else its shown end (end, else auto_end).
 func (r *run) shown(record journal.Record) (models.Activity, bool) {
-	activity, visible := record.Activity()
-	if !visible {
-		return activity, false
+	return withStop(record, r.stops).Activity()
+}
+
+// withStop returns a merged record with the end rule 1 gives it, when stops holds one, as every device
+// shows it (journal.Rules.Show): over a running activity's missing end or a later auto_end, never over
+// an end.
+func withStop(record journal.Record, stops map[string]json.RawMessage) journal.Record {
+	if end, stopped := stops[record.UID]; stopped {
+		return journal.Rules{Stops: []journal.Stop{{UID: record.UID, End: end}}}.Show(record)
 	}
-	if end, stopped := r.stops[record.UID]; stopped && activity.EndTime == nil {
-		if t, ok := parseInstant(end); ok {
-			activity.EndTime = &t
-		}
-	}
-	return activity, true
+	return record
 }
 
 // emptyAt reports whether an activity ends within the step of precision it starts in, so the backend

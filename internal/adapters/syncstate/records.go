@@ -33,13 +33,23 @@ func (s *state) AllRecords(ctx context.Context, typ journal.RecordType) ([]journ
 	return s.records(ctx, typ, "SELECT "+fieldColumns+" FROM fields AS f WHERE f.type = ? ORDER BY f.uid, f.path", string(typ))
 }
 
-// RunningActivities returns the activities the running table lists: those that were visible with no
-// end when they were saved. A record's row there is set every time the record is saved. CROSS JOIN
-// keeps running the outer table, so the query reads only the running records.
+// RunningActivities returns the activities the running table lists as running: those that were
+// visible with no shown end when they were saved. A record's row there is set every time the record
+// is saved. CROSS JOIN keeps running the outer table, so the query reads only the running records.
 func (s *state) RunningActivities(ctx context.Context) ([]journal.Record, error) {
 	return s.records(ctx, journal.TypeActivity,
-		"SELECT "+fieldColumns+" FROM running AS r CROSS JOIN fields AS f ON f.type = ? AND f.uid = r.uid ORDER BY f.uid, f.path",
+		"SELECT "+fieldColumns+" FROM running AS r CROSS JOIN fields AS f ON f.type = ? AND f.uid = r.uid "+
+			"WHERE r.until IS NULL ORDER BY f.uid, f.path",
 		string(journal.TypeActivity))
+}
+
+// AutoEndedActivities returns the activities the running table lists as stopped by an auto_end later
+// than after, when they were saved.
+func (s *state) AutoEndedActivities(ctx context.Context, after time.Time) ([]journal.Record, error) {
+	return s.records(ctx, journal.TypeActivity,
+		"SELECT "+fieldColumns+" FROM running AS r CROSS JOIN fields AS f ON f.type = ? AND f.uid = r.uid "+
+			"WHERE r.until > ? ORDER BY f.uid, f.path",
+		string(journal.TypeActivity), after.Unix())
 }
 
 // ActivitiesStartingIn returns the activity records the starts table lists in span: those whose
@@ -138,7 +148,7 @@ func saveRecords(ctx context.Context, tx *sql.Tx, records []journal.Record, rese
 
 	fields := newBatch(tx, "INSERT INTO fields (type, uid, path, value, hlc_wall, hlc_counter, dev)", 7)
 	defer fields.close()
-	running := newBatch(tx, "INSERT INTO running (uid)", 1)
+	running := newBatch(tx, "INSERT INTO running (uid, until)", 2)
 	defer running.close()
 	starts := newBatch(tx, "INSERT INTO starts (uid, start)", 2)
 	defer starts.close()
@@ -152,8 +162,8 @@ func saveRecords(ctx context.Context, tx *sql.Tx, records []journal.Record, rese
 		if record.Type != journal.TypeActivity {
 			continue
 		}
-		if isRunning(record) {
-			if err := running.add(ctx, record.UID); err != nil {
+		if open, until := openUntil(record); open {
+			if err := running.add(ctx, record.UID, until); err != nil {
 				return errors.Wrap(err, "save running activities")
 			}
 		}
@@ -218,10 +228,20 @@ func execList(ctx context.Context, tx *sql.Tx, query string, values []string, ar
 	return err
 }
 
-// isRunning reports whether an activity record is visible and has no end, as rule 1 counts them.
-func isRunning(record journal.Record) bool {
+// openUntil reports whether an activity record is visible and its end holds no instant, as rule 1
+// takes them: one that runs, with until nil, or one an auto_end stops, with until that auto_end in
+// Unix seconds.
+func openUntil(record journal.Record) (bool, any) {
 	activity, ok := record.Activity()
-	return ok && activity.EndTime == nil
+	switch {
+	case !ok:
+		return false, nil
+	case activity.EndTime == nil:
+		return true, nil
+	case record.ShownEndField() == journal.FieldAutoEnd:
+		return true, activity.EndTime.Unix()
+	}
+	return false, nil
 }
 
 // valueText is a field value as stored: the JSON as it was read, null for none.

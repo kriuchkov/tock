@@ -29,8 +29,9 @@ type writePlan struct {
 	view     fields
 }
 
-// writeBack writes into the backend every record the run holds whose merged value, with the ends
-// rule 1 gives, differs from its image: other devices' changes, and the ends this device only shows.
+// writeBack writes into the backend every record the run holds whose merged value, with its shown end
+// and the ends rule 1 gives, differs from its image: other devices' changes, an auto_end as the
+// activity's end, and the ends this device only shows before it read every segment.
 // It removes a record only when the merged state deletes it, and never writes over an activity it
 // cannot tell apart from another one at the same key.
 func (r *run) writeBack(ctx context.Context) error {
@@ -93,7 +94,8 @@ func (r *run) writeActivities(ctx context.Context) error {
 }
 
 // activityPlans returns the writes of the merged activities the backend holds otherwise than the
-// images say, and the keys they touch.
+// images say, and the keys they touch. A key an activity leaves may be the one an activity that gave
+// way waits for (slot.go), so the activities that start near it are planned too.
 func (r *run) activityPlans(ctx context.Context) ([]writePlan, map[string]bool, error) {
 	refs, err := r.loadImagesOf(ctx, journal.TypeActivity)
 	if err != nil {
@@ -101,28 +103,74 @@ func (r *run) activityPlans(ctx context.Context) ([]writePlan, map[string]bool, 
 	}
 	var plans []writePlan
 	keys := make(map[string]bool)
-	for _, recRef := range refs {
-		record, _ := r.store.get(recRef)
-		img, hasImg := r.images.get(recRef)
-		activity, visible := r.shown(record)
-		if !visible {
-			if hasImg && isDeleted(record) {
-				plans = append(plans, writePlan{ref: recRef, img: img, hasImg: true, remove: true})
-				keys[img.Key] = true
+	for len(refs) > 0 {
+		var freed []string
+		for _, recRef := range refs {
+			plan, planned := r.activityPlan(recRef)
+			if !planned {
+				continue
 			}
-			continue
+			plans = append(plans, plan)
+			if !plan.remove {
+				keys[r.keys.key(plan.activity.StartTime)] = true
+			}
+			if plan.hasImg {
+				keys[plan.img.Key] = true
+				if plan.remove || r.keys.key(plan.activity.StartTime) != plan.img.Key {
+					freed = append(freed, plan.img.Key)
+				}
+			}
 		}
-		view := activityFields(r.normalize(activity), imageForm(r.precision))
-		if hasImg && sameActivity(img.Fields, view) && !r.force[recRef] {
-			continue
-		}
-		plans = append(plans, writePlan{ref: recRef, img: img, hasImg: hasImg, activity: activity, view: view})
-		keys[r.keys.key(activity.StartTime)] = true
-		if hasImg {
-			keys[img.Key] = true
+		if refs, err = r.loadNear(ctx, freed); err != nil {
+			return nil, nil, err
 		}
 	}
 	return plans, keys, nil
+}
+
+// activityPlan returns the write of one merged activity, if the backend holds it otherwise than its
+// image says.
+func (r *run) activityPlan(recRef ref) (writePlan, bool) {
+	record, _ := r.store.get(recRef)
+	img, hasImg := r.images.get(recRef)
+	activity, visible := r.shown(record)
+	if !visible {
+		if hasImg && isDeleted(record) {
+			return writePlan{ref: recRef, img: img, hasImg: true, remove: true}, true
+		}
+		return writePlan{}, false
+	}
+	view := activityFields(r.normalize(activity), imageForm(r.precision))
+	if hasImg && sameActivity(img.Fields, view) && !r.force[recRef] {
+		return writePlan{}, false
+	}
+	return writePlan{ref: recRef, img: img, hasImg: hasImg, activity: activity, view: view}, true
+}
+
+// loadNear loads the merged activities that start near the keys, as loadHeld does, with their images,
+// and returns those the run did not hold yet. A complete run holds every one.
+func (r *run) loadNear(ctx context.Context, keys []string) ([]ref, error) {
+	if r.store.complete || len(keys) == 0 {
+		return nil, nil
+	}
+	held := make(map[ref]bool)
+	for _, recRef := range r.store.refs(journal.TypeActivity) {
+		held[recRef] = true
+	}
+	for _, key := range keys {
+		if err := r.loadHeld(ctx, key); err != nil {
+			return nil, err
+		}
+	}
+	var added []ref
+	var uids []string
+	for _, recRef := range r.store.refs(journal.TypeActivity) {
+		if !held[recRef] {
+			added = append(added, recRef)
+			uids = append(uids, recRef.uid)
+		}
+	}
+	return added, r.images.loadUIDs(ctx, journal.TypeActivity, uids)
 }
 
 // writeOrder sorts the writes into the backend: removals, then activities, then activities empty at

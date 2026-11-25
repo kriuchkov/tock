@@ -10,6 +10,7 @@ import (
 	"github.com/go-faster/errors"
 
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
+	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 	"github.com/kriuchkov/tock/internal/timeutil"
@@ -52,14 +53,14 @@ func (s *service) Start(ctx context.Context, req models.StartActivityRequest) (*
 		startTime = time.Now()
 	}
 
-	// These stops follow from the start, not from a stop the user asked for: sync writes them only
-	// for activities this device owns.
-	stopCtx := ports.WithAutoStop(ctx)
+	// These stops follow from the start, not from a stop the user asked for, and carry it: sync writes
+	// the stop of an activity another device owns, when the new start comes after it, as its auto_end,
+	// which the end its owner writes shows over, and the stop of one the new start comes before as its
+	// end (docs/sync.md, rule 1). A start before the running activity's own stops it now, never before
+	// its start.
+	stopCtx := ports.WithAutoStop(ctx, startTime)
 	for _, act := range running {
-		stopTime := startTime
-		if stopTime.Before(act.StartTime) {
-			stopTime = time.Now()
-		}
+		stopTime := journal.StartStopTime(act.StartTime, startTime, time.Now())
 		act.EndTime = &stopTime
 		if saveErr := s.repo.Save(stopCtx, act); saveErr != nil {
 			return nil, errors.Wrap(saveErr, "stop running activity")
@@ -193,7 +194,7 @@ func (s *service) StopAfterWorkingHours(ctx context.Context, hours models.Workin
 			return nil, nil //nolint:nilnil // nothing to stop is not an error
 		}
 	}
-	return s.Stop(ports.WithAutoStop(ctx), models.StopActivityRequest{EndTime: stopTime})
+	return s.Stop(ports.WithAutoStop(ctx, time.Time{}), models.StopActivityRequest{EndTime: stopTime})
 }
 
 func (s *service) Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error) {

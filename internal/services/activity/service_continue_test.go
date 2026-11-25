@@ -86,7 +86,11 @@ func TestService_StopAfterWorkingHours(t *testing.T) {
 		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
 			{Project: "Work", Description: "Late", StartTime: start},
 		}, nil)
-		repo.EXPECT().Save(mock.MatchedBy(ports.IsAutoStop), mock.MatchedBy(func(a models.Activity) bool {
+		// The mark of the end of the working day carries no start.
+		repo.EXPECT().Save(mock.MatchedBy(func(ctx context.Context) bool {
+			next, ok := ports.AutoStopNext(ctx)
+			return ok && next.IsZero()
+		}), mock.MatchedBy(func(a models.Activity) bool {
 			return a.EndTime != nil && a.EndTime.Equal(cutoff)
 		})).Return(nil)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/models"
 )
 
@@ -41,9 +42,20 @@ func TestSameMinuteStartsShowTheRunningOne(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, "Beta", got[0].Description)
 	assert.Nil(t, got[0].EndTime, "Beta runs")
-	assert.Empty(t, mac.folder.lines(mac.deviceID()), "the Mac owns neither")
+	assertAutoEndOnly(t, mac, alphaUID, at(0).Add(40*time.Second))
 	assertQuiet(t, mac)
 	assert.Zero(t, mac.full(t).Written)
+}
+
+// assertAutoEndOnly checks that all a device journaled is the auto_end of one activity it does not
+// own, which rule 1 stops at end.
+func assertAutoEndOnly(t *testing.T, d *device, uid string, end time.Time) {
+	t.Helper()
+	lines := d.folder.lines(d.deviceID())
+	require.Len(t, lines, 1, "the Mac owns neither and writes only the auto_end")
+	assert.Equal(t, uid, lines[0].UID)
+	assert.Len(t, lines[0].Set, 1)
+	assertInstants(t, []time.Time{end}, valuesWritten(d, uid, journal.FieldAutoEnd))
 }
 
 // An activity that arrives after another one at its minute was written takes the line when it ends
@@ -71,11 +83,11 @@ func TestSameMinuteStartReplacesTheEarlierOne(t *testing.T) {
 	assert.Nil(t, got[0].EndTime)
 	assert.Empty(t, got[0].Notes, "Alpha's notes left with it")
 	assert.Empty(t, got[0].Tags)
-	assert.Empty(t, mac.folder.lines(mac.deviceID()), "nothing journaled: no deletion, no end")
+	assertAutoEndOnly(t, mac, alphaUID, at(0).Add(40*time.Second))
 	assertQuiet(t, mac)
 	assert.Zero(t, mac.full(t).Written)
 
-	// Once Beta moves on, Alpha comes back to its minute.
+	// Once Beta moves on, Alpha comes back to its minute, stopped at its auto_end.
 	clock.advance(time.Minute)
 	phoneWrite(t, mac.folder, clock, 0, betaUID, map[string]any{"start": at(5).Format(time.RFC3339)})
 	clock.advance(time.Minute)
@@ -84,7 +96,8 @@ func TestSameMinuteStartReplacesTheEarlierOne(t *testing.T) {
 	require.Len(t, got, 2)
 	assert.Equal(t, []string{"Alpha", "Beta"}, descriptions(got))
 	assert.Equal(t, "Alpha's notes", got[0].Notes)
-	assert.Empty(t, mac.folder.lines(mac.deviceID()))
+	assert.NotNil(t, got[0].EndTime)
+	assertAutoEndOnly(t, mac, alphaUID, at(0).Add(40*time.Second))
 	assertQuiet(t, mac)
 }
 

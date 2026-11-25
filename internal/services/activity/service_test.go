@@ -260,6 +260,37 @@ func TestService_Start(t *testing.T) {
 			},
 		},
 		{
+			name: "start before a running activity that starts later than now stops it at its start",
+			setup: func(repo *portsmocks.MockActivityRepository, _ *portsmocks.MockNotesRepository) {
+				runningAct := models.Activity{
+					Project:   "prev",
+					StartTime: now.Add(time.Hour).Truncate(time.Second),
+				}
+				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {
+					return f.IsRunning != nil && *f.IsRunning
+				})).Return([]models.Activity{runningAct}, nil)
+
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "prev" && a.EndTime != nil && a.EndTime.Equal(runningAct.StartTime)
+				})).Return(nil)
+
+				repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+					return a.Project == "new" && a.EndTime == nil
+				})).Return(nil)
+			},
+			req: models.StartActivityRequest{
+				Project:     "new",
+				Description: "task",
+				StartTime:   now.Add(-time.Hour),
+			},
+			assert: func(t *testing.T, act *models.Activity) {
+				assert.Equal(t, "new", act.Project)
+			},
+			assertErr: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		{
 			name: "start with notes and tags",
 			setup: func(repo *portsmocks.MockActivityRepository, notesRepo *portsmocks.MockNotesRepository) {
 				repo.EXPECT().Find(mock.Anything, mock.MatchedBy(func(f models.ActivityFilter) bool {

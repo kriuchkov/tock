@@ -80,7 +80,9 @@ func TestActivitySave(t *testing.T) {
 		autoStop bool
 	}{
 		{name: "a stop made on purpose", ctx: func(ctx context.Context) context.Context { return ctx }},
-		{name: "an auto-stop keeps its mark for the sink", ctx: ports.WithAutoStop, autoStop: true},
+		{name: "an auto-stop keeps its mark for the sink", ctx: func(ctx context.Context) context.Context {
+			return ports.WithAutoStop(ctx, time.Date(2026, time.November, 18, 11, 0, 0, 0, time.UTC))
+		}, autoStop: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

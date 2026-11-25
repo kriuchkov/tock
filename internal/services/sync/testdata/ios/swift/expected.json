@@ -45,6 +45,7 @@
     },
     {
       "fields" : {
+        "auto_end" : "2026-11-05T11:00:00+01:00",
         "description" : "Widgets",
         "end" : "2026-11-05T10:30:00+01:00",
         "notes" : "",
@@ -65,6 +66,7 @@
     },
     {
       "fields" : {
+        "auto_end" : "2026-11-06T09:30:00+01:00",
         "description" : "Release notes",
         "end" : "2026-11-06T09:30:00+01:00",
         "notes" : "",
@@ -76,12 +78,33 @@
     {
       "fields" : {
         "description" : "On call",
-        "end" : null,
+        "end" : "2026-11-06T10:00:00+01:00",
         "notes" : "",
         "project" : "Ops",
         "start" : "2026-11-06T09:30:00+01:00"
       },
       "uid" : "019a9b3c-0000-7000-8000-000000030009"
+    },
+    {
+      "fields" : {
+        "description" : "Incident review",
+        "end" : null,
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-11-06T14:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030010"
+    },
+    {
+      "fields" : {
+        "auto_end" : "2026-11-06T14:00:00+01:00",
+        "description" : "Changelog",
+        "end" : "2026-11-06T14:00:00+01:00",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-06T13:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030011"
     }
   ],
   "devices" : [
@@ -90,14 +113,14 @@
       "id" : "bb00000000000001",
       "name" : "iPhone",
       "platform" : "ios",
-      "seen" : "2026-11-06T08:00:00Z"
+      "seen" : "2026-11-06T11:59:00Z"
     },
     {
       "app" : "tock 1.0",
       "id" : "bb00000000000002",
       "name" : "iPad",
       "platform" : "ios",
-      "seen" : "2026-11-06T08:31:00Z"
+      "seen" : "2026-11-06T13:05:00Z"
     }
   ],
   "from" : "2026-10-26",
@@ -185,7 +208,7 @@
       },
       {
         "description" : "On call",
-        "end" : null,
+        "end" : "2026-11-06T09:00:00Z",
         "notes" : "",
         "project" : "Ops",
         "start" : "2026-11-06T08:30:00Z",
@@ -193,6 +216,28 @@
 
         ],
         "uid" : "019a9b3c-0000-7000-8000-000000030009"
+      },
+      {
+        "description" : "Incident review",
+        "end" : null,
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-11-06T13:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030010"
+      },
+      {
+        "description" : "Changelog",
+        "end" : "2026-11-06T13:00:00Z",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-06T12:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030011"
       }
     ],
     "occurrences" : [
@@ -292,13 +337,7 @@
   "tz" : "Europe/Berlin",
   "writes" : {
     "bb00000000000001" : [
-      {
-        "set" : {
-          "end" : "2026-11-06T09:30:00+01:00"
-        },
-        "type" : "activity",
-        "uid" : "019a9b3c-0000-7000-8000-000000030008"
-      }
+
     ],
     "bb00000000000002" : [
 

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kriuchkov/tock/internal/core/journal"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 )
@@ -42,8 +43,8 @@ func mustRepeat(t *testing.T, spec string) models.Repeat {
 // TestInteropGoFolder: two Macs with the file backend over a week across a month: activities with
 // notes and tags, an edited start, a stop made on purpose by the device that does not own the
 // activity, a removal, reminders with done, snoozed and skipped occurrences, closed months compressed,
-// and an end only shown: one Mac starts while the other's activity runs and leaves that end to its
-// owner, which has not synced since.
+// and an auto_end: one Mac starts while the other's activity runs and writes the end that gives the
+// other one as its auto_end, which its owner, not synced since, shows without writing anything.
 func TestInteropGoFolder(t *testing.T) {
 	inZone(t, interopZone)
 	folder := filepath.Join(t.TempDir(), "sync")
@@ -121,8 +122,8 @@ func TestInteropGoFolder(t *testing.T) {
 	m2.at("2026-11-03T10:20")
 	m2.sync()
 
-	// Wednesday 4 November: the Mac mini starts while the MacBook's activity runs; the MacBook does not
-	// sync again, so nobody writes the end every device shows.
+	// Wednesday 4 November: the Mac mini starts while the MacBook's activity runs and writes the end
+	// that gives it as its auto_end; the MacBook does not sync again.
 	m1.at("2026-11-04T09:00")
 	m1.start("Backend", "Merge", nil, "")
 	m2.at("2026-11-04T09:30")
@@ -144,15 +145,16 @@ func TestInteropGoFolder(t *testing.T) {
 	merge := readEnd(t, expect, "Merge")
 	require.NotNil(t, merge)
 	assert.Equal(t, "2026-11-04T09:00:00Z", *merge, "shown stopped where the Mac mini started")
-	require.Len(t, expect.Writes[macBook], 1, "the MacBook still has to write the end of its activity")
-	assert.Equal(t, map[string]any{"end": "2026-11-04T10:00:00+01:00"}, expect.Writes[macBook][0].Set)
+	assert.Equal(t, "2026-11-04T10:00:00+01:00", fieldOf(t, expect, "Merge", journal.FieldAutoEnd), "written by the Mac mini")
+	assert.Empty(t, expect.Writes[macBook], "the MacBook shows the auto_end and leaves it as it is")
 	assert.Empty(t, expect.Writes[macMini])
 	exportInterop(t, "go", folder, expect)
 }
 
 // TestInteropMixedFolder: a Mac with the file backend joins the folder of tock-ios's phone
-// (testdata/ios/mixed-seed), starts its own activity while the phone's runs and leaves that end to
-// the phone, adds a note to the phone's activity, marks the phone's reminder done and adds its own.
+// (testdata/ios/mixed-seed), starts its own activity while the phone's runs and writes the end that
+// gives the phone's as its auto_end, adds a note to the phone's activity, marks the phone's reminder
+// done and adds its own.
 func TestInteropMixedFolder(t *testing.T) {
 	inZone(t, interopZone)
 	folder := copyFolder(t, filepath.Join("testdata", "ios", "mixed-seed", "folder"))
@@ -183,15 +185,15 @@ func TestInteropMixedFolder(t *testing.T) {
 		From: "2026-11-09", To: "2026-11-16", Now: "2026-11-09T12:00",
 	})
 	assert.Equal(t, readSummary(t, expect.Read.Activities), mac.backend(), "the Mac's backend holds what every device reads")
-	require.Len(t, expect.Writes[seedPhone], 1, "the phone has to write the end of its activity")
-	assert.Equal(t, map[string]any{"end": "2026-11-09T10:00:00+01:00"}, expect.Writes[seedPhone][0].Set)
+	assert.Equal(t, "2026-11-09T10:00:00+01:00", fieldOf(t, expect, "Interop check", journal.FieldAutoEnd), "written by the Mac")
+	assert.Empty(t, expect.Writes[seedPhone], "the phone shows the auto_end and leaves it as it is")
 	assert.Empty(t, expect.Writes[macStudio])
 	exportInterop(t, "mixed", folder, expect)
 }
 
 // TestInteropSwiftFolders reads the folders tock-ios wrote with syncfolder and journal, and expects
 // what the app read from them; then a Mac with the file backend joins each and holds the same
-// activities, journaling nothing.
+// activities, journaling only the auto_end of every stop rule 1 gives.
 func TestInteropSwiftFolders(t *testing.T) {
 	inZone(t, interopZone)
 	for _, name := range []string{"swift", "mixed-seed"} {
@@ -200,14 +202,15 @@ func TestInteropSwiftFolders(t *testing.T) {
 			want, err := os.ReadFile(filepath.Join(dir, "expected.json"))
 			require.NoError(t, err)
 			title, window := windowOf(t, want)
-			expect := readInteropFolder(t, filepath.Join(dir, "folder")).expect(t, title, window)
+			read := readInteropFolder(t, filepath.Join(dir, "folder"))
+			expect := read.expect(t, title, window)
 			checkInterop(t, want, expect)
 
 			clock := &testClock{now: localWall(t, window.Now)}
 			mac := newInteropMac(t, macStudio, "Mac Studio", copyFolder(t, filepath.Join(dir, "folder")), clock)
 			report, err := mac.svc.Init(context.Background(), ports.SyncInitOptions{})
 			require.NoError(t, err)
-			assert.Zero(t, report.Written, "a Mac that owns nothing writes nothing")
+			assert.Equal(t, len(read.state.Stops()), report.Written, "a Mac that owns nothing writes the auto_end of every stop")
 			assert.Equal(t, readSummary(t, expect.Read.Activities), mac.backend())
 			clock.advance(time.Minute)
 			report = mac.sync()
@@ -215,6 +218,27 @@ func TestInteropSwiftFolders(t *testing.T) {
 			assert.Zero(t, report.Applied)
 		})
 	}
+}
+
+// fieldOf is a merged field of the activity with a description, as expected.json lists it; "" when it
+// has none.
+func fieldOf(t *testing.T, expect interopExpect, description, path string) any {
+	t.Helper()
+	for _, a := range expect.Read.Activities {
+		if a.Description != description {
+			continue
+		}
+		for _, record := range expect.Activities {
+			if record.UID == a.UID {
+				if value, ok := record.Fields[path]; ok {
+					return value
+				}
+				return ""
+			}
+		}
+	}
+	require.Failf(t, "no activity", "%s", description)
+	return nil
 }
 
 // readEnd is the end expected.json reads for the activity with a description.

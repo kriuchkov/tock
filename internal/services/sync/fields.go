@@ -302,14 +302,16 @@ func (k keying) zoneSlack() time.Duration {
 }
 
 // keepWrittenTimes keeps, in the image of an activity read from a wall-clock backend, the merged start
-// and end whose wall time, in the zone each was journaled in, is the one the backend holds: the line
-// was written in that zone, so it holds the merged instant, not an edit of it.
+// and shown end whose wall time, in the zone each was journaled in, is the one the backend holds: the
+// line was written in that zone, so it holds the merged instant, not an edit of it.
 func (r *run) keepWrittenTimes(current fields, record journal.Record) {
 	if !r.wall {
 		return
 	}
+	// The shown end is end, or else auto_end (docs/sync.md, Activity fields).
+	shown := journal.Rules{}.Show(record)
 	for _, path := range []string{fieldStart, fieldEnd} {
-		merged, ok := record.Fields[path]
+		merged, ok := shown.Fields[path]
 		if !ok {
 			continue
 		}

@@ -222,7 +222,7 @@ func (r *run) merge(ctx context.Context) error {
 		r.store.apply(change)
 	}
 	r.restoreOwn(previous)
-	return nil
+	return r.store.loadAutoEnded(ctx)
 }
 
 // previousRecords returns the merged records state.db holds before a rebuild replaces them.

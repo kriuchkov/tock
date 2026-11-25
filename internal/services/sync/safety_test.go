@@ -15,11 +15,21 @@ import (
 	"github.com/kriuchkov/tock/internal/core/ports"
 )
 
-// phone is a device that writes its journal by hand, like the iOS app.
-const phone = "aaaaaaaaaaaaaaaa"
+// phone and tablet are devices that write their journal by hand, like the iOS app.
+const (
+	phone  = "aaaaaaaaaaaaaaaa"
+	tablet = "cccccccccccccccc"
+)
 
 // phoneWrite appends a change of the phone at the clock's time.
 func phoneWrite(t *testing.T, folder *memFolder, clock *testClock, counter int, uid string, set map[string]any) {
+	t.Helper()
+	deviceWrite(t, folder, clock, phone, counter, uid, set)
+}
+
+// deviceWrite appends one activity change of device dev, which only writes the journal, at the
+// clock's time.
+func deviceWrite(t *testing.T, folder *memFolder, clock *testClock, dev string, counter int, uid string, set map[string]any) {
 	t.Helper()
 	values := make(map[string]json.RawMessage, len(set))
 	for path, value := range set {
@@ -29,11 +39,11 @@ func phoneWrite(t *testing.T, folder *memFolder, clock *testClock, counter int, 
 	}
 	hlc := journal.HLC{Wall: clock.now.UnixMilli(), Counter: counter}
 	line, err := json.Marshal(
-		map[string]any{"v": 1, "hlc": hlc.String(), "dev": phone, "type": journal.TypeActivity, "uid": uid, "set": values},
+		map[string]any{"v": 1, "hlc": hlc.String(), "dev": dev, "type": journal.TypeActivity, "uid": uid, "set": values},
 	)
 	require.NoError(t, err)
 	month := clock.now.UTC().Format("2006-01")
-	require.NoError(t, folder.Append(context.Background(), phone, month, append(line, '\n')))
+	require.NoError(t, folder.Append(context.Background(), dev, month, append(line, '\n')))
 }
 
 func TestPrecisionRoundTripsMakeNoChurn(t *testing.T) {

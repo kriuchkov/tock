@@ -34,6 +34,7 @@ type autoStopJSON struct {
 	End         time.Time `json:"end"`
 	Project     string    `json:"project"`
 	Description string    `json:"description"`
+	Next        time.Time `json:"next"`
 }
 
 func (s *state) Meta(ctx context.Context) (ports.SyncMeta, error) {

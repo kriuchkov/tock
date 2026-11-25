@@ -83,7 +83,8 @@ type interopExpect struct {
 	// devices show them after the rules, as in the merge vectors.
 	Activities []interopRecord `json:"activities"`
 	Reminders  []interopRecord `json:"reminders"`
-	// Writes are the ends each device with a journal writes after the rules, in uid order.
+	// Writes are what the rules give each device with a journal to write, in uid order: the end of
+	// an activity it owns and the auto_end of any other.
 	Writes map[string][]interopWrite `json:"writes"`
 	Read   interopRead               `json:"read"`
 }
@@ -221,10 +222,10 @@ func (f interopFolder) expect(t *testing.T, name string, window interopWindow) i
 
 	for _, device := range f.writers {
 		writes := []interopWrite{}
-		for _, stop := range f.state.ApplyRules(device).Writes {
-			var end any
-			require.NoError(t, json.Unmarshal(stop.End, &end))
-			writes = append(writes, interopWrite{Type: string(journal.TypeActivity), UID: stop.UID, Set: map[string]any{"end": end}})
+		for _, w := range f.state.ApplyRules(device).Writes {
+			var value any
+			require.NoError(t, json.Unmarshal(w.Value, &value))
+			writes = append(writes, interopWrite{Type: string(journal.TypeActivity), UID: w.UID, Set: map[string]any{w.Field: value}})
 		}
 		slices.SortFunc(writes, func(a, b interopWrite) int { return strings.Compare(a.UID, b.UID) })
 		out.Writes[device] = writes

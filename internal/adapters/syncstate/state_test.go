@@ -298,6 +298,45 @@ func TestRunningActivities(t *testing.T) {
 	assert.Equal(t, []journal.Record{noEnd, nullEnd, undone, badEnd}, running)
 }
 
+// The activities an auto_end stops are listed apart from the running ones, by that auto_end.
+func TestAutoEndedActivities(t *testing.T) {
+	ctx := t.Context()
+	st := newState(t, statePath(t))
+	autoEnded := func(id int, start, autoEnd string) journal.Record {
+		record := activity(id, start, "null")
+		record.Fields["auto_end"] = field(`"`+autoEnd+`"`, 1004, devB)
+		return record
+	}
+
+	runs := activity(1, "2026-11-18T10:00:00Z", "null")
+	later := autoEnded(2, "2026-11-18T09:00:00Z", "2026-11-18T10:30:00Z")
+	earlier := autoEnded(3, "2026-11-18T08:00:00Z", "2026-11-18T09:00:00Z")
+	atTen := autoEnded(4, "2026-11-18T09:30:00Z", "2026-11-18T10:00:00+00:00")
+	stale := autoEnded(5, "2026-11-18T10:20:00Z", "2026-11-18T10:15:00Z") // before its start: it runs
+	ended := autoEnded(6, "2026-11-18T09:00:00Z", "2026-11-18T11:00:00Z")
+	ended.Fields["end"] = field(`"2026-11-18T09:20:00Z"`, 1005, devA)
+	require.NoError(t, st.Save(ctx, ports.SyncDelta{Records: []journal.Record{runs, later, earlier, atTen, stale, ended}}))
+
+	running, err := st.RunningActivities(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []journal.Record{runs, stale}, running)
+
+	ten := time.Date(2026, time.November, 18, 10, 0, 0, 0, time.UTC)
+	got, err := st.AutoEndedActivities(ctx, ten)
+	require.NoError(t, err)
+	assert.Equal(t, []journal.Record{later}, got, "only those that end after 10:00")
+	got, err = st.AutoEndedActivities(ctx, ten.Add(-time.Second))
+	require.NoError(t, err)
+	assert.Equal(t, []journal.Record{later, atTen}, got)
+
+	// A record saved again with an end leaves the list.
+	later.Fields["end"] = field(`"2026-11-18T09:40:00Z"`, 1006, devA)
+	require.NoError(t, st.Save(ctx, ports.SyncDelta{Records: []journal.Record{later}}))
+	got, err = st.AutoEndedActivities(ctx, ten)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
 func TestSaveReset(t *testing.T) {
 	ctx := t.Context()
 	st := newState(t, statePath(t))

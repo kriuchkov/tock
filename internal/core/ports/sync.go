@@ -303,19 +303,23 @@ type SyncMeta struct {
 	LastSync time.Time
 	// Skipped counts the invalid lines skipped so far.
 	Skipped int
-	// AutoStops are the stops tock wrote into the backend because another activity started
-	// (WithAutoStop) since the last sync that went through. They are kept here, not only in the
-	// process that wrote them, so a sync that fails or never runs after the command does not lose
-	// them: a later sync would take the end it finds for a stop made on purpose.
+	// AutoStops are the stops tock wrote into the backend on its own (WithAutoStop), because another
+	// activity started or at the end of the working day, since the last sync that went through. They
+	// are kept here, not only in the process that wrote them, so a sync that fails or never runs after
+	// the command does not lose them: a later sync would take the end it finds for a stop made on
+	// purpose.
 	AutoStops []SyncAutoStop
 }
 
-// SyncAutoStop is an activity as tock saved it when it stopped it because another one started.
+// SyncAutoStop is an activity as tock saved it when it stopped it on its own, with why.
 type SyncAutoStop struct {
 	Start       time.Time
 	End         time.Time
 	Project     string
 	Description string
+	// Next is the start of the activity whose start stopped it, as tock saved that one; zero for the
+	// end of the working day.
+	Next time.Time
 }
 
 // SyncDelta is what one sync changed in the state, saved in one transaction so the cursors, the
@@ -356,9 +360,17 @@ type SyncState interface {
 	Records(ctx context.Context, typ journal.RecordType, uids []string) ([]journal.Record, error)
 	// AllRecords returns every merged record of one type, hidden ones included.
 	AllRecords(ctx context.Context, typ journal.RecordType) ([]journal.Record, error)
-	// RunningActivities returns the activity records that may be running: deleted not true, end
-	// missing or null. The caller reads them with journal.Record.Activity to be sure.
+	// RunningActivities returns the activity records that run: visible, with no shown end (an end
+	// that holds an instant, or an auto_end not before the start). It may return more; the caller
+	// reads them with journal.Record.Activity to be sure. Those an auto_end stops come from
+	// AutoEndedActivities.
 	RunningActivities(ctx context.Context) ([]journal.Record, error)
+	// AutoEndedActivities returns the visible activity records an auto_end stops later than after:
+	// end missing or null, and an auto_end after both after and their start. Rule 1 stops such an
+	// activity earlier when one that runs starts inside it (journal.RulesFor), so a caller that holds
+	// running activities from after on needs them. It may return more; the caller reads them with
+	// journal.Record.Activity to be sure.
+	AutoEndedActivities(ctx context.Context, after time.Time) ([]journal.Record, error)
 	// ActivitiesStartingIn returns the activity records whose merged start lies in span, hidden ones
 	// included.
 	ActivitiesStartingIn(ctx context.Context, span SyncSpan) ([]journal.Record, error)
@@ -413,10 +425,11 @@ type SyncChangeSink interface {
 	// and remembers it, so the next Run of the same service writes it to the journal. It returns
 	// write's error and remembers nothing then. Record takes the backend's change token before and
 	// after write, so tock's own write does not make the next sync compare the backend, while a change
-	// made outside tock in between still does. A stop made under WithAutoStop is written only by the
-	// activity's owner. Before tock sync init, while tock runs on another backend than the one sync
-	// is set up for, and while a sync holds the state for long, Record only runs write: a later sync
-	// finds the change by comparing the backend.
+	// made outside tock in between still does. A stop made under WithAutoStop of an activity another
+	// device owns is written as the rule 1 of docs/sync.md says, not as a stop made on purpose. Before
+	// tock sync init, while tock runs on another backend than the one sync is set up for, and while a
+	// sync holds the state for long, Record only runs write: a later sync finds the change by comparing
+	// the backend.
 	Record(ctx context.Context, write func(ctx context.Context) (SyncWrite, error)) error
 }
 
@@ -450,18 +463,28 @@ type ActivityBatchWriter interface {
 // autoStopKey marks a context of WithAutoStop.
 type autoStopKey struct{}
 
-// WithAutoStop marks ctx for the saves that stop running activities because another one starts.
-// Sync tells such a stop from one the user makes on purpose: the end it gives is shown on every
-// device but written to the journal only by the activity's owner, the device whose change holds
-// the winning value of its start (docs/sync.md, Rules after the merge).
-func WithAutoStop(ctx context.Context) context.Context {
-	return context.WithValue(ctx, autoStopKey{}, true)
+// WithAutoStop marks ctx for the saves that stop running activities because another one starts at
+// next, or, with a zero next, at the end of the working day. Sync tells such a stop from one the user
+// makes on purpose, which it journals as the activity's end, by whatever device. For an activity
+// another device owns, the one whose change holds the winning value of its start, the stop of a start
+// that comes after it in the one-running rule's order goes to the journal as its auto_end, set to
+// that start, which the end its owner writes shows over; the stop of a start before it as its end;
+// and the end of the working day not at all (docs/sync.md, Rules after the merge).
+func WithAutoStop(ctx context.Context, next time.Time) context.Context {
+	return context.WithValue(ctx, autoStopKey{}, next)
 }
 
 // IsAutoStop reports whether ctx carries the mark of WithAutoStop.
 func IsAutoStop(ctx context.Context) bool {
-	marked, _ := ctx.Value(autoStopKey{}).(bool)
+	_, marked := AutoStopNext(ctx)
 	return marked
+}
+
+// AutoStopNext returns the next of the mark of WithAutoStop that ctx carries, zero for the end of the
+// working day; ok is false for a ctx without the mark.
+func AutoStopNext(ctx context.Context) (time.Time, bool) {
+	next, ok := ctx.Value(autoStopKey{}).(time.Time)
+	return next, ok
 }
 
 // movedToKey marks a context of WithMovedTo.

@@ -13,20 +13,26 @@
 //     segments whose file is unchanged, observes the clocks, and merges the new changes into the
 //     records they touch; a segment that shrank or went away makes it read everything again, and a
 //     change in its own journal later than its stored clock makes it take a new device ID;
-//  3. applies the rules after the merge: rule 1 with owner-only stops, where this device writes the
-//     end of an activity only when the winning value of its start was written by this device, and
-//     only shows the end it computes for anyone else's (written into the backend, never journaled);
+//  3. applies the rules after the merge: every activity shows its shown end (end, else an auto_end
+//     not before its start), and rule 1 stops all running activities but the last, and an activity
+//     stopped by its auto_end at an earlier start of a running one; in a run that read every segment
+//     this device writes each such stop, as the end of an activity whose winning start it wrote and
+//     as the auto_end of anyone else's, and before that only shows it (written into the backend, not
+//     journaled);
 //  4. writes the recorded changes made through tock, and those found by comparing the backend with
 //     the last-sync image over the scope ports.SyncBackend.Changed gives (everything when Full),
-//     plus the note files of the last 7 days (all of them when Full) for sidecar notes; an end found
-//     that equals the computed end of an activity this device does not own is not journaled;
+//     plus the note files of the last 7 days (all of them when Full) for sidecar notes; an end tock
+//     wrote for an activity another device owns because a start stopped it is journaled as rule 1
+//     says for a start, the end of the working day not at all, an end found that is the end rule 1
+//     gives as its auto_end, any other as its end, and an end cleared as end and auto_end cleared
+//     together;
 //  5. appends this device's changes to its journal, one write per month, with clocks from its HLC;
 //  6. writes into the backend, at its precision and through the repositories that do not record, in one
 //     batch where the repository applies batches (lines.go), every record whose merged value differs from
 //     what the backend gives back for it (ports.SyncBackend.Normalize), giving a reminder from another device
 //     the next free #N (rule 2); where two activities fall on one key, the one empty at the backend's
-//     precision gives way (slot.go), and the other one waits for the key, which a full run, holding
-//     every record, gives it once it is free;
+//     precision gives way (slot.go), and the other one waits for the key, which the run that frees it,
+//     a run that reads the waiting one, or at the latest a full run, holding every record, gives it;
 //  7. saves the new image, the token, the cursors, the records and the clock in one ports.SyncDelta,
 //     compresses its own closed months and writes devices/<id>.json with seen.
 //
