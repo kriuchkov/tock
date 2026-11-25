@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,10 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/core/journal"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
-
-// rulesDevice writes the ends the one-running rule gives.
-const rulesDevice = "0123456789abcdef"
 
 // The test vectors of docs/sync.md, shared with tock-ios: hlc_vectors_test.go, merge_vectors_test.go and
 // repeat_vectors_test.go hold them, the tests below run them, and TestWriteVectors writes them as JSON.
@@ -50,11 +49,21 @@ type mergeVector struct {
 	Expect   mergeExpect                  `json:"expect"`
 }
 
-// mergeExpect is the result of a merge: visible records in uid order and the number of skipped lines.
+// mergeExpect is the result of a merge: visible records in uid order, the number of skipped lines and,
+// for the devices Writes lists, the changes each one writes after the rules.
 type mergeExpect struct {
-	Activities []record `json:"activities"`
-	Reminders  []record `json:"reminders"`
-	Skipped    int      `json:"skipped"`
+	Activities []record           `json:"activities"`
+	Reminders  []record           `json:"reminders"`
+	Skipped    int                `json:"skipped"`
+	Writes     map[string][]write `json:"writes,omitempty"`
+}
+
+// write is a change a device writes after the rules, without its clock and device: those depend on
+// the device.
+type write struct {
+	Type string         `json:"type"`
+	UID  string         `json:"uid"`
+	Set  map[string]any `json:"set"`
 }
 
 type record struct {
@@ -167,10 +176,17 @@ func TestMergeVectors(t *testing.T) {
 			runs["in steps"], skipped["in steps"] = readInSteps(journals, devs, 7)
 
 			for name, state := range runs {
-				applyStops(t, state)
 				assert.Equal(t, v.Expect.Skipped, skipped[name], "%s: skipped lines", name)
-				assert.Equal(t, v.Expect.Activities, visible(t, state, journal.TypeActivity), "%s: activities", name)
-				assert.Equal(t, v.Expect.Reminders, visible(t, state, journal.TypeReminder), "%s: reminders", name)
+				checkVisible(t, state, v.Expect, name)
+				for dev, want := range v.Expect.Writes {
+					assert.Equal(t, want, writes(t, state.ApplyRules(dev)), "%s: writes of %s", name, dev)
+				}
+
+				// Once every owner has written its ends, devices show the same records and the rule
+				// gives no more ends.
+				writeOwnEnds(state, devs)
+				require.Empty(t, state.Stops(), "%s: the rule holds once the owners write their ends", name)
+				checkVisible(t, state, v.Expect, name+", after the owners write")
 			}
 		})
 	}
@@ -235,9 +251,10 @@ func readInSteps(journals map[string][]byte, devs []string, step int) (*journal.
 	}
 }
 
-// applyStops writes the ends the one-running rule gives, as a device would, after every change read.
-func applyStops(t *testing.T, state *journal.State) {
-	t.Helper()
+// writeOwnEnds has every device write the ends of the activities it owns, as each one would after
+// reading every change: all of them from the same state, on a clock that goes on from the latest
+// clock in the state.
+func writeOwnEnds(state *journal.State, devs []string) {
 	var latest journal.HLC
 	for _, typ := range []journal.RecordType{journal.TypeActivity, journal.TypeReminder} {
 		for _, rec := range state.Records(typ) {
@@ -249,24 +266,52 @@ func applyStops(t *testing.T, state *journal.State) {
 		}
 	}
 
+	var changes []journal.Change
 	clock := journal.NewClock(latest)
-	for _, stop := range state.Stops() {
-		state.Apply(journal.Change{
-			HLC:  clock.Next(time.UnixMilli(0)),
-			Dev:  rulesDevice,
-			Type: journal.TypeActivity,
-			UID:  stop.UID,
-			Set:  map[string]json.RawMessage{"end": stop.End},
-		})
+	for _, dev := range devs {
+		for _, stop := range state.ApplyRules(dev).Writes {
+			changes = append(changes, journal.Change{
+				HLC:  clock.Next(time.UnixMilli(0)),
+				Dev:  dev,
+				Type: journal.TypeActivity,
+				UID:  stop.UID,
+				Set:  map[string]json.RawMessage{"end": stop.End},
+			})
+		}
 	}
-	require.Empty(t, state.Stops(), "the rule holds once its ends are written")
+	for _, change := range changes {
+		state.Apply(change)
+	}
 }
 
-// visible returns the records of one type that are not hidden, in uid order, with their merged fields.
-func visible(t *testing.T, state *journal.State, typ journal.RecordType) []record {
+// writes returns the changes a device writes after the rules, in uid order.
+func writes(t *testing.T, rules journal.Rules) []write {
+	t.Helper()
+	out := []write{}
+	for _, stop := range rules.Writes {
+		var end any
+		require.NoError(t, json.Unmarshal(stop.End, &end))
+		out = append(out, write{Type: string(journal.TypeActivity), UID: stop.UID, Set: map[string]any{"end": end}})
+	}
+	slices.SortFunc(out, func(a, b write) int { return strings.Compare(a.UID, b.UID) })
+	return out
+}
+
+// checkVisible compares the records every device shows after the rules with the expected ones.
+func checkVisible(t *testing.T, state *journal.State, expect mergeExpect, name string) {
+	t.Helper()
+	rules := state.ApplyRules("")
+	assert.Equal(t, expect.Activities, visible(t, state, rules, journal.TypeActivity), "%s: activities", name)
+	assert.Equal(t, expect.Reminders, visible(t, state, rules, journal.TypeReminder), "%s: reminders", name)
+}
+
+// visible returns the records of one type that are not hidden, in uid order, with their merged fields
+// as devices show them after the rules.
+func visible(t *testing.T, state *journal.State, rules journal.Rules, typ journal.RecordType) []record {
 	t.Helper()
 	records := []record{}
-	for _, rec := range state.Records(typ) {
+	for _, stored := range state.Records(typ) {
+		rec := rules.Show(stored)
 		var shown bool
 		if typ == journal.TypeActivity {
 			_, shown = rec.Activity()
@@ -335,11 +380,14 @@ func setLocal(t *testing.T, loc *time.Location) {
 	})
 }
 
+// localTime reads a local wall time, or a date as the first instant of that day. A wall time that a
+// daylight saving change skips moves forward by the gap, so a day whose midnight is skipped starts
+// at the end of the gap; time.ParseInLocation would put it on the day before in some zones.
 func localTime(t *testing.T, layout, value string) time.Time {
 	t.Helper()
-	parsed, err := time.ParseInLocation(layout, value, time.Local)
+	parsed, err := time.Parse(layout, value)
 	require.NoError(t, err)
-	return parsed
+	return timeutil.WallTime(parsed.Year(), parsed.Month(), parsed.Day(), parsed.Hour(), parsed.Minute(), time.Local)
 }
 
 func parseHLC(t *testing.T, s string) journal.HLC {

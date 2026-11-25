@@ -84,7 +84,7 @@ func (r Repeat) Validate(due time.Time) error {
 	if r.Week != WeekLast && (r.Week < 0 || r.Week > maxWeekOfMonth) {
 		return errors.Errorf("invalid week of month %d", r.Week)
 	}
-	if r.Until != nil && dayStart(*r.Until).Before(dayStart(due)) {
+	if r.Until != nil && localDate(*r.Until).Before(localDate(due)) {
 		return errors.New("the repeat cannot end before the first occurrence")
 	}
 	return nil
@@ -292,12 +292,17 @@ func weekdayToken(wd time.Weekday) string {
 
 // WeeklyDays returns the weekdays a weekly reminder falls on, Monday first.
 func (r Reminder) WeeklyDays() []time.Weekday {
+	return r.weeklyDays(localDate(r.Due))
+}
+
+// weeklyDays returns the weekdays a weekly reminder whose first day is first falls on, Monday first.
+func (r Reminder) weeklyDays(first time.Time) []time.Weekday {
 	if len(r.Repeat.Weekdays) > 0 {
 		days := slices.Clone(r.Repeat.Weekdays)
 		sortWeekdays(days)
 		return days
 	}
-	return []time.Weekday{r.firstDay().Weekday()}
+	return []time.Weekday{first.Weekday()}
 }
 
 // firstDay is the start of the day the reminder was first due.
@@ -305,47 +310,54 @@ func (r Reminder) firstDay() time.Time {
 	return dayStart(r.Due)
 }
 
-// dueOn returns the occurrence time on day.
-func (r Reminder) dueOn(day time.Time) time.Time {
+// dueOn returns the occurrence time on date, a calendar date from localDate.
+func (r Reminder) dueOn(date time.Time) time.Time {
 	if r.AllDay {
-		return day
+		return startOf(date)
 	}
 	clock := r.Due.In(time.Local)
-	return timeutil.WallTime(day.Year(), day.Month(), day.Day(), clock.Hour(), clock.Minute(), time.Local)
+	return timeutil.WallTime(date.Year(), date.Month(), date.Day(), clock.Hour(), clock.Minute(), time.Local)
 }
 
-// eachOccurrence calls fn with the due time of every occurrence on a day before limit, in order,
-// including skipped ones, until fn returns false.
+// eachOccurrence calls fn with the due time of every occurrence on a day that starts before limit,
+// in order, including skipped ones, until fn returns false. It steps through calendar dates, so a
+// day whose midnight a daylight saving change skips is still its own day.
 func (r Reminder) eachOccurrence(limit time.Time, fn func(due time.Time) bool) {
-	first := r.firstDay()
-	var until time.Time
-	if r.Repeat.Until != nil {
-		until = dayStart(*r.Repeat.Until)
+	first := localDate(r.Due)
+	last := localDate(limit)
+	if !startOf(last).Before(limit) {
+		last = last.AddDate(0, 0, -1)
 	}
+	if r.Repeat.Until != nil {
+		if until := localDate(*r.Repeat.Until); until.Before(last) {
+			last = until
+		}
+	}
+	weekdays := r.weeklyDays(first)
 
 	count := 0
 	for offset := 0; offset <= maxOccurrenceScanDays; offset++ {
-		day := time.Date(first.Year(), first.Month(), first.Day()+offset, 0, 0, 0, 0, time.Local)
-		if !day.Before(limit) || (!until.IsZero() && day.After(until)) {
+		date := first.AddDate(0, 0, offset)
+		if date.After(last) {
 			return
 		}
-		if !r.fallsOn(day, offset) {
+		if !r.fallsOn(date, first, weekdays, offset) {
 			continue
 		}
 		count++
 		if r.Repeat.Count > 0 && count > r.Repeat.Count {
 			return
 		}
-		if !fn(r.dueOn(day)) || !r.IsRepeating() {
+		if !fn(r.dueOn(date)) || !r.IsRepeating() {
 			return
 		}
 	}
 }
 
-// fallsOn reports whether an occurrence falls on day, offset days after the first one.
-func (r Reminder) fallsOn(day time.Time, offset int) bool {
+// fallsOn reports whether an occurrence falls on date, offset days after first; both are calendar
+// dates from localDate, and weekdays are those of a weekly reminder.
+func (r Reminder) fallsOn(date, first time.Time, weekdays []time.Weekday, offset int) bool {
 	rep := r.Repeat
-	first := r.firstDay()
 
 	switch rep.Freq {
 	case RepeatNone:
@@ -353,23 +365,24 @@ func (r Reminder) fallsOn(day time.Time, offset int) bool {
 	case RepeatDaily:
 		return offset%rep.every() == 0
 	case RepeatWeekdays:
-		return day.Weekday() != time.Saturday && day.Weekday() != time.Sunday
+		return date.Weekday() != time.Saturday && date.Weekday() != time.Sunday
 	case RepeatWeekly:
 		week := (offset + mondayIndex(first.Weekday())) / daysPerWeek
-		return week%rep.every() == 0 && slices.Contains(r.WeeklyDays(), day.Weekday())
+		return week%rep.every() == 0 && slices.Contains(weekdays, date.Weekday())
 	case RepeatMonthly:
-		months := (day.Year()-first.Year())*monthsPerYear + int(day.Month()) - int(first.Month())
-		return months%rep.every() == 0 && day.Day() == r.monthlyDay(day.Year(), day.Month())
+		months := (date.Year()-first.Year())*monthsPerYear + int(date.Month()) - int(first.Month())
+		return months%rep.every() == 0 && date.Day() == r.monthlyDay(date.Year(), date.Month(), first.Day())
 	case RepeatYearly:
-		years := day.Year() - first.Year()
-		return years%rep.every() == 0 && day.Month() == first.Month() &&
-			day.Day() == clampDay(day.Year(), day.Month(), first.Day())
+		years := date.Year() - first.Year()
+		return years%rep.every() == 0 && date.Month() == first.Month() &&
+			date.Day() == clampDay(date.Year(), date.Month(), first.Day())
 	}
 	return false
 }
 
-// monthlyDay returns the day a monthly reminder falls on in the given month, or 0 when it skips it.
-func (r Reminder) monthlyDay(year int, month time.Month) int {
+// monthlyDay returns the day a monthly reminder falls on in the given month, or 0 when it skips it;
+// firstDay is the day of the month of its first day.
+func (r Reminder) monthlyDay(year int, month time.Month, firstDay int) int {
 	rep := r.Repeat
 	if rep.Week != 0 {
 		return nthWeekday(year, month, rep.Week, rep.Weekday)
@@ -377,7 +390,7 @@ func (r Reminder) monthlyDay(year int, month time.Month) int {
 
 	switch rep.MonthDay {
 	case 0:
-		return clampDay(year, month, r.firstDay().Day())
+		return clampDay(year, month, firstDay)
 	case MonthDayLast:
 		return daysIn(year, month)
 	}
@@ -388,11 +401,11 @@ func (r Reminder) monthlyDay(year int, month time.Month) int {
 func nthWeekday(year int, month time.Month, n int, wd time.Weekday) int {
 	last := daysIn(year, month)
 	if n == WeekLast {
-		lastWeekday := time.Date(year, month, last, 0, 0, 0, 0, time.Local).Weekday()
+		lastWeekday := time.Date(year, month, last, 0, 0, 0, 0, time.UTC).Weekday()
 		return last - (int(lastWeekday)-int(wd)+daysPerWeek)%daysPerWeek
 	}
 
-	firstWeekday := time.Date(year, month, 1, 0, 0, 0, 0, time.Local).Weekday()
+	firstWeekday := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Weekday()
 	day := 1 + (int(wd)-int(firstWeekday)+daysPerWeek)%daysPerWeek + (n-1)*daysPerWeek
 	if day > last {
 		return 0
@@ -401,7 +414,7 @@ func nthWeekday(year int, month time.Month, n int, wd time.Weekday) int {
 }
 
 func daysIn(year int, month time.Month) int {
-	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 }
 
 // clampDay keeps day within the month, so the 31st falls on the 30th in a 30-day month.
@@ -409,7 +422,29 @@ func clampDay(year int, month time.Month, day int) int {
 	return min(day, daysIn(year, month))
 }
 
-func dayStart(t time.Time) time.Time {
+// localDate returns the calendar date of t in local time, as midnight UTC of that date: it carries
+// only a year, a month, a day and a weekday. Rules count days in such dates rather than in local
+// midnights. Where a daylight saving change skips midnight (America/Santiago, America/Havana,
+// Africa/Cairo, Asia/Beirut) the day starts at 01:00, and time.Date at 00:00 lands on the evening
+// before in the zones west of UTC. startOf turns a date into an instant.
+func localDate(t time.Time) time.Time {
 	local := t.In(time.Local)
-	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.Local)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// startOf returns the first instant of a calendar date in local time: its midnight, or the end of the
+// gap when a daylight saving change skips midnight.
+func startOf(date time.Time) time.Time {
+	return timeutil.WallTime(date.Year(), date.Month(), date.Day(), 0, 0, time.Local)
+}
+
+// dayStart returns the first instant of t's day in local time.
+func dayStart(t time.Time) time.Time {
+	return startOf(localDate(t))
+}
+
+// nextDayStart returns the first instant of the day after t's day in local time. dayStart(t).AddDate(0, 0, 1)
+// is off by the gap when a daylight saving change skips midnight on either day.
+func nextDayStart(t time.Time) time.Time {
+	return startOf(localDate(t).AddDate(0, 0, 1))
 }

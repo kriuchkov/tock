@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
 func day(year int, month time.Month, d int) time.Time {
@@ -242,4 +243,156 @@ func TestFirstDueMovesToTheFirstMatchingDay(t *testing.T) {
 func TestWeeklyDaysDefaultsToTheFirstDay(t *testing.T) {
 	reminder := models.Reminder{Due: day(2026, time.November, 19), Repeat: models.Repeat{Freq: models.RepeatWeekly}}
 	assert.Equal(t, []time.Weekday{time.Thursday}, reminder.WeeklyDays())
+}
+
+// inZone runs the rest of the test with time.Local set to zone: reminders count days in time.Local.
+func inZone(t *testing.T, zone string) *time.Location {
+	t.Helper()
+	loc, err := time.LoadLocation(zone)
+	if err != nil {
+		t.Skipf("timezone data unavailable: %v", err)
+	}
+	saved := time.Local
+	time.Local = loc //nolint:reassign // the models read the zone from time.Local
+	t.Cleanup(func() {
+		time.Local = saved //nolint:reassign // restores the zone set above
+	})
+	return loc
+}
+
+// wall is a local wall time; one that a daylight saving change skips moves forward by the gap.
+func wall(year int, month time.Month, d, hour, minute int) time.Time {
+	return timeutil.WallTime(year, month, d, hour, minute, time.Local)
+}
+
+// In these zones the clocks jump from 00:00 to 01:00, so the day starts at 01:00. time.Date at
+// midnight lands on 23:00 the evening before in the zones west of UTC.
+func TestOccurrencesWhereDaylightSavingSkipsMidnight(t *testing.T) {
+	tests := []struct {
+		name     string
+		zone     string
+		reminder func() models.Reminder
+		from, to [3]int
+		want     []string
+	}{
+		{
+			name: "daily",
+			zone: "America/Santiago",
+			reminder: func() models.Reminder {
+				return models.Reminder{Due: wall(2026, time.September, 4, 0, 30), Repeat: models.Repeat{Freq: models.RepeatDaily}}
+			},
+			from: [3]int{2026, 9, 4}, to: [3]int{2026, 9, 9},
+			want: []string{
+				"2026-09-04T00:30:00-04:00", "2026-09-05T00:30:00-04:00", "2026-09-06T01:30:00-03:00",
+				"2026-09-07T00:30:00-03:00", "2026-09-08T00:30:00-03:00",
+			},
+		},
+		{
+			name: "weekly from the day of the change",
+			zone: "America/Havana",
+			reminder: func() models.Reminder {
+				return models.Reminder{Due: wall(2026, time.March, 8, 10, 0), Repeat: models.Repeat{Freq: models.RepeatWeekly}}
+			},
+			from: [3]int{2026, 3, 1}, to: [3]int{2026, 3, 23},
+			want: []string{"2026-03-08T10:00:00-04:00", "2026-03-15T10:00:00-04:00", "2026-03-22T10:00:00-04:00"},
+		},
+		{
+			name: "monthly on the day of the change",
+			zone: "America/Santiago",
+			reminder: func() models.Reminder {
+				return models.Reminder{Due: wall(2026, time.August, 6, 18, 0), Repeat: models.Repeat{Freq: models.RepeatMonthly}}
+			},
+			from: [3]int{2026, 8, 1}, to: [3]int{2026, 11, 1},
+			want: []string{"2026-08-06T18:00:00-04:00", "2026-09-06T18:00:00-03:00", "2026-10-06T18:00:00-03:00"},
+		},
+		{
+			name: "all day, first due on the day of the change, until a date",
+			zone: "America/Santiago",
+			reminder: func() models.Reminder {
+				until := wall(2026, time.September, 13, 0, 0)
+				return models.Reminder{
+					Due:    wall(2026, time.September, 6, 0, 0),
+					AllDay: true,
+					Repeat: models.Repeat{Freq: models.RepeatWeekly, Weekdays: []time.Weekday{time.Saturday, time.Sunday}, Until: &until},
+				}
+			},
+			from: [3]int{2026, 9, 1}, to: [3]int{2026, 9, 20},
+			want: []string{"2026-09-06T01:00:00-03:00", "2026-09-12T00:00:00-03:00", "2026-09-13T00:00:00-03:00"},
+		},
+		{
+			name: "monthly on the last Friday",
+			zone: "Africa/Cairo",
+			reminder: func() models.Reminder {
+				return models.Reminder{
+					Due:    wall(2026, time.March, 27, 0, 0),
+					AllDay: true,
+					Repeat: models.Repeat{Freq: models.RepeatMonthly, Week: models.WeekLast, Weekday: time.Friday},
+				}
+			},
+			from: [3]int{2026, 3, 1}, to: [3]int{2026, 6, 1},
+			want: []string{"2026-03-27T00:00:00+02:00", "2026-04-24T01:00:00+03:00", "2026-05-29T00:00:00+03:00"},
+		},
+		{
+			name: "all day on the day of the change",
+			zone: "Asia/Beirut",
+			reminder: func() models.Reminder {
+				return models.Reminder{Due: wall(2026, time.March, 28, 0, 0), AllDay: true, Repeat: models.Repeat{Freq: models.RepeatDaily}}
+			},
+			from: [3]int{2026, 3, 28}, to: [3]int{2026, 3, 31},
+			want: []string{"2026-03-28T00:00:00+02:00", "2026-03-29T01:00:00+03:00", "2026-03-30T00:00:00+03:00"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.zone+" "+tt.name, func(t *testing.T) {
+			inZone(t, tt.zone)
+			from := wall(tt.from[0], time.Month(tt.from[1]), tt.from[2], 0, 0)
+			to := wall(tt.to[0], time.Month(tt.to[1]), tt.to[2], 0, 0)
+			var got []string
+			for _, occurrence := range tt.reminder().Occurrences(from, to, from) {
+				got = append(got, occurrence.Due.Format(time.RFC3339))
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFirstDueWhereDaylightSavingSkipsMidnight(t *testing.T) {
+	inZone(t, "America/Santiago")
+	reminder := models.Reminder{
+		Due:    wall(2026, time.September, 6, 9, 0), // a Sunday
+		Repeat: models.Repeat{Freq: models.RepeatWeekly},
+	}
+	assert.Equal(t, []time.Weekday{time.Sunday}, reminder.WeeklyDays())
+	first, ok := reminder.FirstDue()
+	require.True(t, ok)
+	assert.Equal(t, "2026-09-06T09:00:00-03:00", first.Format(time.RFC3339))
+
+	until := wall(2026, time.September, 6, 0, 0)
+	require.NoError(t, models.Repeat{Freq: models.RepeatDaily, Until: &until}.Validate(reminder.Due))
+}
+
+// The day before a midnight gap ends when the next one starts, at 01:00 after the jump: not an hour
+// early, which is where midnight would be. A day with no occurrence of its own does not borrow the
+// next day's.
+func TestDayEndsWhereTheNextDayStartsOverAMidnightGap(t *testing.T) {
+	inZone(t, "America/Santiago")
+	weekdays := models.Reminder{
+		Due:    wall(2026, time.September, 4, 0, 0),
+		AllDay: true,
+		Repeat: models.Repeat{Freq: models.RepeatWeekdays},
+	}
+	daily := weekdays
+	daily.Repeat = models.Repeat{Freq: models.RepeatDaily}
+
+	saturday, ok := daily.OccurrenceOn(wall(2026, time.September, 5, 12, 0), wall(2026, time.September, 5, 12, 0))
+	require.True(t, ok)
+	assert.Equal(t, "2026-09-06T01:00:00-03:00", saturday.DueBy().Format(time.RFC3339), "Saturday ends when Sunday starts")
+	assert.Equal(t, models.ReminderPending, saturday.Status(wall(2026, time.September, 5, 23, 30)))
+
+	sunday, ok := daily.OccurrenceOn(wall(2026, time.September, 6, 12, 0), wall(2026, time.September, 6, 12, 0))
+	require.True(t, ok)
+	assert.Equal(t, "2026-09-07T00:00:00-03:00", sunday.DueBy().Format(time.RFC3339), "Sunday ends at Monday's midnight")
+
+	_, ok = weekdays.OccurrenceOn(wall(2026, time.September, 6, 12, 0), wall(2026, time.September, 6, 12, 0))
+	assert.False(t, ok, "Sunday has no weekday occurrence, and Monday's is not Sunday's")
 }

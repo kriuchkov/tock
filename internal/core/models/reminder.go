@@ -189,7 +189,7 @@ func (o ReminderOccurrence) PastDue(now time.Time) bool {
 // scheduledBy is when an occurrence due at due becomes overdue, ignoring any snooze.
 func (r Reminder) scheduledBy(due time.Time) time.Time {
 	if r.AllDay {
-		return dayStart(due).AddDate(0, 0, 1)
+		return nextDayStart(due)
 	}
 	return due
 }

@@ -4,7 +4,7 @@ import "slices"
 
 // repeatVectors returns the repeat rule vectors.
 func repeatVectors() []repeatVector {
-	return slices.Concat(statusVectors(), ruleVectors(), dayVectors())
+	return slices.Concat(statusVectors(), ruleVectors(), dayVectors(), midnightGapVectors())
 }
 
 func statusVectors() []repeatVector {
@@ -174,6 +174,82 @@ func dayVectors() []repeatVector {
 			Reminder: fields{"title": "Renew the passport", "due": "2026-11-20", "all_day": false, "every": "weekly"},
 			From:     "2026-11-16", To: "2026-12-01", Now: "2026-11-21T00:00",
 			Expect: []occurrence{{"2026-11-20", "overdue"}, {"2026-11-27", statusPending}},
+		},
+	}
+}
+
+// midnightGapVectors cross a daylight saving change that skips midnight: the day starts at 01:00.
+// Every one of them is still its own day, with its own weekday and day of the month.
+func midnightGapVectors() []repeatVector {
+	return []repeatVector{
+		{
+			File: "dst-midnight-daily",
+			Name: "where the clocks jump from 00:00 to 01:00, a daily reminder at 00:30 falls on that day at 01:30, " +
+				"and the days around it keep theirs",
+			TZ:       "America/Santiago",
+			Reminder: fields{"title": "Take the pills", "due": "2026-09-04T00:30", "all_day": false, "every": "daily"},
+			From:     "2026-09-04", To: "2026-09-09", Now: "2026-09-05T12:00",
+			Expect: []occurrence{
+				{"2026-09-04T00:30", "missed"}, {"2026-09-05T00:30", "overdue"}, {"2026-09-06T01:30", statusPending},
+				{"2026-09-07T00:30", statusPending}, {"2026-09-08T00:30", statusPending},
+			},
+		},
+		{
+			File:     "dst-midnight-weekly",
+			Name:     "a weekly reminder first due on a day whose midnight is skipped falls on that day's weekday",
+			TZ:       "America/Havana",
+			Reminder: fields{"title": "Call home", "due": "2026-03-08T10:00", "all_day": false, "every": "weekly"},
+			From:     "2026-03-01", To: "2026-03-30", Now: "2026-03-01T00:00",
+			Expect: pending("2026-03-08T10:00", "2026-03-15T10:00", "2026-03-22T10:00", "2026-03-29T10:00"),
+		},
+		{
+			File:     "dst-midnight-monthly",
+			Name:     "a monthly reminder falls on its day of the month when that day's midnight is skipped",
+			TZ:       "America/Santiago",
+			Reminder: fields{"title": "Pay the gym", "due": "2026-08-06T18:00", "all_day": false, "every": "monthly"},
+			From:     "2026-08-01", To: "2026-11-01", Now: "2026-08-01T00:00",
+			Expect: pending("2026-08-06T18:00", "2026-09-06T18:00", "2026-10-06T18:00"),
+		},
+		{
+			File:     "dst-midnight-monthly-weekday",
+			Name:     "monthly on the last Friday, which is the day the clocks skip midnight in April",
+			TZ:       "Africa/Cairo",
+			Reminder: fields{"title": "Team lunch", "due": "2026-03-27T13:00", "all_day": false, "every": "monthly:last-fri"},
+			From:     "2026-03-01", To: "2026-06-01", Now: "2026-03-01T00:00",
+			Expect: pending("2026-03-27T13:00", "2026-04-24T13:00", "2026-05-29T13:00"),
+		},
+		{
+			File: "dst-midnight-all-day",
+			Name: "an all-day reminder first due on a day whose midnight is skipped starts on that day, " +
+				"and is overdue once that day has ended",
+			TZ: "America/Santiago",
+			Reminder: fields{
+				"title": "Renew the permit", "due": "2026-09-06", "all_day": true, "every": "weekly:sat,sun", "until": "2026-09-13",
+			},
+			From: "2026-09-01", To: "2026-09-20", Now: "2026-09-07T12:00",
+			Expect: []occurrence{{"2026-09-06", "overdue"}, {"2026-09-12", statusPending}, {"2026-09-13", statusPending}},
+		},
+		{
+			File: "dst-midnight-day-end",
+			Name: "the day before a skipped midnight ends when the next day starts at 01:00, " +
+				"so late that evening its all-day occurrence is not overdue yet",
+			TZ:       "America/Santiago",
+			Reminder: fields{"title": "Log the hours", "due": "2026-09-04", "all_day": true, "every": "daily"},
+			From:     "2026-09-04", To: "2026-09-08", Now: "2026-09-05T23:30",
+			Expect: []occurrence{
+				{"2026-09-04", "overdue"}, {"2026-09-05", statusPending}, {"2026-09-06", statusPending}, {"2026-09-07", statusPending},
+			},
+		},
+		{
+			File:     "dst-midnight-all-day-weekly",
+			Name:     "all-day on Sundays and Mondays across a skipped midnight on a Sunday",
+			TZ:       "Asia/Beirut",
+			Reminder: fields{"title": "Water the garden", "due": "2026-03-22", "all_day": true, "every": "weekly:mon,sun"},
+			From:     "2026-03-22", To: "2026-04-07", Now: "2026-03-29T12:00",
+			Expect: []occurrence{
+				{"2026-03-22", "missed"}, {"2026-03-23", "overdue"}, {"2026-03-29", statusPending},
+				{"2026-03-30", statusPending}, {"2026-04-05", statusPending}, {"2026-04-06", statusPending},
+			},
 		},
 	}
 }

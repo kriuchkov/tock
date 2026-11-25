@@ -16,9 +16,9 @@ func mergeVectors() []mergeVector {
 		mergeHiddenRecords(),
 		mergeInvalidLines(),
 		mergeTags(),
-		mergeOneRunning(),
 		mergeReminders(),
 	}
+	vectors = append(vectors, stopVectors()...)
 	for i := range vectors {
 		if vectors[i].Expect.Activities == nil {
 			vectors[i].Expect.Activities = []record{}
@@ -250,42 +250,6 @@ func mergeTags() mergeVector {
 				"start": "2026-11-18T09:00:00+01:00", "end": "2026-11-18T11:00:00+01:00", "project": "Research",
 				"description": "Paper", "notes": "", "tags/deep-work": false, "tags/client/acme": true, "tags/review": true,
 			}),
-		}},
-	}
-}
-
-func mergeOneRunning() mergeVector {
-	running := func(start, project, description string) fields {
-		return fields{"start": start, "end": nil, "project": project, "description": description, "notes": ""}
-	}
-	standUp := fields{
-		"start":       "2026-11-18T06:00:00Z",
-		"end":         "2026-11-18T06:30:00Z",
-		"project":     "Ops",
-		"description": "Stand-up",
-		"notes":       "",
-	}
-	api := running("2026-11-18T10:00:00+03:00", "Backend", "API")
-	release := running("2026-11-18T08:30:00+01:00", "Mobile", "Release")
-	notes := running("2026-11-18T07:30:00Z", "Mobile", "Release notes")
-	return mergeVector{
-		File: "one-running",
-		Name: "of the activities started on several devices, each but the last stops at the start of the next one",
-		Journals: map[string][]json.RawMessage{
-			devA: {
-				change(devA, at(0, 0), typeActivity, act(5), standUp),
-				change(devA, at(0, 1), typeActivity, act(1), api),
-				change(devA, at(0, 2), typeActivity, act(4), running("2026-11-18T07:45:00Z", "Ops", "Started by mistake")),
-				change(devA, at(1, 0), typeActivity, act(4), fields{"deleted": true}),
-			},
-			devB: {change(devB, at(30, 0), typeActivity, act(2), release)},
-			devC: {change(devC, at(31, 0), typeActivity, act(3), notes)},
-		},
-		Expect: mergeExpect{Activities: []record{
-			merged(act(1), with(api, fields{"end": "2026-11-18T08:30:00+01:00"})),
-			merged(act(2), with(release, fields{"end": "2026-11-18T07:30:00Z"})),
-			merged(act(3), notes),
-			merged(act(5), standUp),
 		}},
 	}
 }

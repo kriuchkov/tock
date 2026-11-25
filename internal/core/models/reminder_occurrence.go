@@ -46,8 +46,7 @@ func (r Reminder) FirstDue() (time.Time, bool) {
 
 // OccurrenceOn returns the occurrence falling on day, if any.
 func (r Reminder) OccurrenceOn(day, now time.Time) (ReminderOccurrence, bool) {
-	start := dayStart(day)
-	occurrences := r.Occurrences(start, start.AddDate(0, 0, 1), now)
+	occurrences := r.Occurrences(dayStart(day), nextDayStart(day), now)
 	if len(occurrences) == 0 {
 		return ReminderOccurrence{}, false
 	}
@@ -81,7 +80,7 @@ func (r Reminder) NextAfter(t, now time.Time) (ReminderOccurrence, bool) {
 // today on that is not done.
 func (r Reminder) Current(now time.Time) (ReminderOccurrence, bool) {
 	today := dayStart(now)
-	tomorrow := today.AddDate(0, 0, 1)
+	tomorrow := nextDayStart(now)
 
 	var upcoming *ReminderOccurrence
 	for _, occurrence := range r.Occurrences(r.firstDay(), tomorrow, now) {
@@ -122,7 +121,7 @@ func (r Reminder) Last(now time.Time) (ReminderOccurrence, bool) {
 // at or before now (an all-day one at the end of its day), or the zero time when none has.
 func (r Reminder) latestDue(now time.Time) time.Time {
 	var latest time.Time
-	r.eachOccurrence(dayStart(now).AddDate(0, 0, 1), func(due time.Time) bool {
+	r.eachOccurrence(nextDayStart(now), func(due time.Time) bool {
 		if r.scheduledBy(due).After(now) {
 			return false
 		}
