@@ -58,20 +58,27 @@ func (r *repository) Delete(_ context.Context, activityID string, date time.Time
 	return nil
 }
 
-func (r *repository) Get(_ context.Context, activityID string, date time.Time) (string, []string, error) {
+func (r *repository) Get(ctx context.Context, activityID string, date time.Time) (string, []string, error) {
+	notes, tags, _, err := r.Lookup(ctx, activityID, date)
+	return notes, tags, err
+}
+
+// Lookup returns the notes and tags of an activity, and whether it has a notes file: cleared notes
+// leave an empty one.
+func (r *repository) Lookup(_ context.Context, activityID string, date time.Time) (string, []string, bool, error) {
 	f, err := os.Open(r.notePath(activityID, date))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil, nil
+			return "", nil, false, nil
 		}
-		return "", nil, errors.Wrap(err, "open file")
+		return "", nil, false, errors.Wrap(err, "open file")
 	}
 
 	defer f.Close()
 
 	content, err := io.ReadAll(f)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "read file")
+		return "", nil, false, errors.Wrap(err, "read file")
 	}
 
 	sContent := string(content)
@@ -89,5 +96,5 @@ func (r *repository) Get(_ context.Context, activityID string, date time.Time) (
 			notes = parts[2]
 		}
 	}
-	return strings.TrimSpace(notes), tags, nil
+	return strings.TrimSpace(notes), tags, true, nil
 }

@@ -2,9 +2,11 @@ package timewarrior
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,6 +26,9 @@ import (
 
 const (
 	timeLayout = "20060102T150405Z"
+	// monthFileLayout and monthFileSuffix name a data file, YYYY-MM.data.
+	monthFileLayout = "2006-01"
+	monthFileSuffix = ".data"
 )
 
 type twInterval struct {
@@ -42,7 +47,7 @@ func NewRepository(dataDir string) ports.ActivityRepository {
 }
 
 func (r *repository) Find(_ context.Context, filter models.ActivityFilter) ([]models.Activity, error) {
-	start, end := determineDateRange(filter)
+	start, end := r.dateRange(filter)
 	var activities []models.Activity
 
 	// Iterate over months from start to end
@@ -65,6 +70,34 @@ func (r *repository) Find(_ context.Context, filter models.ActivityFilter) ([]mo
 	return activities, nil
 }
 
+// dateRange is the months Find reads: those of the filter's bounds, widened where the filter has no
+// bound to the earliest and the latest month file in the data directory, so an activity filed in any
+// month, such as one whose year was mistyped, is found.
+func (r *repository) dateRange(filter models.ActivityFilter) (time.Time, time.Time) {
+	start, end := determineDateRange(filter)
+	if filter.FromDate != nil && filter.ToDate != nil {
+		return start, end
+	}
+	entries, err := os.ReadDir(r.dataDir)
+	if err != nil {
+		return start, end
+	}
+	for _, entry := range entries {
+		name, found := strings.CutSuffix(entry.Name(), monthFileSuffix)
+		month, parseErr := time.Parse(monthFileLayout, name)
+		if !found || parseErr != nil || entry.IsDir() {
+			continue
+		}
+		if filter.FromDate == nil && month.Before(start) {
+			start = month
+		}
+		if filter.ToDate == nil && month.After(end) {
+			end = month
+		}
+	}
+	return start, end
+}
+
 func determineDateRange(filter models.ActivityFilter) (time.Time, time.Time) {
 	start := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	if filter.FromDate != nil {
@@ -72,7 +105,9 @@ func determineDateRange(filter models.ActivityFilter) (time.Time, time.Time) {
 	}
 	end := time.Now().AddDate(1, 0, 0) // Future
 	if filter.ToDate != nil {
-		end = *filter.ToDate
+		// A day either side: tock files an interval under the month of its local start, which may be
+		// the month after or before that of its UTC start.
+		end = filter.ToDate.AddDate(0, 0, 1)
 	}
 	return start, end
 }
@@ -151,74 +186,290 @@ func (r *repository) FindLast(_ context.Context) (*models.Activity, error) {
 	return lastActivity, nil
 }
 
+// Save files activity under the month of its start in the zone the Mac is in now (TimeWarrior stores
+// data by start time month). An interval with the same start is the activity saved before: Save
+// replaces it there, or moves it there from the file of another month it was filed under in another
+// zone (see holdingPaths), and removes it from every other file that holds it, as one a move across
+// months left in both files when it stopped between the two renames.
 func (r *repository) Save(_ context.Context, activity models.Activity) error {
-	// TimeWarrior stores data by start time month
-	filePath := r.getMonthFilePath(activity.StartTime)
-	return fileio.Update(filePath, func() error { return r.save(filePath, activity) })
-}
-
-func (r *repository) save(filePath string, activity models.Activity) error {
-	// Read existing to check if we are updating
-	intervals, err := r.readIntervalsFromFile(filePath)
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "read intervals")
-	}
-
 	newInterval := toTWInterval(activity)
+	return r.updateHeld(activity.StartTime, func(paths []string, held map[string][]twInterval) ([]string, error) {
+		target := paths[0]
+		intervals := held[target]
 
-	// Check if we are updating an existing interval (e.g. stopping it)
-	updated := false
-	for i, v := range slices.Backward(intervals) {
-		if v.Start == newInterval.Start {
-			intervals[i] = newInterval
-			updated = true
-			break
+		// Check if we are updating an existing interval (e.g. stopping it)
+		updated := false
+		for i, v := range slices.Backward(intervals) {
+			if v.Start == newInterval.Start {
+				intervals[i] = newInterval
+				updated = true
+				break
+			}
 		}
-	}
 
-	if !updated {
-		intervals = append(intervals, newInterval)
-	}
+		if !updated {
+			intervals = append(intervals, newInterval)
+		}
+		// The file that gains the interval is written before those that lose it, as in Apply.
+		changed := []string{target}
+		for _, path := range paths[1:] {
+			if dropStart(held, path, newInterval.Start) {
+				changed = append(changed, path)
+			}
+		}
 
-	// Sort intervals by Start time to ensure chronological order
-	sort.Slice(intervals, func(i, j int) bool {
-		return intervals[i].Start < intervals[j].Start
+		// Sort intervals by Start time to ensure chronological order
+		sort.Slice(intervals, func(i, j int) bool {
+			return intervals[i].Start < intervals[j].Start
+		})
+		held[target] = intervals
+		return changed, nil
 	})
-
-	return r.writeIntervalsToFile(filePath, intervals)
 }
 
-func (r *repository) Remove(_ context.Context, activity models.Activity) error {
-	filePath := r.getMonthFilePath(activity.StartTime)
-	return fileio.Update(filePath, func() error { return r.remove(filePath, activity) })
-}
-
-func (r *repository) remove(filePath string, activity models.Activity) error {
-	intervals, err := r.readIntervalsFromFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+// updateHeld runs change on the intervals of the month files an interval starting at start may be filed
+// in (holdingPaths), holding the locks of them all, and writes the files change returns, in that order.
+// held has no entry for a file that does not exist.
+func (r *repository) updateHeld(
+	start time.Time,
+	change func(paths []string, held map[string][]twInterval) ([]string, error),
+) error {
+	paths := r.holdingPaths(start)
+	return lockAll(slices.Sorted(slices.Values(paths)), func() error {
+		held := make(map[string][]twInterval, len(paths))
+		for _, path := range paths {
+			intervals, err := r.readIntervalsFromFile(path)
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return errors.Wrap(err, "read intervals")
+			}
+			held[path] = intervals
 		}
-		return errors.Wrap(err, "read intervals")
+		changed, err := change(paths, held)
+		if err != nil {
+			return err
+		}
+		files := make([]fileio.File, 0, len(changed))
+		for _, path := range changed {
+			files = append(files, fileio.File{Path: path, Data: formatIntervals(held[path])})
+		}
+		return fileio.WriteAtomicAll(files)
+	})
+}
+
+var _ ports.ActivityBatchWriter = (*repository)(nil)
+
+// monthWrite is a write of Apply to one month file: it replaces or removes old, or adds an interval.
+type monthWrite struct {
+	old *models.Activity
+	new *twInterval
+}
+
+// Apply applies writes in order, reading and writing each month file once; see
+// ports.ActivityBatchWriter. An interval matches Old when it reads back as Old. tock files an interval
+// under the month of its local start in the zone the Mac was in when it saved it, so Apply looks for Old
+// in that month's file in the zone it is in now, then in the files of the months a day before and after
+// its start. A write that moves an activity to another month file removes it from one and adds it to the
+// other. It is all or nothing: it locks every month file it may touch, in name order, reads them all and
+// checks every Old before it writes any, and returns coreErrors.ErrActivityNotFound, writing nothing,
+// when an Old is not there (timew changed the file meanwhile). The files are then written in one pass of
+// temporary files and renames (fileio.WriteAtomicAll), those that gain intervals before those that lose
+// some, so a crash between two renames leaves an activity moved across months in both files, never in
+// neither.
+func (r *repository) Apply(_ context.Context, writes []ports.ActivityWrite) error {
+	paths := r.batchPaths(writes)
+	return lockAll(paths, func() error {
+		held := make(map[string][]twInterval, len(paths))
+		for _, path := range paths {
+			intervals, err := r.readIntervalsFromFile(path)
+			if err != nil && !os.IsNotExist(err) {
+				return errors.Wrap(err, "read intervals")
+			}
+			held[path] = intervals
+		}
+		byFile, err := r.applyWrites(held, writes)
+		if err != nil {
+			return err
+		}
+		files := make([]fileio.File, 0, len(byFile))
+		for _, path := range slices.Sorted(maps.Keys(byFile)) {
+			intervals := held[path]
+			sort.SliceStable(intervals, func(i, j int) bool { return intervals[i].Start < intervals[j].Start })
+			files = append(files, fileio.File{Path: path, Data: formatIntervals(intervals)})
+		}
+		slices.SortStableFunc(files, func(a, b fileio.File) int {
+			return cmp.Compare(writeRank(byFile[a.Path]), writeRank(byFile[b.Path]))
+		})
+		return fileio.WriteAtomicAll(files)
+	})
+}
+
+// batchPaths returns, in name order, the month files a batch may touch: the file of each New, and
+// every file an Old may be filed in.
+func (r *repository) batchPaths(writes []ports.ActivityWrite) []string {
+	set := make(map[string]bool)
+	for _, w := range writes {
+		if w.New != nil {
+			set[r.getMonthFilePath(w.New.StartTime)] = true
+		}
+		if w.Old != nil {
+			for _, path := range r.holdingPaths(w.Old.StartTime) {
+				set[path] = true
+			}
+		}
 	}
+	return slices.Sorted(maps.Keys(set))
+}
 
-	targetStart := toTWInterval(activity).Start
-
-	var newIntervals []twInterval
-	removed := false
-	for _, iv := range intervals {
-		if iv.Start == targetStart {
-			removed = true
+// holdingPaths returns the month files an interval starting at start may be filed in: that of its
+// month in the zone the Mac is in now, then, when they exist, those of the months a day before and after
+// it, which cover its month in any other zone.
+func (r *repository) holdingPaths(start time.Time) []string {
+	paths := []string{r.getMonthFilePath(start)}
+	for _, t := range []time.Time{start.UTC().AddDate(0, 0, -1), start.UTC(), start.UTC().AddDate(0, 0, 1)} {
+		path := r.getMonthFilePath(t)
+		if slices.Contains(paths, path) {
 			continue
 		}
-		newIntervals = append(newIntervals, iv)
+		if _, err := os.Stat(path); err == nil {
+			paths = append(paths, path)
+		}
 	}
+	return paths
+}
 
-	if !removed {
-		return errors.New("activity not found")
+// applyWrites applies writes in order to the intervals held of each month file, and returns the writes
+// each changed file takes, or an error when an interval a write addresses is not there.
+func (r *repository) applyWrites(held map[string][]twInterval, writes []ports.ActivityWrite) (map[string][]monthWrite, error) {
+	byFile := make(map[string][]monthWrite)
+	for _, w := range writes {
+		var (
+			iv      *twInterval
+			newPath string
+		)
+		if w.New != nil {
+			converted := toTWInterval(*w.New)
+			iv, newPath = &converted, r.getMonthFilePath(w.New.StartTime)
+		}
+		if w.Old != nil {
+			path, at := r.findHeld(held, *w.Old)
+			if at < 0 {
+				return nil, errors.Wrapf(coreErrors.ErrActivityNotFound, "the activity at %s changed", toTWInterval(*w.Old).Start)
+			}
+			if iv != nil && newPath == path {
+				held[path][at] = *iv
+				byFile[path] = append(byFile[path], monthWrite{old: w.Old, new: iv})
+				continue
+			}
+			held[path] = slices.Delete(held[path], at, at+1)
+			byFile[path] = append(byFile[path], monthWrite{old: w.Old})
+		}
+		if iv != nil {
+			held[newPath] = append(held[newPath], *iv)
+			byFile[newPath] = append(byFile[newPath], monthWrite{new: iv})
+		}
 	}
+	return byFile, nil
+}
 
-	return r.writeIntervalsToFile(filePath, newIntervals)
+// findHeld returns the month file that holds an interval reading back as old, and its index there, or
+// -1 when none does.
+func (r *repository) findHeld(held map[string][]twInterval, old models.Activity) (string, int) {
+	for _, path := range r.holdingPaths(old.StartTime) {
+		at := slices.IndexFunc(held[path], func(iv twInterval) bool {
+			a, parseErr := fromTWInterval(iv)
+			return parseErr == nil && sameInterval(a, old)
+		})
+		if at >= 0 {
+			return path, at
+		}
+	}
+	return "", -1
+}
+
+// lockAll runs fn while holding the locks of every path, taken in the order given.
+func lockAll(paths []string, fn func() error) error {
+	if len(paths) == 0 {
+		return fn()
+	}
+	return fileio.Update(paths[0], func() error { return lockAll(paths[1:], fn) })
+}
+
+// writeRank orders the month files of a batch for writing: those that lose no interval first, then
+// those that gain some and lose some, then those that only lose some.
+func writeRank(writes []monthWrite) int {
+	adds, drops := 0, 0
+	for _, w := range writes {
+		switch {
+		case w.old == nil:
+			adds++
+		case w.new == nil:
+			drops++
+		}
+	}
+	switch {
+	case drops == 0:
+		return 0
+	case adds > 0:
+		return 1
+	default:
+		return 2 //nolint:mnd // the last of three ranks
+	}
+}
+
+// sameInterval reports whether an interval read back as a is the activity b: the same start, end,
+// project and description.
+func sameInterval(a, b models.Activity) bool {
+	sameEnd := (a.EndTime == nil) == (b.EndTime == nil) && (a.EndTime == nil || a.EndTime.Equal(*b.EndTime))
+	return a.StartTime.Equal(b.StartTime) && sameEnd && a.Project == b.Project && a.Description == b.Description
+}
+
+// Normalize returns an activity as the data files give it back once saved: its times at the second,
+// and its project and description as an interval line keeps them. Notes, tags and the uid pass
+// through: the sync bridge keeps tags in the notes sidecar, which wins over the line.
+func Normalize(a models.Activity) models.Activity {
+	iv, err := parseIncLine(strings.TrimSpace(formatIncLine(toTWInterval(a))))
+	if err != nil {
+		return a
+	}
+	parsed, err := fromTWInterval(iv)
+	if err != nil {
+		return a
+	}
+	parsed.Notes, parsed.Tags, parsed.UID = a.Notes, a.Tags, a.UID
+	return parsed
+}
+
+// Remove removes the intervals that start where activity does from every month file they may be filed
+// under (see holdingPaths).
+func (r *repository) Remove(_ context.Context, activity models.Activity) error {
+	targetStart := toTWInterval(activity).Start
+	return r.updateHeld(activity.StartTime, func(paths []string, held map[string][]twInterval) ([]string, error) {
+		var changed []string
+		for _, path := range paths {
+			if dropStart(held, path, targetStart) {
+				changed = append(changed, path)
+			}
+		}
+		if _, exists := held[paths[0]]; len(changed) == 0 && exists {
+			return nil, errors.New("activity not found")
+		}
+		return changed, nil
+	})
+}
+
+// dropStart removes the intervals that start at start from those held of path, and reports whether
+// there were any.
+func dropStart(held map[string][]twInterval, path, start string) bool {
+	intervals := held[path]
+	kept := slices.DeleteFunc(slices.Clone(intervals), func(iv twInterval) bool { return iv.Start == start })
+	if len(kept) == len(intervals) {
+		return false
+	}
+	held[path] = kept
+	return true
 }
 
 func (r *repository) getMonthFilePath(t time.Time) string {
@@ -292,13 +543,14 @@ func (r *repository) readIntervalsFromFile(path string) ([]twInterval, error) {
 	return intervals, nil
 }
 
-func (r *repository) writeIntervalsToFile(path string, intervals []twInterval) error {
+// formatIntervals writes intervals as the lines of a data file.
+func formatIntervals(intervals []twInterval) []byte {
 	var sb strings.Builder
 	for _, iv := range intervals {
 		sb.WriteString(formatIncLine(iv))
 		sb.WriteByte('\n')
 	}
-	return fileio.WriteAtomic(path, []byte(sb.String()))
+	return []byte(sb.String())
 }
 
 func formatIncLine(iv twInterval) string {
@@ -333,10 +585,12 @@ func quoteToken(s string) string {
 	return s
 }
 
+// toTWInterval converts an activity to an interval. A line break in the project, a tag or the
+// description becomes a space: it would split the interval's line in two.
 func toTWInterval(a models.Activity) twInterval {
 	iv := twInterval{
 		Start:      a.StartTime.UTC().Format(timeLayout),
-		Annotation: a.Description,
+		Annotation: oneLine(a.Description),
 	}
 	if a.EndTime != nil {
 		iv.End = a.EndTime.UTC().Format(timeLayout)
@@ -346,7 +600,14 @@ func toTWInterval(a models.Activity) twInterval {
 	} else if len(a.Tags) > 0 {
 		iv.Tags = append([]string(nil), a.Tags...)
 	}
+	for i, tag := range iv.Tags {
+		iv.Tags[i] = oneLine(tag)
+	}
 	return iv
+}
+
+func oneLine(s string) string {
+	return strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
 }
 
 func fromTWInterval(iv twInterval) (models.Activity, error) {

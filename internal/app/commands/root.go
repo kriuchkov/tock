@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-faster/errors"
+
 	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/ports"
 
 	"github.com/spf13/cobra"
@@ -39,6 +42,7 @@ func NewRootCmd() *cobra.Command {
 				FilePath:   filePath,
 				ConfigPath: configPath,
 				Language:   language,
+				Version:    version,
 			})
 			if err != nil {
 				return fmt.Errorf("load runtime: %w", err)
@@ -51,12 +55,20 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			ctx, err = reconcileWorkingHours(ctx, currentWorkingHoursTime())
-			if err != nil {
+			switch {
+			case errors.Is(err, coreErrors.ErrActivityOwnerUnknown):
+				// The activity is left running: the command goes on.
+				cmd.PrintErrln(text(cmd, "warning.activity_owner_unknown", oneLine(err.Error())))
+			case err != nil:
 				return fmt.Errorf("reconcile working hours: %w", err)
 			}
 			cmd.SetContext(ctx)
 			printWorkingHoursAutoStopNotice(cmd)
 			return nil
+		},
+		// A command that changed data syncs it right away; a failed sync only warns.
+		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
+			syncRecordedWrites(cmd.Context(), cmd)
 		},
 	}
 
@@ -85,6 +97,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(NewICalCmd())
 	cmd.AddCommand(NewTrayCmd())
 	cmd.AddCommand(NewMCPCmd())
+	cmd.AddCommand(NewSyncCmd())
 	cmd.AddCommand(NewVersionCmd())
 	return cmd
 }

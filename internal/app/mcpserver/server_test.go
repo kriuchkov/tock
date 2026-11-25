@@ -3,6 +3,7 @@ package mcpserver_test
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -202,6 +203,42 @@ func TestEveryCallStopsAfterWorkingHoursFirst(t *testing.T) {
 	out := decode[mcpserver.CurrentOutput](t, h.call(t, "current", map[string]any{}))
 	assert.Nil(t, out.Running)
 	assert.Nil(t, out.Last)
+}
+
+// A sync state that cannot tell which device owns the running activity leaves it running, and the call
+// goes on.
+func TestEveryCallGoesOnWhenTheOwnerIsUnknown(t *testing.T) {
+	weekdays, err := models.ParseWorkingWeekdays("wed")
+	require.NoError(t, err)
+	hours := models.WorkingHours{StopHour: 17, Weekdays: weekdays}
+	h := newHarness(t, func(o *mcpserver.Options) {
+		o.WorkingHours = func() (models.WorkingHours, bool, error) { return hours, true, nil }
+	})
+
+	h.activities.EXPECT().StopAfterWorkingHours(mock.Anything, hours, fixedNow()).Return(nil, coreErrors.ErrActivityOwnerUnknown).Once()
+	h.activities.EXPECT().List(mock.Anything, runningFilter()).Return(nil, nil)
+	h.activities.EXPECT().GetLast(mock.Anything).Return(nil, coreErrors.ErrActivityNotFound)
+
+	res := h.call(t, "current", map[string]any{})
+	require.False(t, res.IsError)
+	out := decode[mcpserver.CurrentOutput](t, res)
+	assert.Nil(t, out.Running)
+}
+
+func TestEveryCallEndsWithAfterCall(t *testing.T) {
+	var calls atomic.Int32
+	h := newHarness(t, func(o *mcpserver.Options) {
+		o.AfterCall = func(context.Context) { calls.Add(1) }
+	})
+
+	h.activities.EXPECT().Stop(mock.Anything, mock.Anything).Return(nil, coreErrors.ErrNoActiveActivity).Once()
+	assert.True(t, h.call(t, "stop", map[string]any{}).IsError)
+	assert.Equal(t, int32(1), calls.Load(), "a failed write may still have written")
+
+	h.activities.EXPECT().List(mock.Anything, runningFilter()).Return(nil, nil).Once()
+	h.activities.EXPECT().GetLast(mock.Anything).Return(nil, coreErrors.ErrActivityNotFound).Once()
+	decode[mcpserver.CurrentOutput](t, h.call(t, "current", map[string]any{}))
+	assert.Equal(t, int32(2), calls.Load(), "a read may write through the working-hours auto-stop")
 }
 
 func TestStopWithoutRunningActivityIsAToolError(t *testing.T) {

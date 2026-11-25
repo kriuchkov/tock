@@ -15,6 +15,8 @@
 # TOCK_WORKING_HOURS_ENABLED=true
 # TOCK_WORKING_HOURS_STOP_AT=17:30
 # TOCK_WORKING_HOURS_WEEKDAYS=mon,tue,wed,thu,fri
+# TOCK_SYNC_ENABLED=true
+# TOCK_SYNC_DIR=~/path/to/sync
 
 # Storage backend: file, todotxt, timewarrior, or sqlite
 backend: file
@@ -115,6 +117,20 @@ mcp:
   # Tool names to leave out, e.g. [remove, remind_remove]
   # Default: []
   disabled_tools: []
+
+# Sync with the tock iOS app through a folder in iCloud Drive (`tock sync`).
+# Each device writes only its own journal in the folder; see docs/sync.md.
+# Set it up once on every Mac with `tock sync init`, which sets these keys.
+# Every command that changes data syncs; `tock tray` also syncs once a minute.
+sync:
+  # Enable or disable sync
+  # Default: false
+  enabled: false
+
+  # The sync folder. The default is the iOS app's iCloud container, which
+  # shows up as a tock folder in iCloud Drive and in the Files app.
+  # Default: ~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync
+  dir: ~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync
 
 # Reminders (`tock remind`).
 reminders:

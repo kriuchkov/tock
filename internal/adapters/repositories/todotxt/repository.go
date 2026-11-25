@@ -166,6 +166,82 @@ func (r *repository) remove(activity models.Activity) error {
 	return nil
 }
 
+var _ ports.ActivityBatchWriter = (*repository)(nil)
+
+// Apply applies writes in order under one lock, with one read and one write of the file; see
+// ports.ActivityBatchWriter. A line matches Old when it reads back as Old. A new line goes to the end
+// of the file.
+func (r *repository) Apply(_ context.Context, writes []ports.ActivityWrite) error {
+	if len(writes) == 0 {
+		return nil
+	}
+	return fileio.Update(r.filePath, func() error {
+		lines, err := r.readLines()
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return errors.Wrap(err, "read lines")
+			}
+			lines = []string{}
+		}
+		parsed := make([]*models.Activity, len(lines))
+		for i, line := range lines {
+			parsed[i], _ = ParseActivity(line)
+		}
+		for _, w := range writes {
+			if lines, parsed, err = applyWrite(lines, parsed, w); err != nil {
+				return err
+			}
+		}
+		if err = r.writeLines(lines); err != nil {
+			return errors.Wrap(err, "write lines")
+		}
+		return nil
+	})
+}
+
+// applyWrite applies one write to the lines of a file and to what they read as. A removed line
+// becomes blank, which writeLines leaves out.
+func applyWrite(lines []string, parsed []*models.Activity, w ports.ActivityWrite) ([]string, []*models.Activity, error) {
+	if w.Old == nil {
+		if w.New == nil {
+			return lines, parsed, nil
+		}
+		line := FormatActivity(*w.New)
+		activity, _ := ParseActivity(line)
+		return append(lines, line), append(parsed, activity), nil
+	}
+	at := slices.IndexFunc(parsed, func(a *models.Activity) bool { return a != nil && sameLine(*a, *w.Old) })
+	if at < 0 {
+		return nil, nil, errors.Wrapf(coreErrors.ErrActivityNotFound, "the activity at %s changed", w.Old.StartTime.Format(time.RFC3339))
+	}
+	if w.New == nil {
+		lines[at], parsed[at] = "", nil
+		return lines, parsed, nil
+	}
+	lines[at] = FormatActivity(*w.New)
+	parsed[at], _ = ParseActivity(lines[at])
+	return lines, parsed, nil
+}
+
+// sameLine reports whether a line read back as a is the activity b: the same start, end, project and
+// description.
+func sameLine(a, b models.Activity) bool {
+	sameEnd := (a.EndTime == nil) == (b.EndTime == nil) && (a.EndTime == nil || a.EndTime.Equal(*b.EndTime))
+	return a.StartTime.Equal(b.StartTime) && sameEnd && a.Project == b.Project && a.Description == b.Description
+}
+
+// Normalize returns an activity as the file gives it back once saved: its times at the second, and its
+// project and description as a line keeps them. Notes, tags and the uid pass through: the sync bridge
+// keeps notes and tags in the sidecar too, which wins over the line.
+func Normalize(a models.Activity) models.Activity {
+	parsed, err := ParseActivity(FormatActivity(a))
+	if err != nil || parsed == nil {
+		return a
+	}
+	parsed.Notes, parsed.Tags, parsed.UID = a.Notes, a.Tags, a.UID
+	return *parsed
+}
+
 func overlapsDateRange(act models.Activity, fromDate, toDate *time.Time) bool {
 	actEnd := time.Now()
 	if act.EndTime != nil {

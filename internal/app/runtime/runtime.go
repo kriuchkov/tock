@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/kriuchkov/tock/internal/adapters/repositories/sqlite"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/timewarrior"
 	"github.com/kriuchkov/tock/internal/adapters/repositories/todotxt"
+	"github.com/kriuchkov/tock/internal/adapters/syncbackend"
 	"github.com/kriuchkov/tock/internal/app/localization"
 	"github.com/kriuchkov/tock/internal/config"
 	"github.com/kriuchkov/tock/internal/core/models"
@@ -35,6 +37,8 @@ type Request struct {
 	FilePath   string
 	ConfigPath string
 	Language   string
+	// Version is tock's version, for this device's devices/<id>.json in the sync folder.
+	Version string
 }
 
 type contextKey struct{}
@@ -49,6 +53,18 @@ type Runtime struct {
 	TimeFormatter   *timeutil.Formatter
 	Localizer       *localization.Localizer
 	TagColors       map[string]models.TagColor
+	// Sync is the sync service; nil while sync.enabled is off.
+	Sync ports.SyncResolver
+	// SyncWrites is marked by every write recorded through tock while sync is on, so the delivery
+	// layer syncs after the commands that changed data; nil while sync is off.
+	SyncWrites *WriteFlag
+	// BuildSync builds the sync service as Load does with sync.enabled on, for tock sync init while it
+	// is off. The runtime's own services stay unrecorded. Nil when the runtime was not made by Load.
+	BuildSync func() (ports.SyncResolver, error)
+	// SyncEnabled reads the config again and reports whether sync.enabled is on now, for a process
+	// that outlives a change of it, as the menu bar icon does; a config that cannot be read keeps what
+	// the runtime was loaded with. Nil when the runtime was not made by Load.
+	SyncEnabled func() bool
 }
 
 func (rt *Runtime) WithContext(ctx context.Context) context.Context {
@@ -87,10 +103,49 @@ func Load(ctx context.Context, req Request) (*Runtime, error) {
 		return nil, err
 	}
 
-	activityService := activity.NewService(repos.activities, repos.notes)
+	// With sync off nothing of it is built, so nothing changes and nothing is created on disk, but for
+	// the change log a sqlite database kept while it synced: its triggers go, or the log would grow
+	// with every write while nothing reads it.
+	var wired syncWiring
+	if cfg.Sync.Enabled {
+		if wired, err = withSync(cfg.Sync, backend, filePath, repos, req.Version); err != nil {
+			return nil, err
+		}
+		repos = wired.repos
+	} else if repos.db != nil {
+		// A log left in place costs space, not data: the command goes on whatever happens.
+		_ = syncbackend.DisableSQLite(ctx, repos.db)
+	}
+	buildSync := func() (ports.SyncResolver, error) {
+		enabled := cfg.Sync
+		enabled.Enabled = true
+		built, buildErr := withSync(enabled, backend, filePath, repos, req.Version)
+		return built.service, buildErr
+	}
+	if wired.service != nil {
+		buildSync = func() (ports.SyncResolver, error) { return wired.service, nil }
+	}
+
+	syncEnabled := func() bool {
+		now, _, loadErr := config.Load(opts...)
+		if loadErr != nil {
+			return cfg.Sync.Enabled
+		}
+		return now.Sync.Enabled
+	}
+
+	var activityOptions []activity.Option
+	if wired.owners != nil {
+		activityOptions = append(activityOptions, activity.WithOwners(wired.owners))
+	}
+	activityService := activity.NewService(repos.activities, repos.notes, activityOptions...)
 	rt := &Runtime{
 		ActivityService: activityService,
 		ReminderService: reminder.NewService(repos.reminders, activityService),
+		Sync:            wired.service,
+		SyncWrites:      wired.writes,
+		BuildSync:       buildSync,
+		SyncEnabled:     syncEnabled,
 		Backend:         backend,
 		DataPath:        filePath,
 		Config:          cfg,
@@ -192,6 +247,10 @@ type repositories struct {
 	activities ports.ActivityRepository
 	notes      ports.NotesRepository
 	reminders  ports.ReminderRepository
+	// remindersPath is the sidecar reminders.yaml of the file-based backends; empty for sqlite.
+	remindersPath string
+	// db is the sqlite backend's database; nil for the others.
+	db *sql.DB
 }
 
 func initRepositories(ctx context.Context, backend, filePath string) (repositories, error) {
@@ -200,14 +259,19 @@ func initRepositories(ctx context.Context, backend, filePath string) (repositori
 		sidecarBase, _ = os.UserHomeDir()
 	}
 	sidecarDir := filepath.Join(filepath.Dir(sidecarBase), ".tock")
+	remindersPath := filepath.Join(sidecarDir, "reminders.yaml")
 	notesRepo := notes.NewRepository(filepath.Join(sidecarDir, "notes"))
-	remindersRepo := reminders.NewRepository(filepath.Join(sidecarDir, "reminders.yaml"))
+	remindersRepo := reminders.NewRepository(remindersPath)
 
 	switch backend {
 	case backendTodoTXT:
-		return repositories{activities: todotxt.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
+		return repositories{
+			activities: todotxt.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo, remindersPath: remindersPath,
+		}, nil
 	case backendTimewarrior:
-		return repositories{activities: timewarrior.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
+		return repositories{
+			activities: timewarrior.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo, remindersPath: remindersPath,
+		}, nil
 	case backendSqlite:
 		repo, err := sqlite.NewSQLiteActivityRepository(ctx, filePath)
 		if err != nil {
@@ -217,9 +281,11 @@ func initRepositories(ctx context.Context, backend, filePath string) (repositori
 		if err != nil {
 			return repositories{}, errors.Wrap(err, "init sqlite reminders repo")
 		}
-		return repositories{activities: repo, notes: sqlite.NewNotesRepository(repo.DB), reminders: reminderRepo}, nil
+		return repositories{activities: repo, notes: sqlite.NewNotesRepository(repo.DB), reminders: reminderRepo, db: repo.DB}, nil
 	default:
-		return repositories{activities: file.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo}, nil
+		return repositories{
+			activities: file.NewRepository(filePath), notes: notesRepo, reminders: remindersRepo, remindersPath: remindersPath,
+		}, nil
 	}
 }
 

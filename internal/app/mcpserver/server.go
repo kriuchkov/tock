@@ -12,6 +12,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/core/ports"
 )
@@ -45,6 +46,10 @@ type Options struct {
 	Now func() time.Time
 	// OnStarted runs after a tool started an activity.
 	OnStarted func()
+	// AfterCall runs after every tool call while calls are still serialized: tock syncs there what the
+	// call changed, as after a CLI command. Every call, since a read can write too through the
+	// working-hours auto-stop. Its failures are its own to report.
+	AfterCall func(ctx context.Context)
 }
 
 type server struct {
@@ -122,12 +127,19 @@ func addTool[In, Out any](s *server, a access, tool *mcp.Tool, handler mcp.ToolH
 		s.calls.Lock()
 		defer s.calls.Unlock()
 
+		defer s.afterCall(ctx)
 		if err := s.reconcile(ctx); err != nil {
 			var zero Out
 			return nil, zero, err
 		}
 		return handler(ctx, req, in)
 	})
+}
+
+func (s *server) afterCall(ctx context.Context) {
+	if s.opts.AfterCall != nil {
+		s.opts.AfterCall(ctx)
+	}
 }
 
 func (s *server) reconcile(ctx context.Context) error {
@@ -138,7 +150,12 @@ func (s *server) reconcile(ctx context.Context) error {
 	if err != nil || !enabled {
 		return err
 	}
-	if _, err = s.opts.Activities.StopAfterWorkingHours(ctx, hours, s.opts.Now()); err != nil {
+	_, err = s.opts.Activities.StopAfterWorkingHours(ctx, hours, s.opts.Now())
+	switch {
+	case errors.Is(err, coreErrors.ErrActivityOwnerUnknown):
+		// The activity is left running until sync can tell its owner; the call goes on.
+		return nil
+	case err != nil:
 		return errors.Wrap(err, "auto-stop after working hours")
 	}
 	return nil

@@ -239,6 +239,96 @@ func (r *repository) remove(activity models.Activity) error {
 	return nil
 }
 
+var _ ports.ActivityBatchWriter = (*repository)(nil)
+
+// Apply applies writes in order under one lock, with one read and one write of the file; see
+// ports.ActivityBatchWriter. A line matches Old when it reads back as Old, so of two lines in one
+// minute only the one meant is replaced or removed. A new line goes to the end of the file.
+func (r *repository) Apply(_ context.Context, writes []ports.ActivityWrite) error {
+	if len(writes) == 0 {
+		return nil
+	}
+	return fileio.Update(r.filePath, func() error {
+		lines, err := r.readLines()
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return errors.Wrap(err, "read lines")
+			}
+			lines = []string{}
+		}
+		if lines, err = applyWrites(lines, writes); err != nil {
+			return err
+		}
+		if err = r.writeLines(lines); err != nil {
+			return errors.Wrap(err, "write lines")
+		}
+		return nil
+	})
+}
+
+// applyWrites applies writes to the lines of a file. A removed line leaves no run of blank lines
+// behind.
+func applyWrites(lines []string, writes []ports.ActivityWrite) ([]string, error) {
+	parsed := make([]*models.Activity, 0, len(lines))
+	for _, line := range lines {
+		activity, _ := ParseActivity(line)
+		parsed = append(parsed, activity)
+	}
+	removed := make([]bool, 0, len(lines))
+	for range lines {
+		removed = append(removed, false)
+	}
+	for _, w := range writes {
+		at := -1
+		if w.Old != nil {
+			at = slices.IndexFunc(parsed, func(a *models.Activity) bool { return a != nil && sameLine(*a, *w.Old) })
+			if at < 0 {
+				return nil, errors.Wrapf(
+					coreErrors.ErrActivityNotFound,
+					"the activity at %s changed",
+					w.Old.StartTime.Format(timeLayoutMin),
+				)
+			}
+		}
+		switch {
+		case w.New == nil && at >= 0:
+			parsed[at], removed[at] = nil, true
+		case at >= 0:
+			lines[at] = FormatActivity(*w.New)
+			parsed[at], _ = ParseActivity(lines[at])
+		case w.New != nil:
+			lines = append(lines, FormatActivity(*w.New))
+			activity, _ := ParseActivity(lines[len(lines)-1])
+			parsed = append(parsed, activity)
+			removed = append(removed, false)
+		}
+	}
+	if !slices.Contains(removed, true) {
+		return lines, nil
+	}
+	kept := make([]string, 0, len(lines))
+	for i, line := range lines {
+		blank := strings.TrimSpace(line) == ""
+		switch {
+		case removed[i]:
+		case blank && (len(kept) == 0 || strings.TrimSpace(kept[len(kept)-1]) == ""):
+		default:
+			kept = append(kept, line)
+		}
+	}
+	if len(kept) > 0 && strings.TrimSpace(kept[len(kept)-1]) == "" {
+		kept = kept[:len(kept)-1]
+	}
+	return kept, nil
+}
+
+// sameLine reports whether a line read back as a is the activity b: the same start, end, project and
+// description.
+func sameLine(a, b models.Activity) bool {
+	sameEnd := (a.EndTime == nil) == (b.EndTime == nil) && (a.EndTime == nil || a.EndTime.Equal(*b.EndTime))
+	return a.StartTime.Equal(b.StartTime) && sameEnd && a.Project == b.Project && a.Description == b.Description
+}
+
 func (r *repository) readLines() ([]string, error) {
 	f, err := os.Open(r.filePath)
 	if err != nil {

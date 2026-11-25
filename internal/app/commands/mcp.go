@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -46,5 +47,7 @@ func runMCPCmd(cmd *cobra.Command) error {
 		Version:       version,
 		Snooze:        rt.Config.Reminders.Snooze,
 		OnStarted:     func() { ensureTrayRunning(cmd) },
+		// The recorder already sends every write to the sync journal; this syncs it, as after a command.
+		AfterCall: func(ctx context.Context) { syncRecordedWrites(ctx, cmd) },
 	}, &mcp.StdioTransport{})
 }

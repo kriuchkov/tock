@@ -1,0 +1,126 @@
+{
+  "activities" : [
+    {
+      "fields" : {
+        "description" : "Inbox",
+        "end" : "2026-11-09T08:55:00+01:00",
+        "notes" : "Triage",
+        "project" : "Ops",
+        "start" : "2026-11-09T08:30:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000050001"
+    },
+    {
+      "fields" : {
+        "description" : "Interop check",
+        "end" : null,
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-09T09:00:00+01:00",
+        "tags/ios" : true
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000050002"
+    }
+  ],
+  "devices" : [
+    {
+      "app" : "tock 1.0",
+      "id" : "bb00000000000003",
+      "name" : "iPhone",
+      "platform" : "ios",
+      "seen" : "2026-11-09T08:02:00Z"
+    }
+  ],
+  "from" : "2026-11-09",
+  "name" : "Swift writes: the phone of the mixed folder",
+  "now" : "2026-11-09T09:05",
+  "read" : {
+    "activities" : [
+      {
+        "description" : "Inbox",
+        "end" : "2026-11-09T07:55:00Z",
+        "notes" : "Triage",
+        "project" : "Ops",
+        "start" : "2026-11-09T07:30:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000050001"
+      },
+      {
+        "description" : "Interop check",
+        "end" : null,
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-09T08:00:00Z",
+        "tags" : [
+          "ios"
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000050002"
+      }
+    ],
+    "occurrences" : [
+      {
+        "due" : "2026-11-09T08:00",
+        "status" : "overdue",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-10T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-11T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-12T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-13T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-14T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      },
+      {
+        "due" : "2026-11-15T08:00",
+        "status" : "pending",
+        "uid" : "019a9b3c-0000-7000-8000-000000060001"
+      }
+    ]
+  },
+  "reminders" : [
+    {
+      "fields" : {
+        "all_day" : false,
+        "count" : 0,
+        "created" : "2026-11-09T09:01:00+01:00",
+        "due" : "2026-11-09T08:00",
+        "every" : "daily",
+        "notes" : "",
+        "notify" : 0,
+        "project" : "",
+        "tags/home" : true,
+        "title" : "Water the plants",
+        "until" : ""
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000060001"
+    }
+  ],
+  "skipped" : 0,
+  "to" : "2026-11-16",
+  "tz" : "Europe/Berlin",
+  "writes" : {
+    "bb00000000000003" : [
+
+    ]
+  }
+}

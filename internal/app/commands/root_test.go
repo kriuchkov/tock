@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/kriuchkov/tock/internal/app/localization"
 	appruntime "github.com/kriuchkov/tock/internal/app/runtime"
 	"github.com/kriuchkov/tock/internal/config"
+	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
@@ -44,7 +46,7 @@ func TestRootPersistentPreRunLoadsRuntimeDependencies(t *testing.T) {
 	root.SetContext(context.Background())
 	require.NoError(t, root.PersistentPreRunE(root, nil))
 
-	assert.Equal(t, appruntime.Request{}, gotReq)
+	assert.Equal(t, appruntime.Request{Version: version}, gotReq)
 	rt, ok := appruntime.FromContext(root.Context())
 	require.True(t, ok)
 	assert.Same(t, svc, rt.ActivityService)
@@ -100,7 +102,7 @@ func TestRootPersistentPreRunAutoStopsActivityOutsideWorkingHours(t *testing.T) 
 	}
 
 	loadRuntime = func(_ context.Context, req appruntime.Request) (*appruntime.Runtime, error) {
-		assert.Equal(t, appruntime.Request{}, req)
+		assert.Equal(t, appruntime.Request{Version: version}, req)
 		return &appruntime.Runtime{
 			ActivityService: svc,
 			Config: &config.Config{
@@ -131,4 +133,45 @@ func TestRootPersistentPreRunAutoStopsActivityOutsideWorkingHours(t *testing.T) 
 	assert.True(t, autoStopped.EndTime.Equal(time.Date(2026, time.April, 21, 17, 30, 0, 0, time.Local)))
 	assert.Empty(t, stdout.String())
 	assert.Contains(t, stderr.String(), "Automatically stopped activity: tock | review at 17:30")
+}
+
+// A sync state that cannot tell which device owns the running activity leaves it running: every
+// command warns and goes on instead of failing.
+func TestRootPersistentPreRunGoesOnWhenTheOwnerIsUnknown(t *testing.T) {
+	loader := loadRuntime
+	clock := currentWorkingHoursTime
+	t.Cleanup(func() {
+		loadRuntime = loader
+		currentWorkingHoursTime = clock
+	})
+
+	svc := &stubActivityResolver{
+		stopAfterFn: func(context.Context, models.WorkingHours, time.Time) (*models.Activity, error) {
+			return nil, fmt.Errorf("%w: %w", coreErrors.ErrActivityOwnerUnknown, errors.New("state.db is from a newer tock"))
+		},
+	}
+	loadRuntime = func(context.Context, appruntime.Request) (*appruntime.Runtime, error) {
+		return &appruntime.Runtime{
+			ActivityService: svc,
+			Config: &config.Config{
+				WorkingHours: config.WorkingHoursConfig{Enabled: true, StopAt: "17:30"},
+			},
+			TimeFormatter: timeutil.NewFormatter("24"),
+			Localizer:     localization.MustNew(localization.LanguageEnglish),
+		}, nil
+	}
+	currentWorkingHoursTime = func() time.Time {
+		return time.Date(2026, time.April, 21, 18, 0, 0, 0, time.Local)
+	}
+
+	root := NewRootCmd()
+	root.SetContext(context.Background())
+	var stderr bytes.Buffer
+	root.SetErr(&stderr)
+	require.NoError(t, root.PersistentPreRunE(root, nil))
+
+	_, ok := autoStoppedActivityFromContext(root.Context())
+	assert.False(t, ok)
+	assert.Contains(t, stderr.String(), "state.db is from a newer tock")
+	assert.Contains(t, stderr.String(), "left running")
 }

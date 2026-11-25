@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kriuchkov/tock/internal/adapters/repositories/notes"
+	"github.com/kriuchkov/tock/internal/core/ports"
 )
 
 func TestRepository_SaveAndGet(t *testing.T) {
@@ -125,4 +126,34 @@ func TestRepository_Save_Update(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, newNote, retrievedNotes)
 	assert.Equal(t, newTags, retrievedTags)
+}
+
+// Lookup tells an activity without a notes file from one whose notes were cleared, which leaves an
+// empty file.
+func TestRepository_LookupTellsMissingFromCleared(t *testing.T) {
+	repo := notes.NewRepository(t.TempDir())
+	lookup, ok := repo.(ports.NotesLookup)
+	require.True(t, ok)
+	ctx := context.Background()
+	day := time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC)
+
+	text, tags, found, err := lookup.Lookup(ctx, "090000", day)
+	require.NoError(t, err)
+	assert.False(t, found)
+	assert.Empty(t, text)
+	assert.Empty(t, tags)
+
+	require.NoError(t, repo.Save(ctx, "090000", day, "note", []string{"x"}))
+	text, tags, found, err = lookup.Lookup(ctx, "090000", day)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "note", text)
+	assert.Equal(t, []string{"x"}, tags)
+
+	require.NoError(t, repo.Save(ctx, "090000", day, "", nil))
+	text, tags, found, err = lookup.Lookup(ctx, "090000", day)
+	require.NoError(t, err)
+	assert.True(t, found, "cleared notes leave an empty file")
+	assert.Empty(t, text)
+	assert.Empty(t, tags)
 }

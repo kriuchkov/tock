@@ -86,4 +86,3 @@ func ensureTrayRunning(cmd *cobra.Command) {
 	}
 	_ = proc.Process.Release()
 }
-

@@ -9,3 +9,8 @@ packages:
       NotesRepository:
       ReminderResolver:
       ReminderRepository:
+      SyncResolver:
+      SyncFolder:
+      SyncBackend:
+      SyncState:
+      SyncChangeSink:

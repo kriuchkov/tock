@@ -18,10 +18,26 @@ import (
 type service struct {
 	repo      ports.ActivityRepository
 	notesRepo ports.NotesRepository
+	owners    ports.ActivityOwners
 }
 
-func NewService(repo ports.ActivityRepository, notesRepo ports.NotesRepository) ports.ActivityResolver {
-	return &service{repo: repo, notesRepo: notesRepo}
+// Option configures the service.
+type Option func(*service)
+
+// WithOwners makes the end of the working day leave alone a running activity another device owns,
+// as sync tells: sync would neither write that stop nor keep it in the backend.
+func WithOwners(owners ports.ActivityOwners) Option {
+	return func(s *service) {
+		s.owners = owners
+	}
+}
+
+func NewService(repo ports.ActivityRepository, notesRepo ports.NotesRepository, opts ...Option) ports.ActivityResolver {
+	s := &service{repo: repo, notesRepo: notesRepo}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 func (s *service) Start(ctx context.Context, req models.StartActivityRequest) (*models.Activity, error) {
@@ -36,13 +52,16 @@ func (s *service) Start(ctx context.Context, req models.StartActivityRequest) (*
 		startTime = time.Now()
 	}
 
+	// These stops follow from the start, not from a stop the user asked for: sync writes them only
+	// for activities this device owns.
+	stopCtx := ports.WithAutoStop(ctx)
 	for _, act := range running {
 		stopTime := startTime
 		if stopTime.Before(act.StartTime) {
 			stopTime = time.Now()
 		}
 		act.EndTime = &stopTime
-		if saveErr := s.repo.Save(ctx, act); saveErr != nil {
+		if saveErr := s.repo.Save(stopCtx, act); saveErr != nil {
 			return nil, errors.Wrap(saveErr, "stop running activity")
 		}
 	}
@@ -161,7 +180,20 @@ func (s *service) StopAfterWorkingHours(ctx context.Context, hours models.Workin
 	if !ok {
 		return nil, nil //nolint:nilnil // nothing to stop is not an error
 	}
-	return s.Stop(ctx, models.StopActivityRequest{EndTime: stopTime})
+	// The end of the working day stops the activity, not the user: sync writes such a stop only for
+	// activities this device owns, and puts another device's activity back as it runs, so that one is
+	// left to its owner. When the owner cannot be told, the activity is left running and the error is
+	// coreErrors.ErrActivityOwnerUnknown: the caller warns and goes on.
+	if s.owners != nil {
+		elsewhere, ownersErr := s.owners.OwnedElsewhere(ctx, latest)
+		if ownersErr != nil {
+			return nil, errors.Errorf("%w: %w", coreErrors.ErrActivityOwnerUnknown, ownersErr)
+		}
+		if elsewhere {
+			return nil, nil //nolint:nilnil // nothing to stop is not an error
+		}
+	}
+	return s.Stop(ports.WithAutoStop(ctx), models.StopActivityRequest{EndTime: stopTime})
 }
 
 func (s *service) Add(ctx context.Context, req models.AddActivityRequest) (*models.Activity, error) {
@@ -428,7 +460,7 @@ func (s *service) Update(
 	}
 
 	if moved {
-		if err = s.repo.Remove(ctx, original); err != nil {
+		if err = s.repo.Remove(ports.WithMovedTo(ctx, updated.StartTime), original); err != nil {
 			return nil, errors.Wrap(err, "remove previous activity")
 		}
 	}

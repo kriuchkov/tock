@@ -35,6 +35,10 @@ type trayController struct {
 	loc     *localization.Localizer
 	// rem is nil when reminders are unavailable.
 	rem *trayReminders
+	// sync is nil while sync is off; mSync is its status line then.
+	sync  *traySync
+	mSync *systray.MenuItem
+	tf    *timeutil.Formatter
 
 	// untilIdle quits the tray once an activity that was running goes away — set
 	// when `tock start` auto-spawns the tray.
@@ -87,8 +91,18 @@ func runTray(cmd *cobra.Command) error {
 		fmt.Fprintln(cmd.ErrOrStderr(), text(cmd, "tray.running"))
 	}
 
-	c := &trayController{service: rt.ActivityService, loc: rt.Localizer, untilIdle: untilIdle, rem: newTrayReminders(cmd)}
-	systray.Run(func() { c.onReady(ctx) }, func() {})
+	c := &trayController{
+		service:   rt.ActivityService,
+		loc:       rt.Localizer,
+		tf:        rt.TimeFormatter,
+		untilIdle: untilIdle,
+		rem:       newTrayReminders(cmd),
+		sync:      newTraySync(rt),
+	}
+	// Quitting stops the loop and the syncs; a write still unsent goes out with the sync after the command.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	systray.Run(func() { c.onReady(ctx) }, cancel)
 	return nil
 }
 
@@ -126,9 +140,16 @@ func (c *trayController) onReady(ctx context.Context) {
 
 	c.mStop = systray.AddMenuItem(c.loc.Text("tray.menu.stop"), "")
 	systray.AddSeparator()
+	if c.sync != nil {
+		c.mSync = systray.AddMenuItem(c.loc.Text("tray.sync.syncing"), "")
+		c.mSync.Disable()
+	}
 	c.mQuit = systray.AddMenuItem(c.loc.Text("tray.menu.quit"), "")
 
 	c.refreshAll(ctx)
+	if c.sync != nil {
+		go c.sync.run(ctx)
+	}
 	go c.loop(ctx)
 }
 
@@ -144,10 +165,14 @@ func (c *trayController) loop(ctx context.Context) {
 	ticker := time.NewTicker(trayRefreshInterval)
 	defer ticker.Stop()
 
-	// A nil channel never delivers, so without reminders that case stays idle.
+	// A nil channel never delivers, so without reminders or sync those cases stay idle.
 	var reminderClick chan trayReminderClick
 	if c.rem != nil {
 		reminderClick = c.rem.click
+	}
+	var syncResults chan traySyncResult
+	if c.sync != nil {
+		syncResults = c.sync.results
 	}
 
 	for {
@@ -158,21 +183,34 @@ func (c *trayController) loop(ctx context.Context) {
 		case <-ticker.C:
 			c.refresh(ctx)
 		case <-c.mStartLast.ClickedCh:
-			c.startLast(ctx)
+			c.sync.write(func() { c.startLast(ctx) })
 			c.refreshAll(ctx)
 		case index := <-c.recentClick:
-			c.startRecent(ctx, index)
+			c.sync.write(func() { c.startRecent(ctx, index) })
 			c.refreshAll(ctx)
 		case <-c.mStop.ClickedCh:
-			c.stopCurrent(ctx)
+			c.sync.write(func() { c.stopCurrent(ctx) })
 			c.refreshAll(ctx)
 		case click := <-reminderClick:
-			c.rem.handle(ctx, click)
+			c.sync.write(func() { c.rem.handle(ctx, click) })
 			c.refreshAll(ctx)
+		case result := <-syncResults:
+			c.showSync(ctx, result)
 		case <-c.mQuit.ClickedCh:
 			systray.Quit()
 			return
 		}
+	}
+}
+
+// showSync puts a sync's result in the menu's status line, and refreshes the menu when the sync
+// brought in other devices' changes.
+func (c *trayController) showSync(ctx context.Context, result traySyncResult) {
+	title, tooltip := traySyncStatus(c.loc, c.tf, result)
+	c.mSync.SetTitle(title)
+	c.mSync.SetTooltip(tooltip)
+	if result.err == nil && result.report.Applied > 0 {
+		c.refreshAll(ctx)
 	}
 }
 

@@ -1,0 +1,307 @@
+{
+  "activities" : [
+    {
+      "fields" : {
+        "description" : "iOS sync design",
+        "end" : "2026-10-29T10:30:00+01:00",
+        "notes" : "Folder layout\nCursor per segment",
+        "project" : "Tock",
+        "start" : "2026-10-29T08:50:00+01:00",
+        "tags/ios" : true,
+        "tags/sync" : true
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030001"
+    },
+    {
+      "fields" : {
+        "description" : "Café ☕ «review» — 设计",
+        "end" : "2026-10-30T09:45:00+01:00",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-10-30T09:00:00+01:00",
+        "tags/design" : true
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030002"
+    },
+    {
+      "fields" : {
+        "description" : "Deploy",
+        "end" : "2026-10-30T11:15:00+01:00",
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-10-30T09:45:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030003"
+    },
+    {
+      "fields" : {
+        "description" : "Pay invoices",
+        "end" : "2026-10-30T13:20:00+01:00",
+        "notes" : "",
+        "project" : "Finance",
+        "start" : "2026-10-30T13:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030004"
+    },
+    {
+      "fields" : {
+        "description" : "Widgets",
+        "end" : "2026-11-05T10:30:00+01:00",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-05T10:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030006"
+    },
+    {
+      "fields" : {
+        "description" : "Live Activity",
+        "end" : "2026-11-05T12:00:00+01:00",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-05T11:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030007"
+    },
+    {
+      "fields" : {
+        "description" : "Release notes",
+        "end" : "2026-11-06T09:30:00+01:00",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-06T09:00:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030008"
+    },
+    {
+      "fields" : {
+        "description" : "On call",
+        "end" : null,
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-11-06T09:30:00+01:00"
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000030009"
+    }
+  ],
+  "devices" : [
+    {
+      "app" : "tock 1.0",
+      "id" : "bb00000000000001",
+      "name" : "iPhone",
+      "platform" : "ios",
+      "seen" : "2026-11-06T08:00:00Z"
+    },
+    {
+      "app" : "tock 1.0",
+      "id" : "bb00000000000002",
+      "name" : "iPad",
+      "platform" : "ios",
+      "seen" : "2026-11-06T08:31:00Z"
+    }
+  ],
+  "from" : "2026-10-26",
+  "name" : "Swift writes: a phone and a tablet over two weeks",
+  "now" : "2026-11-06T18:00",
+  "read" : {
+    "activities" : [
+      {
+        "description" : "iOS sync design",
+        "end" : "2026-10-29T09:30:00Z",
+        "notes" : "Folder layout\nCursor per segment",
+        "project" : "Tock",
+        "start" : "2026-10-29T07:50:00Z",
+        "tags" : [
+          "ios",
+          "sync"
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030001"
+      },
+      {
+        "description" : "Café ☕ «review» — 设计",
+        "end" : "2026-10-30T08:45:00Z",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-10-30T08:00:00Z",
+        "tags" : [
+          "design"
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030002"
+      },
+      {
+        "description" : "Deploy",
+        "end" : "2026-10-30T10:15:00Z",
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-10-30T08:45:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030003"
+      },
+      {
+        "description" : "Pay invoices",
+        "end" : "2026-10-30T12:20:00Z",
+        "notes" : "",
+        "project" : "Finance",
+        "start" : "2026-10-30T12:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030004"
+      },
+      {
+        "description" : "Widgets",
+        "end" : "2026-11-05T09:30:00Z",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-05T09:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030006"
+      },
+      {
+        "description" : "Live Activity",
+        "end" : "2026-11-05T11:00:00Z",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-05T10:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030007"
+      },
+      {
+        "description" : "Release notes",
+        "end" : "2026-11-06T08:30:00Z",
+        "notes" : "",
+        "project" : "Tock",
+        "start" : "2026-11-06T08:00:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030008"
+      },
+      {
+        "description" : "On call",
+        "end" : null,
+        "notes" : "",
+        "project" : "Ops",
+        "start" : "2026-11-06T08:30:00Z",
+        "tags" : [
+
+        ],
+        "uid" : "019a9b3c-0000-7000-8000-000000030009"
+      }
+    ],
+    "occurrences" : [
+      {
+        "due" : "2026-10-30T09:30",
+        "status" : "missed",
+        "uid" : "019a9b3c-0000-7000-8000-000000040001"
+      },
+      {
+        "due" : "2026-11-02T09:30",
+        "status" : "done",
+        "uid" : "019a9b3c-0000-7000-8000-000000040001"
+      },
+      {
+        "due" : "2026-11-03T09:30",
+        "status" : "missed",
+        "uid" : "019a9b3c-0000-7000-8000-000000040001"
+      },
+      {
+        "due" : "2026-11-05T09:30",
+        "status" : "missed",
+        "uid" : "019a9b3c-0000-7000-8000-000000040001"
+      },
+      {
+        "due" : "2026-11-06T09:30",
+        "status" : "overdue",
+        "uid" : "019a9b3c-0000-7000-8000-000000040001"
+      },
+      {
+        "due" : "2026-10-30",
+        "status" : "done",
+        "uid" : "019a9b3c-0000-7000-8000-000000040002"
+      },
+      {
+        "due" : "2026-11-05T14:00",
+        "status" : "done",
+        "uid" : "019a9b3c-0000-7000-8000-000000040003"
+      }
+    ]
+  },
+  "reminders" : [
+    {
+      "fields" : {
+        "all_day" : false,
+        "count" : 0,
+        "created" : "2026-10-29T11:00:00+01:00",
+        "due" : "2026-10-30T09:30",
+        "every" : "weekdays",
+        "notes" : "",
+        "notify" : 300,
+        "occ/2026-11-02/done" : "2026-11-02T09:31:00+01:00",
+        "occ/2026-11-03/snoozed" : "2026-11-03T09:45:00+01:00",
+        "occ/2026-11-04/skipped" : true,
+        "project" : "Tock",
+        "tags/team" : true,
+        "title" : "Stand-up notes",
+        "until" : ""
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000040001"
+    },
+    {
+      "fields" : {
+        "all_day" : true,
+        "count" : 0,
+        "created" : "2026-10-29T11:00:00+01:00",
+        "due" : "2026-10-30",
+        "every" : "monthly",
+        "notes" : "",
+        "notify" : 0,
+        "occ/2026-10-30/activity" : "2026-10-30T13:00:00+01:00",
+        "occ/2026-10-30/done" : "2026-10-30T13:00:00+01:00",
+        "project" : "Finance",
+        "title" : "Pay invoices",
+        "until" : ""
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000040002"
+    },
+    {
+      "fields" : {
+        "all_day" : false,
+        "count" : 0,
+        "created" : "2026-10-29T11:00:00+01:00",
+        "due" : "2026-11-05T14:00",
+        "every" : "",
+        "notes" : "Ask about the card",
+        "notify" : 900,
+        "occ/2026-11-05/done" : "2026-11-05T14:05:00+01:00",
+        "project" : "Finance",
+        "title" : "Call the bank",
+        "until" : ""
+      },
+      "uid" : "019a9b3c-0000-7000-8000-000000040003"
+    }
+  ],
+  "skipped" : 0,
+  "to" : "2026-11-09",
+  "tz" : "Europe/Berlin",
+  "writes" : {
+    "bb00000000000001" : [
+      {
+        "set" : {
+          "end" : "2026-11-06T09:30:00+01:00"
+        },
+        "type" : "activity",
+        "uid" : "019a9b3c-0000-7000-8000-000000030008"
+      }
+    ],
+    "bb00000000000002" : [
+
+    ]
+  }
+}

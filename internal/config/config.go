@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -20,6 +21,7 @@ type Config struct {
 	Tray            TrayConfig         `mapstructure:"tray"`
 	Reminders       RemindersConfig    `mapstructure:"reminders"`
 	MCP             MCPConfig          `mapstructure:"mcp"`
+	Sync            SyncConfig         `mapstructure:"sync"`
 	Theme           ThemeConfig        `mapstructure:"theme"`
 	Calendar        CalendarConfig     `mapstructure:"calendar"`
 	TimeFormat      string             `mapstructure:"time_format"`
@@ -91,6 +93,15 @@ type MCPConfig struct {
 	ReadOnly bool `mapstructure:"read_only"`
 	// DisabledTools are tool names to leave out, such as "remove".
 	DisabledTools []string `mapstructure:"disabled_tools"`
+}
+
+// SyncConfig controls sync with the tock iOS app through a folder in iCloud Drive (docs/sync.md).
+// It is off until Enabled is set.
+type SyncConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// Dir is the sync folder, with a leading ~ expanded. The default is the iOS app's iCloud
+	// container, which shows up as a tock folder in iCloud Drive.
+	Dir string `mapstructure:"dir"`
 }
 
 // RemindersConfig controls reminders. Notifications are sent by the macOS menu bar
@@ -173,6 +184,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	v.SetDefault("mcp.enabled", false)
 	v.SetDefault("mcp.read_only", false)
 	v.SetDefault("mcp.disabled_tools", []string{})
+	v.SetDefault("sync.enabled", false)
 	v.SetDefault("reminders.notifications", true)
 	v.SetDefault("reminders.snooze", "10m")
 	v.SetDefault("calendar.upcoming_days", 7)
@@ -184,6 +196,7 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	if homeDir != "" {
 		v.SetDefault("file.path", filepath.Join(homeDir, ".tock.txt"))
 		v.SetDefault("sqlite.path", filepath.Join(homeDir, ".tock.db"))
+		v.SetDefault("sync.dir", DefaultSyncDir(homeDir))
 	}
 
 	// Explicit Bindings for all supported variables
@@ -219,6 +232,8 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	_ = v.BindEnv("tray.auto_start", "TOCK_TRAY_AUTO_START")
 	_ = v.BindEnv("mcp.enabled", "TOCK_MCP_ENABLED")
 	_ = v.BindEnv("mcp.read_only", "TOCK_MCP_READ_ONLY")
+	_ = v.BindEnv("sync.enabled", "TOCK_SYNC_ENABLED")
+	_ = v.BindEnv("sync.dir", "TOCK_SYNC_DIR")
 	_ = v.BindEnv("reminders.notifications", "TOCK_REMINDERS_NOTIFICATIONS")
 	_ = v.BindEnv("reminders.snooze", "TOCK_REMINDERS_SNOOZE")
 	_ = v.BindEnv("calendar.upcoming_days", "TOCK_CALENDAR_UPCOMING_DAYS")
@@ -261,5 +276,39 @@ func Load(opts ...Option) (*Config, *viper.Viper, error) {
 	if err = v.Unmarshal(&cfg); err != nil {
 		return nil, nil, err
 	}
+	cfg.Sync.Dir = expandHome(cfg.Sync.Dir, homeDir)
 	return &cfg, v, nil
+}
+
+// DefaultSyncDir is the default sync folder under home: the sync folder in the iOS app's iCloud
+// Drive container, iCloud.com.kriuchkov.tock, which macOS keeps in ~/Library/Mobile Documents.
+func DefaultSyncDir(home string) string {
+	return filepath.Join(home, "Library", "Mobile Documents", "iCloud~com~kriuchkov~tock", "Documents", "sync")
+}
+
+// expandHome replaces a leading ~ of path with home; without a home the path stays as it is.
+func expandHome(path, home string) string {
+	if home == "" {
+		return path
+	}
+	if path == "~" {
+		return home
+	}
+	if rest, ok := strings.CutPrefix(path, "~/"); ok {
+		return filepath.Join(home, rest)
+	}
+	return path
+}
+
+// EnableSync sets sync.enabled, and sync.dir unless dir is empty, in v and writes v back to the
+// config file it was loaded from, as the update check does with its time.
+func EnableSync(v *viper.Viper, dir string) error {
+	v.Set("sync.enabled", true)
+	if dir != "" {
+		v.Set("sync.dir", dir)
+	}
+	if err := v.WriteConfig(); err != nil {
+		return errors.Wrap(err, "write the config file")
+	}
+	return nil
 }

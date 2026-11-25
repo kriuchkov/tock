@@ -25,6 +25,13 @@ sync-vectors:
 	SYNC_VECTORS_OUT=$(abspath $(or $(OUT),$(error set OUT to the directory to write to))) \
 		go test ./internal/core/journal -run '^TestWriteVectors$$' -count=1 -v
 
+# Write the interop folders tock writes through its real code (internal/services/sync/interop_test.go)
+# for tock-ios:
+#   make sync-interop OUT=../tock-ios/Tests/Interop
+sync-interop:
+	SYNC_INTEROP_OUT=$(abspath $(or $(OUT),$(error set OUT to the directory to write to))) \
+		go test ./internal/services/sync -run '^TestInterop(Go|Mixed)Folder$$' -count=1 -v
+
 # Refresh test data by running the script that generates it. 
 # By default, it refreshes data for the last 1 day, 
 refresh-test-data:

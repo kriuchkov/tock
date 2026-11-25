@@ -41,6 +41,15 @@ type NotesRepository interface {
 	Delete(ctx context.Context, activityID string, date time.Time) error
 }
 
+// NotesLookup is implemented by a NotesRepository that keeps each activity's notes in a file of its
+// own. Get returns the same for an activity without a notes file and for one whose notes were cleared,
+// which tock does by saving empty notes; Lookup tells them apart, so sync never takes a notes file that
+// is not there, or not there yet, for notes cleared on purpose.
+type NotesLookup interface {
+	// Lookup returns what Get returns, and whether the activity has a notes file.
+	Lookup(ctx context.Context, activityID string, date time.Time) (notes string, tags []string, found bool, err error)
+}
+
 // ReminderResolver is the reminder API used by the delivery layer.
 type ReminderResolver interface {
 	Add(ctx context.Context, req models.AddReminderRequest) (*models.Reminder, error)

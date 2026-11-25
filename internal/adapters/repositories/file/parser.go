@@ -69,12 +69,37 @@ func parseTime(s string) (time.Time, error) {
 	return time.ParseInLocation(timeLayoutSec, s, time.Local)
 }
 
+// FormatActivity writes an activity as one line. A line break in the project or the description
+// becomes a space: it would split the line in two.
 func FormatActivity(a models.Activity) string {
 	startStr := a.StartTime.Format(timeLayoutMin)
+	project, description := oneLine(a.Project), oneLine(a.Description)
 
 	if a.EndTime != nil {
 		endStr := a.EndTime.Format(timeLayoutMin)
-		return fmt.Sprintf("%s - %s | %s | %s", startStr, endStr, a.Project, a.Description)
+		return fmt.Sprintf("%s - %s | %s | %s", startStr, endStr, project, description)
 	}
-	return fmt.Sprintf("%s | %s | %s", startStr, a.Project, a.Description)
+	return fmt.Sprintf("%s | %s | %s", startStr, project, description)
+}
+
+// Normalize returns an activity as the file gives it back once saved: its times at the minute in
+// local time, and its project and description as one line keeps them. Notes, tags and the uid, which
+// the file does not hold, pass through.
+func Normalize(a models.Activity) models.Activity {
+	local := a
+	local.StartTime = a.StartTime.In(time.Local)
+	if a.EndTime != nil {
+		end := a.EndTime.In(time.Local)
+		local.EndTime = &end
+	}
+	parsed, err := ParseActivity(FormatActivity(local))
+	if err != nil || parsed == nil {
+		return a
+	}
+	parsed.Notes, parsed.Tags, parsed.UID = a.Notes, a.Tags, a.UID
+	return *parsed
+}
+
+func oneLine(s string) string {
+	return strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
 }

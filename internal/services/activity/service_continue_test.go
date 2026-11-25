@@ -11,6 +11,7 @@ import (
 
 	coreErrors "github.com/kriuchkov/tock/internal/core/errors"
 	"github.com/kriuchkov/tock/internal/core/models"
+	"github.com/kriuchkov/tock/internal/core/ports"
 	portsmocks "github.com/kriuchkov/tock/internal/core/ports/mocks"
 	"github.com/kriuchkov/tock/internal/services/activity"
 )
@@ -85,7 +86,7 @@ func TestService_StopAfterWorkingHours(t *testing.T) {
 		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
 			{Project: "Work", Description: "Late", StartTime: start},
 		}, nil)
-		repo.EXPECT().Save(mock.Anything, mock.MatchedBy(func(a models.Activity) bool {
+		repo.EXPECT().Save(mock.MatchedBy(ports.IsAutoStop), mock.MatchedBy(func(a models.Activity) bool {
 			return a.EndTime != nil && a.EndTime.Equal(cutoff)
 		})).Return(nil)
 
@@ -118,6 +119,69 @@ func TestService_StopAfterWorkingHours(t *testing.T) {
 		require.NoError(t, stopErr)
 		assert.Nil(t, stopped)
 	})
+
+	t.Run("leaves another device's activity to its owner", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		owners := ownersFunc(func(a models.Activity) (bool, error) { return a.Project == "Phone", nil })
+		svc := activity.NewService(repo, nil, activity.WithOwners(owners))
+
+		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
+			{Project: "Phone", Description: "Late", StartTime: start},
+		}, nil)
+
+		stopped, stopErr := svc.StopAfterWorkingHours(context.Background(), hours, now)
+		require.NoError(t, stopErr)
+		assert.Nil(t, stopped)
+	})
+
+	t.Run("stops an activity this device owns", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		owners := ownersFunc(func(a models.Activity) (bool, error) { return a.Project == "Phone", nil })
+		svc := activity.NewService(repo, nil, activity.WithOwners(owners))
+
+		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
+			{Project: "Work", Description: "Late", StartTime: start},
+		}, nil)
+		repo.EXPECT().Save(mock.MatchedBy(ports.IsAutoStop), mock.Anything).Return(nil)
+
+		stopped, stopErr := svc.StopAfterWorkingHours(context.Background(), hours, now)
+		require.NoError(t, stopErr)
+		require.NotNil(t, stopped)
+	})
+
+	t.Run("fails when the owner is unknown", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		owners := ownersFunc(func(models.Activity) (bool, error) { return false, assert.AnError })
+		svc := activity.NewService(repo, nil, activity.WithOwners(owners))
+
+		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
+			{Project: "Work", Description: "Late", StartTime: start},
+		}, nil)
+
+		_, stopErr := svc.StopAfterWorkingHours(context.Background(), hours, now)
+		require.ErrorIs(t, stopErr, assert.AnError)
+	})
+
+	t.Run("leaves the activity running when the owner is unknown", func(t *testing.T) {
+		repo := portsmocks.NewMockActivityRepository(t)
+		owners := ownersFunc(func(models.Activity) (bool, error) { return false, assert.AnError })
+		svc := activity.NewService(repo, nil, activity.WithOwners(owners))
+
+		repo.EXPECT().Find(mock.Anything, runningFilter(true)).Return([]models.Activity{
+			{Project: "Work", Description: "Late", StartTime: start},
+		}, nil)
+
+		stopped, stopErr := svc.StopAfterWorkingHours(context.Background(), hours, now)
+		require.ErrorIs(t, stopErr, coreErrors.ErrActivityOwnerUnknown)
+		assert.Nil(t, stopped)
+	})
+}
+
+// ownersFunc is a ports.ActivityOwners that asks a function.
+type ownersFunc func(models.Activity) (bool, error)
+
+func (f ownersFunc) OwnedElsewhere(_ context.Context, a models.Activity) (bool, error) {
+	return f(a)
 }
 
 func TestService_GetByKey_NumbersByStartDay(t *testing.T) {
