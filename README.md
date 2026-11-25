@@ -89,6 +89,7 @@ Features include:
 - **Customizable Themes** - Multiple color themes and custom color support
 - **Report Export** - Export report data as text, CSV, or JSON
 - **iCal Export** - Generate .ics files for calendar integration, or sync with system calendars (macOS only)
+- **Sync** - Share activities and reminders with the tock iOS app and your other Macs through iCloud Drive (off by default)
 
 <hr clear="right"/>
 
@@ -308,6 +309,8 @@ Notes are stored as individual files in `~/.tock/notes/` (or relative to your co
 - `TOCK_CHECK_UPDATES`: Check for updates (default: `true`)
 - `TOCK_MCP_ENABLED`: Enable the MCP server, `tock mcp` (default: `false`)
 - `TOCK_MCP_READ_ONLY`: Leave out the MCP tools that change data (default: `false`)
+- `TOCK_SYNC_ENABLED`: Sync through the sync folder (default: `false`; `tock sync init` turns it on)
+- `TOCK_SYNC_DIR`: The sync folder (default: the tock iOS app's iCloud Drive folder)
 
 ### Storage Backends
 
@@ -580,6 +583,35 @@ tock mcp install --client claude-code   # or: --client opencode
 
 Tools, prompts and manual setup are described in [docs/mcp.md](docs/mcp.md).
 
+## Sync
+
+Sync shares activities and reminders between the tock iOS app and your Macs through a folder in iCloud Drive. There
+is no server: each device writes only its own journal in the folder, and tock merges them into whatever backend you
+use. It is off by default. Turn it on once per Mac:
+
+```bash
+tock sync init           # set up the folder, send what you have, take in the rest, turn sync on
+tock sync status         # the folder, this device, the devices seen and the last sync
+tock sync                # sync now (--full also compares every activity and note file)
+```
+
+The default folder is the iOS app's iCloud Drive folder
+(`~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync`, shown as `tock` in iCloud Drive), so the
+iPhone sees the same data. It shows up on the Mac once the app keeps its data in iCloud; until then `tock sync init`
+asks you to wait for it. `tock sync init --dir <folder>` uses another folder, such as one Syncthing or Dropbox keeps in
+sync, which the app can pick in Files too. `init` writes this to your config:
+
+```yaml
+sync:
+  enabled: true
+  dir: ~/Library/Mobile Documents/iCloud~com~kriuchkov~tock/Documents/sync
+```
+
+Once it is on, every command that changes data syncs right after, and so do the MCP server's tools. The menu bar icon
+(`tock tray`) syncs once a minute and as soon as another device's changes arrive, and shows the last sync in its menu.
+Edits made outside tock (by hand in `tock.txt`, with `timew` or `sqlite3`) are picked up by the next sync. The format
+is described in [docs/sync.md](docs/sync.md).
+
 ## Commands
 
 ```bash
@@ -610,6 +642,7 @@ Available Commands:
   report      Generate time tracking report
   start       Start a new activity
   stop        Stop the current activity
+  sync        Sync with the tock iOS app through iCloud Drive
   tray        Run the macOS menu bar icon (timer, start last, stop)
   version     Print the version info
   watch       Display a full-screen stopwatch for the current activity

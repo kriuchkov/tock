@@ -26,6 +26,7 @@ This document provides a comprehensive reference for all Tock commands, flags, a
   - [`ical`](#ical)
 - [Integrations](#integrations)
   - [`mcp`](#mcp)
+  - [`sync`](#sync)
 
 ## Core Commands
 
@@ -689,3 +690,55 @@ tock mcp uninstall --client claude-code|opencode [--scope user|project]
 - `--client string`: `claude-code` or `opencode` (required)
 - `--scope string`: `user` (all projects, default) or `project` (the current directory)
 - `--print`: Print the command and config entry instead of running the client's CLI (`install` only)
+
+### `sync`
+
+Sync activities and reminders with the tock iOS app and your other Macs through a folder in iCloud Drive. Off until
+`tock sync init` turns it on. See [Sync](sync.md) for the format.
+
+**Usage:**
+
+```bash
+tock sync init [--dir <folder>] [--restore] [--json]
+tock sync [--full] [--allow-deletions] [--json]
+tock sync status [--json]
+```
+
+- `init` sets the folder up (it writes `format.json` when it is missing), makes this Mac's device ID, sends what the
+  backend holds, writes the other devices' records into the backend and sets `sync.enabled` (and `sync.dir` with
+  `--dir`) in the config. When it matches data the backend holds with the folder's records (a first `init`, or another
+  backend or file), the folder's values win for the records that match, so it first copies each file it rewrites next
+  to it as `<name>.before-match-<YYYYMMDD-HHMMSS>` and prints the paths; a failed copy stops it before it writes.
+  Running it again on the same folder is a full sync. With `--restore` it writes the backend's data again from the
+  folder instead (see below). Sync stays with the backend and file `init` ran on: run `init` again to move it to
+  another one. A command run with `--backend` or `-f` on another backend or file is not synced, and says so.
+- `sync` syncs now. Once sync is on, every command that changes data syncs right after it succeeds, the MCP server
+  syncs after each tool call, and `tock tray` syncs once a minute and when another device's journal changes. A sync
+  stops without writing anything when the backend's data file is missing: put it back, or run `tock sync init` to
+  write it again from the folder. It stops too when many records are gone from the backend at once (more than one in
+  five, or more than 50), as when the file was moved, replaced by an older copy or emptied, and so does `init`, as
+  neither can tell the changes made in the file since the last sync from stale values. Put the file back, or choose:
+  `tock sync init --restore` writes the data again from the folder, which wins. It first copies each file it rewrites
+  next to it as `<name>.before-restore-<YYYYMMDD-HHMMSS>` and prints the paths; the changes made in the data since
+  the last sync, by hand or through tock while syncs stopped, stay only in those copies. It refuses, writing nothing,
+  when this Mac has not synced this data with this folder yet (a first `init`, another `--dir`, backend or file): run
+  `tock sync init` without `--restore` first, so the history this Mac holds reaches the folder. It refuses too while
+  the folder is still downloading journals from other devices (try again once they are down), and when the folder
+  holds no activity or reminder of any device yet (this Mac's own journal counts), since that would empty the data.
+  `tock sync --allow-deletions` deletes the records gone on every device instead. When none of the activities, or
+  none of the reminders, the backend holds is left from the last sync (a file started over or emptied, a database
+  created again), `init` writes those records back on its own and syncs the other kind as usual, first copying each
+  file it rewrites next to it as `<name>.before-match-<YYYYMMDD-HHMMSS>` (a notes file edited by hand since the last
+  sync is replaced by the folder's notes) and printing the paths. Fewer deletions than that go through without a
+  stop.
+- `status` shows whether sync is on, the folder, this device, the last sync, the files iCloud has not downloaded yet,
+  the invalid lines skipped and the devices in the folder; `--json` adds the backend the state was built for.
+
+**Flags:**
+
+- `--dir string`: The sync folder (`init` only; default: `sync.dir`, the tock app's iCloud Drive folder)
+- `--restore`: Write the backend's data again from the sync folder, after copying each file it rewrites next to it
+  (`init` only, on a folder this Mac has synced the backend with)
+- `--full`: Compare the whole backend and every note file, not only what changed since the last sync
+- `--allow-deletions`: Delete on every device the records gone from the backend even when many went at once
+- `--json`: Output as JSON
