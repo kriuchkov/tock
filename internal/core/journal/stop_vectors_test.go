@@ -3,7 +3,7 @@ package journal_test
 import "encoding/json"
 
 // stopVectors returns the merge vectors of the one-running rule: every device shows the ends it
-// gives, and only an activity's owner writes its end.
+// gives and writes them, an activity's owner as its end and every other device as its auto_end.
 func stopVectors() []mergeVector {
 	return []mergeVector{
 		mergeOneRunning(),
@@ -30,7 +30,7 @@ func mergeOneRunning() mergeVector {
 	return mergeVector{
 		File: "one-running",
 		Name: "of the activities started on several devices, each but the last shows as stopped at the start of the next one; " +
-			"each device writes only the ends of the activities it owns",
+			"each device writes those ends: as end for the activities it owns, as auto_end for the others",
 		Journals: map[string][]json.RawMessage{
 			devA: {
 				change(devA, at(0, 0), typeActivity, act(5), standUp),
@@ -49,9 +49,9 @@ func mergeOneRunning() mergeVector {
 				merged(act(5), standUp),
 			},
 			Writes: map[string][]write{
-				devA: {stopWrite(act(1), "2026-11-18T08:30:00+01:00")},
-				devB: {stopWrite(act(2), "2026-11-18T07:30:00Z")},
-				devC: {},
+				devA: {stopWrite(act(1), "2026-11-18T08:30:00+01:00"), autoEndWrite(act(2), "2026-11-18T07:30:00Z")},
+				devB: {autoEndWrite(act(1), "2026-11-18T08:30:00+01:00"), stopWrite(act(2), "2026-11-18T07:30:00Z")},
+				devC: {autoEndWrite(act(1), "2026-11-18T08:30:00+01:00"), autoEndWrite(act(2), "2026-11-18T07:30:00Z")},
 			},
 		},
 	}
@@ -62,8 +62,9 @@ func stopTwoRunning() mergeVector {
 	release := running("2026-11-18T03:45:00-05:00", "Mobile", "Release")
 	return mergeVector{
 		File: "stop-two-running",
-		Name: "two devices each run one activity: both show the earlier one stopped at the start of the later one, " +
-			"as its record holds it; only the earlier one's owner writes that end",
+		Name: "two devices each run one activity: every device shows the earlier one stopped at the start of the later one, " +
+			"as its record holds it; the earlier one's owner writes that end, and every other device, " +
+			"a third one without a journal included, writes it as auto_end",
 		Journals: map[string][]json.RawMessage{
 			devA: {change(devA, at(75, 0), typeActivity, act(2), api)},
 			devB: {change(devB, at(105, 0), typeActivity, act(1), release)},
@@ -75,7 +76,8 @@ func stopTwoRunning() mergeVector {
 			},
 			Writes: map[string][]write{
 				devA: {stopWrite(act(2), "2026-11-18T03:45:00-05:00")},
-				devB: {},
+				devB: {autoEndWrite(act(2), "2026-11-18T03:45:00-05:00")},
+				devC: {autoEndWrite(act(2), "2026-11-18T03:45:00-05:00")},
 			},
 		},
 	}
@@ -87,7 +89,7 @@ func stopOwnerOfEarlier() mergeVector {
 	return mergeVector{
 		File: "stop-owner-of-earlier",
 		Name: "the device whose change holds an activity's start owns it and writes its end, even when another device " +
-			"changed the activity later and started the next one while it ran; that device only shows the end",
+			"changed the activity later and started the next one while it ran; that device writes the end as auto_end",
 		Journals: map[string][]json.RawMessage{
 			devA: {change(devA, at(120, 0), typeActivity, act(1), api)},
 			devB: {
@@ -102,7 +104,7 @@ func stopOwnerOfEarlier() mergeVector {
 			},
 			Writes: map[string][]write{
 				devA: {stopWrite(act(1), "2026-11-18T09:40:00Z")},
-				devB: {},
+				devB: {autoEndWrite(act(1), "2026-11-18T09:40:00Z")},
 			},
 		},
 	}
@@ -114,7 +116,7 @@ func stopOwnerMoved() mergeVector {
 	return mergeVector{
 		File: "stop-owner-moved",
 		Name: "a device that edits an activity's start becomes its owner and writes its end; the device that created it " +
-			"no longer does, even after it changes another field",
+			"writes it as auto_end, as every other device does, even after it changes another field",
 		Journals: map[string][]json.RawMessage{
 			devA: {
 				change(devA, at(120, 0), typeActivity, act(1), api),
@@ -131,9 +133,9 @@ func stopOwnerMoved() mergeVector {
 				merged(act(2), deploy),
 			},
 			Writes: map[string][]write{
-				devA: {},
+				devA: {autoEndWrite(act(1), "2026-11-18T10:00:00Z")},
 				devB: {stopWrite(act(1), "2026-11-18T10:00:00Z")},
-				devC: {},
+				devC: {autoEndWrite(act(1), "2026-11-18T10:00:00Z")},
 			},
 		},
 	}
@@ -159,22 +161,24 @@ func stopOwnerStopUnseen() mergeVector {
 	return mergeVector{
 		File: "stop-owner-stop-unseen",
 		Name: "until the owner's stop at 10:30 arrives, devices show the activity stopped at 11:00, when the next one " +
-			"started; the device that started it does not own the first one and writes nothing",
+			"started; the device that started it does not own the first one and writes 11:00 as its auto_end, " +
+			"which the owner's end shows over once it arrives (see auto-end-owner-end-wins)",
 		Journals: ownerStop(false),
 		Expect: mergeExpect{
 			Activities: []record{
 				merged(act(1), with(running("2026-11-18T10:00:00+01:00", "Backend", "API"), fields{"end": "2026-11-18T11:00:00+01:00"})),
 				merged(act(2), running("2026-11-18T11:00:00+01:00", "Docs", "Release notes")),
 			},
-			Writes: map[string][]write{devB: {}},
+			Writes: map[string][]write{devB: {autoEndWrite(act(1), "2026-11-18T11:00:00+01:00")}},
 		},
 	}
 }
 
 func stopOwnerStop() mergeVector {
 	return mergeVector{
-		File:     "stop-owner-stop",
-		Name:     "once the owner's stop at 10:30 arrives it shows, though a device had shown 11:00: nobody wrote that end",
+		File: "stop-owner-stop",
+		Name: "once the owner's stop at 10:30 arrives it shows, though a device had shown 11:00; the activity no longer runs, " +
+			"so nobody writes that end",
 		Journals: ownerStop(true),
 		Expect: mergeExpect{
 			Activities: []record{
@@ -215,7 +219,13 @@ func running(start, project, description string) fields {
 	return fields{"start": start, "end": nil, "project": project, "description": description, "notes": ""}
 }
 
-// stopWrite is the change that writes an activity's end.
+// stopWrite is the change that writes an activity's end, as its owner writes the end rule 1 gives it.
 func stopWrite(uid, end string) write {
 	return write{Type: typeActivity, UID: uid, Set: fields{"end": end}}
+}
+
+// autoEndWrite is the change that writes an activity's auto_end, as every device but its owner writes
+// the end rule 1 gives it.
+func autoEndWrite(uid, end string) write {
+	return write{Type: typeActivity, UID: uid, Set: fields{"auto_end": end}}
 }

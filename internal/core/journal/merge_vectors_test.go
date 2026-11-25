@@ -19,6 +19,7 @@ func mergeVectors() []mergeVector {
 		mergeReminders(),
 	}
 	vectors = append(vectors, stopVectors()...)
+	vectors = append(vectors, autoEndVectors()...)
 	for i := range vectors {
 		if vectors[i].Expect.Activities == nil {
 			vectors[i].Expect.Activities = []record{}

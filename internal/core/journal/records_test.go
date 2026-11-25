@@ -52,6 +52,51 @@ func TestRecordActivity(t *testing.T) {
 	assert.False(t, ok, "a reminder is not an activity")
 }
 
+func TestRecordActivityShownEnd(t *testing.T) {
+	tests := []struct {
+		name    string
+		end     string
+		autoEnd string
+		want    string
+	}{
+		{name: "end without auto_end", end: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T11:00:00Z"},
+		{name: "auto_end while end is null", end: `null`, autoEnd: `"2026-11-18T12:00:00+01:00"`, want: "2026-11-18T11:00:00Z"},
+		{name: "auto_end without end", autoEnd: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T11:00:00Z"},
+		{name: "end over a later auto_end", end: `"2026-11-18T10:30:00Z"`, autoEnd: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T10:30:00Z"},
+		{name: "end over an earlier one", end: `"2026-11-18T11:30:00Z"`, autoEnd: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T11:30:00Z"},
+		{name: "auto_end when end has the wrong type", end: `"later"`, autoEnd: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T11:00:00Z"},
+		{name: "auto_end null", end: `null`, autoEnd: `null`},
+		{name: "auto_end with fractional seconds", end: `null`, autoEnd: `"2026-11-18T11:00:00.5Z"`},
+		{name: "auto_end a date", autoEnd: `"2026-11-18"`},
+		{name: "auto_end a number", autoEnd: `1795000000`},
+		{name: "auto_end true", autoEnd: `true`},
+		{name: "auto_end before the start", end: `null`, autoEnd: `"2026-11-18T09:59:59Z"`},
+		{name: "auto_end before the start in another offset", autoEnd: `"2026-11-18T10:30:00+01:00"`},
+		{name: "auto_end at the start", autoEnd: `"2026-11-18T10:00:00Z"`, want: "2026-11-18T10:00:00Z"},
+		{name: "auto_end at the start in another offset", autoEnd: `"2026-11-18T11:00:00+01:00"`, want: "2026-11-18T10:00:00Z"},
+		{name: "end before the start", end: `"2026-11-18T09:00:00Z"`, autoEnd: `"2026-11-18T11:00:00Z"`, want: "2026-11-18T09:00:00Z"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			set := map[string]string{"start": `"2026-11-18T10:00:00Z"`, "project": `"Backend"`}
+			if tt.end != "" {
+				set["end"] = tt.end
+			}
+			if tt.autoEnd != "" {
+				set["auto_end"] = tt.autoEnd
+			}
+			activity, ok := newRecord(journal.TypeActivity, set).Activity()
+			require.True(t, ok)
+			if tt.want == "" {
+				assert.Nil(t, activity.EndTime, "the activity runs")
+				return
+			}
+			require.NotNil(t, activity.EndTime)
+			assert.Equal(t, tt.want, activity.EndTime.UTC().Format(time.RFC3339))
+		})
+	}
+}
+
 func TestRecordReminder(t *testing.T) {
 	rec := newRecord(journal.TypeReminder, map[string]string{
 		"title":                      `"Stand-up"`,

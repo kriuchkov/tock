@@ -16,14 +16,25 @@ const (
 	occurrencePrefix = "occ/"
 	fieldDeleted     = "deleted"
 	fieldStart       = "start"
-	fieldEnd         = "end"
 	dueLayout        = "2006-01-02T15:04"
 	// maxNumber bounds count and notify, so converting them cannot overflow.
 	maxNumber = math.MaxInt32
 )
 
+// The fields that end an activity. An activity shows its end when that holds an instant, otherwise
+// its auto_end when that holds one that is not before its start; with neither it runs.
+const (
+	// FieldEnd is the end of an activity: written by a stop made on purpose, on any device, and by the
+	// activity's owner for the end the one-running rule gives it.
+	FieldEnd = "end"
+	// FieldAutoEnd is the end the one-running rule gives an activity, written by every device that
+	// does not own it. An end always shows over it, whatever the clocks.
+	FieldAutoEnd = "auto_end"
+)
+
 // Activity returns the activity the record holds. ok is false when it is hidden: deleted, or
-// without a start or a project. A field holding a value of the wrong type counts as missing.
+// without a start or a project. A field holding a value of the wrong type counts as missing. EndTime
+// is the shown end: end, or else auto_end (see shownEnd).
 func (r Record) Activity() (models.Activity, bool) {
 	if r.Type != TypeActivity || r.flag(fieldDeleted) {
 		return models.Activity{}, false
@@ -41,10 +52,33 @@ func (r Record) Activity() (models.Activity, bool) {
 		Notes:       r.text("notes"),
 		Tags:        r.tags(),
 	}
-	if end, hasEnd := r.instant(fieldEnd); hasEnd {
+	if end, _, hasEnd := r.shownEnd(); hasEnd {
 		activity.EndTime = &end
 	}
 	return activity, true
+}
+
+// ShownEndField returns the field that holds an activity's shown end: FieldEnd, FieldAutoEnd, or ""
+// while it runs (see shownEnd).
+func (r Record) ShownEndField() string {
+	_, path, _ := r.shownEnd()
+	return path
+}
+
+// shownEnd returns an activity's shown end and the field that holds it: end when it holds an
+// instant, otherwise auto_end when it holds one that is not before the start. ok is false while the
+// activity runs. An auto_end only ever holds the start of an activity that came after this one, so
+// one before its start is stale, as when a device that had not read it moved the start past it, and
+// counts as missing.
+func (r Record) shownEnd() (time.Time, string, bool) {
+	if end, ok := r.instant(FieldEnd); ok {
+		return end, FieldEnd, true
+	}
+	end, ok := r.instant(FieldAutoEnd)
+	if start, hasStart := r.instant(fieldStart); !ok || (hasStart && end.Before(start)) {
+		return time.Time{}, "", false
+	}
+	return end, FieldAutoEnd, true
 }
 
 // Reminder returns the reminder the record holds, with ID 0: reminder numbers are local. ok is

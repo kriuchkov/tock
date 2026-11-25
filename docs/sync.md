@@ -109,14 +109,20 @@ the strings compares the clocks.
 | Path | Value |
 |---|---|
 | `start` | Instant in RFC 3339 with offset, whole seconds. Required |
-| `end` | Instant, or `null` while the activity runs |
+| `end` | Instant, or `null` while nobody has stopped the activity |
+| `auto_end` | Instant: the end the one-running rule gives the activity, as the devices that do not own it write it (see [rule 1](#rules-after-the-merge)); or `null` |
 | `project` | Non-empty string. Required |
 | `description` | String |
 | `notes` | String; `""` means no notes |
 | `tags/<tag>` | `true` while the tag is on the activity, `false` once removed |
 | `deleted` | `true` once the activity is removed |
 
-Activity times are instants: each device shows them in its own time zone.
+Activity times are instants: each device shows them in its own time zone. An activity's **shown end** is its `end`
+when that holds an instant, otherwise its `auto_end` when that holds an instant that is not before its `start`; with
+neither, the activity runs. An `auto_end` only ever holds the start of an activity that came after this one, so one
+before the `start` is stale, as when the owner moved the start past it before reading it, and counts as missing: the
+activity runs from its new start, and rule 1 orders it again. Every device shows and counts an activity by its shown
+end.
 
 ### Reminder fields
 
@@ -158,8 +164,9 @@ changes get the same state, whatever order they read them in and however many ti
   a reminder without `title` or `due`. Writers never create them, but a reader can see one while a segment is still
   downloading.
 - **Values of the wrong type** count as missing when a record is read: a `start` that is not an RFC 3339 instant
-  with whole seconds, a `project` that is a number, a `count` that is not a whole number, an `every` not in the
-  canonical form. The merged state keeps them as they are, so devices still agree on it.
+  with whole seconds, an `end` or `auto_end` that is not one, a `project` that is a number, a `count` that is not a
+  whole number, an `every` not in the canonical form. The merged state keeps them as they are, so devices still agree
+  on it.
 - **Tags** of a record are the `tags/<tag>` fields set to `true`.
 
 ## Rules after the merge
@@ -167,21 +174,57 @@ changes get the same state, whatever order they read them in and however many ti
 Every implementation applies these to the merged state:
 
 1. **One activity runs at a time.** Two devices can each start an activity before they see each other's change. In
-   that case the running activities (visible, with `end` missing or `null`) are sorted by `start`, ties broken by `uid`.
-   Every device shows each of them except the last with `end` set to the `start` value of the next one, as if that
-   activity had been started on the same device.
-   - **Only the owner writes that end.** An activity's owner is the device whose change holds the merged value of its
-     `start`, so a device that edits the start becomes the owner. The owner writes the end the rule gives as a change.
-     Other devices show the same end and never write it: not when they apply the rule after a merge, not when
-     starting an activity stops another device's running one, and not when comparing the CLI's backend finds that end
-     (see [Mac: the CLI's backends](#mac-the-clis-backends)). The end of a Mac's working day stops only the
-     activities that Mac owns; another device's activity is left to its owner.
-   - **Stops made on purpose** (`tock stop`, Stop in the app) are changes like any other, written by the device they
-     are made on, whoever owns the activity.
-   - **Why.** An end the owner wrote must never lose to an end that another device computed before it read it. Say
-     the owner stops an activity at 10:30, and another device, which has not read that stop yet, starts one at 11:00.
-     That device shows the first activity stopped at 11:00 until the stop arrives, then 10:30. Had it written 11:00,
-     its later change would have won over the real end.
+   that case the running activities (visible, with no [shown end](#activity-fields)) are sorted by `start`, ties broken
+   by `uid`. Every device shows each of them except the last as ending at the `start` value of the next one, as if that
+   activity had been started on the same device, and writes that end.
+   - **An `auto_end` gives way to an earlier start.** An activity whose shown end is its `auto_end` ends at the
+     `start` of the first running activity after it in that order, when that start is before its `auto_end`. Every
+     device shows that end and writes it, as above. Two devices that each start an activity while a third device's
+     runs, before they read each other's start, both write that activity's `auto_end`, and the later clock wins
+     whatever the instants: without this the activity would overlap the earlier of the two new ones, which runs. The
+     same goes for a backdated start read later. Only a running activity cuts so: one that has stopped leaves the
+     `auto_end` as it is (see [Open questions](#open-questions)). A device needs only the running activities and those
+     an `auto_end` stops later than the earliest start among them to apply the rule.
+   - **Who writes what.** An activity's owner is the device whose change holds the merged value of its `start`, so a
+     device that edits the start becomes the owner. The owner writes the end the rule gives as the activity's `end`.
+     Every other device that sees the stop writes the same value as the activity's `auto_end`: when it applies the
+     rule after a merge, and when comparing the CLI's backend finds that end (see
+     [Mac: the CLI's backends](#mac-the-clis-backends)). Once either field holds it, the activity shows that end, so
+     the rule gives it no other and nothing more is written for it.
+   - **When.** After a merge, a device writes what the rule gives it only in a sync that read every segment, with no
+     file waiting for a download or failing to read: a change it has not read could hold a real end, a moved start or
+     an activity that runs in between. A device that sees a stop only in such a sync writes it in the next complete
+     one, if the rule still gives it.
+   - **Starting an activity** on a device ends the activity that runs as shown after the rules, if one does, in
+     changes the device writes together with the new activity's:
+     - one another device owns, when the new activity comes after it in the rule's order (a later `start`, or the same
+       instant and a larger `uid`), gets `auto_end` set to the new activity's `start`, the same text the new record
+       holds. That is the end the rule gives it once the new activity runs; written at once, it holds even when the new
+       activity stops before the owner syncs.
+     - any other, one this device owns or one the new start comes before, gets `end`: the new start, or, when the new
+       start is before the running activity's own, the current time in whole seconds, and never before that start.
+
+     Only the activity that runs as shown is stopped. Another one the rule shows stopped, whose end nobody has written
+     yet because no complete sync has run, is left as it is; once the start stops the one that ran after it, the
+     rule shows it running until the new start (see [Open questions](#open-questions)).
+   - **Stops made on purpose** (`tock stop`, Stop in the app, an edit of the end) write `end`, on the device they are
+     made on, whoever owns the activity. The end of a Mac's working day stops only the activities that Mac owns;
+     another device's activity is left to its owner.
+   - **Reopening** an activity on purpose, as an undo of a stop or an edit that clears its end, writes `end: null` and
+     `auto_end: null` together in one change. A change that cleared only `end` would leave the activity stopped at its
+     `auto_end`.
+   - **Why the owner's end wins.** An end the owner wrote must never lose to an end that another device computed
+     before it read it. Say the owner stops an activity at 10:30, and another device, which has not read that stop
+     yet, starts one at 11:00. That device writes 11:00 as the first activity's `auto_end` and shows it until the stop
+     arrives, then 10:30: the shown end takes `end` first, whatever the clocks. Had it written 11:00 as `end`, its
+     later change would have won over the real end. For the same reason a stop made on purpose, on any device, shows
+     over every `auto_end`.
+   - **Why the others write too.** An end that is only shown runs out. Say the Mac starts an activity while the
+     phone's runs, then stops it before the phone syncs. Without the `auto_end` the phone's activity would run again
+     on every device from its start, and for good once the phone syncs after that: the rule only stops activities that
+     run.
+   - **Older readers.** A reader that does not know `auto_end` keeps it in the merged state like any field it does not
+     know (see [Versions](#versions)) and shows the activity as running, as before.
 2. **Short reminder numbers are local.** The CLI's `#N` numbers are not synced. Each device keeps a map from `uid` to
    its own numbers and gives a reminder that arrives from another device the next free number. The same reminder can
    therefore be `#3` on one Mac and `#5` on another.
@@ -250,19 +293,30 @@ the backend and the journals goes through the same ports as the activity service
   compare, so changes made through tock and outside it are found the same way, at the backend's precision. An edit that
   moves an activity's start saves it at the new start and then removes it at the old one, marked as the end of that
   move: only such a removal is taken for the record moving, and any other is a deletion, even one right after a save of
-  another activity. One save is not recorded: the end the one-running rule gives an activity this device does not own,
-  even when the activity service wrote it by auto-stopping that activity (see [rule 1](#rules-after-the-merge)). Such a
-  stop is marked in `state.db` until a sync goes through, so a sync in another process, or after the command's own sync
-  failed, still tells it from a stop made on purpose. The end of the working day does not stop an activity another
-  device owns at all: the activity service asks sync who owns the running activity, and leaves it running, as sync would
-  put it back as running after every command otherwise. When sync cannot tell, as when `state.db` cannot be read, the
-  activity is left running too, and the command warns and goes on. A recorded write waits at most 10 seconds for a sync
-  that holds the lock, then goes on unrecorded and is found by the next compare; an auto-stop waits as long as it takes.
+  another activity. The end the activity service writes when a start stops an activity another device owns is
+  recorded with the start that made it, and goes to the journal as rule 1 says for a start (see
+  [rule 1](#rules-after-the-merge)): as its `auto_end`, set to the new activity's `start` as the merged record holds
+  it, when the new start comes after it, and as its `end` when it comes before. It does even when the new activity
+  has stopped too by the time the sync runs, and in a sync that has not read every segment. When the merged state
+  shows the activity stopped at an earlier start, of an activity this Mac had not read when it made the stop, that
+  earlier end goes to the journal instead, as the field rule 1 gives this Mac. Nothing is journaled when the merged
+  state shows the activity stopped by an `end`, or by an `auto_end` no later than the stop, which another device
+  wrote meanwhile: the sync writes the merged end back. Such a stop is marked in `state.db` with its start until a
+  sync goes through, so a sync in another process, or after the command's own sync failed, still tells it from a
+  stop made on purpose, which goes to the journal as `end`. A backend holds one end
+  per activity, its shown end; an end cleared there, by hand or with `tock edit --clear-end`, is a reopen and goes to
+  the journal as `end: null` with `auto_end: null` in one change. The end of the working day does not stop an activity
+  another device owns at all: the activity service asks sync who owns the running activity, and leaves it running, as
+  sync would put it back as running after every command otherwise. When sync cannot tell, as when `state.db` cannot be
+  read, the activity is left running too, and the command warns and goes on. Should it stop one all the same, as
+  when the owner changed in between, that stop is not journaled: the sync writes the merged state back. A recorded write waits at most 10 seconds
+  for a sync that holds the lock, then goes on unrecorded and is found by the next compare; an auto-stop waits as long
+  as it takes.
 - **Changes made outside tock** (by hand in `tock.txt`, with `timew`, with `sqlite3`) are found by comparing the
   backend with the last-sync state. A sync only compares when the backend's change token differs from the one saved
   after tock's own last write. A full compare of 100,000 activities takes about 0.1 s, the same as a `tock report`
-  over that data. An end the compare finds is not recorded when it is the one the rule gives an activity this device
-  does not own.
+  over that data. An end the compare finds that is the one the rule gives an activity this device does not own goes
+  to the journal as its `auto_end`, as one tock wrote would.
 - **Changes from other devices** are written to the backend where it differs, and the result becomes the new
   last-sync state: what the backend gives back, not the merged value. A value the backend cannot hold as it is, such
   as a `|` or a line break in a `tock.txt` description, or a quote in a timewarrior annotation, is written as the
@@ -315,9 +369,10 @@ the backend and the journals goes through the same ports as the activity service
   starts (the first of the two, once rule 1 ends it where the second starts) gives way: it leaves the backend with its
   notes and waits outside it, and nothing is journaled for it. Of two that both take time, the one in the backend
   stays and the other waits. The same holds when `tock start` replaces, in `tock.txt`, the line of an activity
-  another device started in the same minute: that activity keeps its uid, project and description, and waits. A waiting activity is written once its minute is free, by the next sync that reads it
-  and at the latest by the next full one (`tock sync --full`, and `tock tray` once an hour), which reads every
-  record.
+  another device started in the same minute: that activity keeps its uid, project and description, and waits. A
+  waiting activity is written once its minute is free: by the sync that moves or removes the activity at that minute,
+  by the next sync that reads it, and at the latest by the next full one (`tock sync --full`, and `tock tray` once an
+  hour), which reads every record.
 - **Switching backends.** `state.db` records which backend and path it was built for. Only `tock sync init` switches
   them: while tock runs on another backend or file, as with `--backend` or `-f` for one command, sync leaves both
   alone, records none of its writes, and says so once. After `tock sync init` on the new backend, the bridge matches
@@ -393,7 +448,9 @@ The rest of this section is how the CLI does what this document asks.
   files sit next to it. When a new tock changes its layout, the file is rebuilt: the device ID, `last`, the folder and
   the backend and path are kept, and the first sync after it on that backend reads the journals again and matches the
   backend as after a backend switch. A command on another backend or file is left alone as before the rebuild.
-  An older tock leaves a file a newer one made alone and says to update. A sync that reads the journals again from
+  An older tock leaves a file a newer one made alone and says to update. The layout changed with `auto_end` (version
+  3), so a menu bar icon still running the tock from before it after an upgrade stops there, instead of writing the
+  activities an `auto_end` stops back into the backend as running. A sync that reads the journals again from
   the start compares the whole backend, and journals again, whole, the records the merged state lost with lines of a
   journal that went away or shrank. A record that survives keeps this Mac's later changes all the same: every field
   whose value before the rebuild was this Mac's, and that the rebuilt state holds older or not at all, is journaled
@@ -401,12 +458,16 @@ The rest of this section is how the CLI does what this document asks.
   devices lost are theirs to journal again.
 - **Records interrupted runs wrote.** A record a run wrote into the backend before it could save its image is taken
   for that record by the next run, by start, project and description, whether or not that run loaded it, and by the
-  start the merged state moved it to when its last-sync state is at the old one. Its missing note files are written,
-  not journaled as cleared. A reminder without a `uid` gets one stored in the backend before it is journaled.
+  start the merged state moved it to when its last-sync state is at the old one. The line is the merged view as that
+  run wrote it, which other devices' changes may have moved on since, so it is no edit: nothing of it is journaled
+  but an end tock recorded for it since, and the sync writes the merged view over it. Its missing note files are
+  written, not journaled as cleared. A reminder without a `uid` gets one stored in the backend before it is journaled.
 - **Device ID and clones.** The ID is made at the first sync and kept in `state.db`. A change in the device's own
   journal with a clock later than `last` makes it take a new ID, and `tock sync` says so.
-- **Ends rule 1 gives.** The CLI journals the ends rule 1 gives its own activities only in a sync that read every
-  segment, with no file waiting for a download or failing to read: a change it has not read could hold a real end.
+- **What rule 1 gives.** After a merge the CLI journals what rule 1 gives it to write, the `end` of its own
+  activities and the `auto_end` of the others, only in a sync that read every segment, with no file waiting for a
+  download or failing to read (see [rule 1](#rules-after-the-merge)). The stops of a start are recorded writes like
+  the start itself.
 - **iCloud.** The CLI asks for files iCloud has not downloaded yet with `brctl download`. Since macOS 14 iCloud Drive
   mostly keeps files without their contents instead of placeholders; those are read like any other file, which
   downloads them. `tock sync status` shows how many files wait.
@@ -420,7 +481,10 @@ The rest of this section is how the CLI does what this document asks.
 The app's bundle ID is `com.kriuchkov.tock`, and its iCloud container is `iCloud.com.kriuchkov.tock`, with its
 documents scope public. That makes its folder visible in iCloud Drive on the Mac, where the CLI reads and writes it.
 The app watches the folder with `NSMetadataQuery`, reads and writes through `NSFileCoordinator`, keeps the merged
-state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes only its own journal.
+state in SQLite (see [Reading incrementally](#reading-incrementally)) and writes only its own journal. After a refresh
+that read every segment it writes what [rule 1](#rules-after-the-merge) gives it: the `end` of the activities it owns
+and the `auto_end` of the others. Starting an activity stops the running one as rule 1 says, with `auto_end` when
+another device owns it and the new start comes after it.
 
 The iCloud container is not the only place. The app keeps its journal where the user chooses: only on the device, in
 the iCloud container, or in another folder picked in Files, such as one that Syncthing, Dropbox or any other Files
@@ -434,13 +498,15 @@ provider keeps it on the Mac.
 - **`format.json`.** A reader that finds a version it does not know stops syncing and asks for an update. It writes
   nothing to the folder.
 - **`v` on each line.** It is the same version. Version 1 can only grow by new optional field paths, which readers
-  keep (see above).
+  keep (see above). `auto_end` is one: a reader from before it keeps it, shows the activity as running, and still
+  writes the `end` of only its own activities.
 
 ## Test vectors
 
 The vectors are Go values in the tests of `internal/core/journal` (`*_vectors_test.go`), which run them.
-`make sync-vectors OUT=<dir>` writes them as JSON files, one per vector, into `<dir>/hlc`, `<dir>/merge` and
-`<dir>/repeat`. tock-ios commits the files generated from a tock release and runs all of them.
+`make sync-vectors OUT=<dir>` writes them as JSON files, one per vector, into `<dir>/hlc`, `<dir>/merge`,
+`<dir>/start`, `<dir>/reopen` and `<dir>/repeat`. tock-ios commits the files generated from a tock release and runs
+all of them.
 
 - `hlc/*.json`: `{"name", "valid", "invalid", "order", "last", "steps"}`, each key but `name` optional. `valid`
   and `invalid` are clocks that parse or not; a valid one is written back unchanged. `order` lists `[hlc, dev]`
@@ -450,13 +516,26 @@ The vectors are Go values in the tests of `internal/core/journal` (`*_vectors_te
 - `merge/*.json`: `{"name", "journals": {"<dev>": [line, ...]}, "expect": {"activities", "reminders", "skipped",
   "writes"}}`, `writes` optional. An object line is written as compact JSON and `\n`, a string line exactly as it
   is, so a vector can hold a malformed line or a last line cut off before its `\n`. `expect` lists the visible
-  records in `uid` order as `{"uid", "fields"}`, with every merged field as devices show it after the rules (an end
-  the one-running rule gives included), and counts the skipped lines. `writes` maps device ids to the changes each of
-  those devices writes after reading all the journals and applying the rules, in `uid` order, as `{"type", "uid",
-  "set"}` (a change without `v`, `hlc` and `dev`, which depend on the device), or `[]` when it writes none; a device
-  it lists need not have a journal. The result must be the same whatever order the journals are read in, when they
-  are read twice, and when they are read a few bytes at a time. Once every device of `journals` has written what the
-  rules give it to write, the visible records must stay the same and the rules must give no more ends.
+  records in `uid` order as `{"uid", "fields"}`, with every merged field as devices show it after the rules, and
+  counts the skipped lines. There `end` is the activity's `end` when that holds an instant, otherwise the end the
+  one-running rule gives it, otherwise its shown end; it keeps its merged value when there is none. `auto_end` is as merged. `writes` maps device ids to the
+  changes each of those devices writes after reading all the journals and applying the rules, in `uid` order, as
+  `{"type", "uid", "set"}` (a change without `v`, `hlc` and `dev`, which depend on the device), or `[]` when it writes
+  none. Each change sets one field: `{"end": ...}` for an activity the device owns, `{"auto_end": ...}` for any other.
+  A device it lists need not have a journal; one without a journal owns no activity, so it writes `auto_end` only. The
+  result must be the same whatever order the journals are read in, when they are read twice, and when they are read a
+  few bytes at a time. Once every device of `journals` has written what the rules give it to write, from the same
+  state, the rules must give no more ends, and the visible records must stay the same but for `auto_end`: an activity
+  a device wrote it for shows that value there.
+- `start/*.json`: `{"name", "journals", "device", "now", "tz", "start": {"uid", "start"}, "expect"}`. After reading
+  `journals` as in a merge vector, device `device` starts an activity with that `uid` and `start` (the text its record
+  holds) at `now`, an RFC 3339 instant that may have a fraction of a second, in time zone `tz`. `expect` lists the
+  changes the start writes besides the new activity's own, as in the merge vectors' `writes`: the stop of the activity
+  that runs as shown after the rules, if any, or `[]`. An `end` written at the current time has whole seconds and the
+  offset `tz` has at that instant.
+- `reopen/*.json`: `{"name", "journals", "device", "uid", "expect": {"edits", "activities"}}`. After reading
+  `journals`, device `device` reopens activity `uid` on purpose. `expect.edits` lists the changes it writes, as in
+  `writes`, and `expect.activities` the visible activities once that change is merged, as in a merge vector.
 - `repeat/*.json`: `{"name", "tz", "reminder", "from", "to", "now", "expect"}`. `reminder` holds the fields of a
   reminder, read in time zone `tz`. `expect` lists the occurrences on the days from `from` up to `to` (not
   included; a day starts at its first instant, see [Midnight gaps](#repeat-rules)) as `{"due", "status"}`, at `now`
@@ -467,11 +546,12 @@ The vectors are Go values in the tests of `internal/core/journal` (`*_vectors_te
 
 Besides the vectors, each implementation writes whole sync folders through its own code for the other to read,
 each with an `expected.json` of what every device reads from it: the devices, the visible records after the rules,
-the ends each device with a journal still has to write, and the activities and occurrences they read as. tock's
-are written by `make sync-interop OUT=<dir>` (`internal/services/sync/interop_test.go`: two Macs with the file
-backend, and a Mac that joins a folder of the app); tock-ios commits them in `Tests/Interop` and reads them with its
-`JournalSync`. tock-ios writes its own (a phone and a tablet, and the phone the mixed folder starts from) into
-`internal/services/sync/testdata/ios`, which tock reads with `syncfolder` and `journal`.
+what rule 1 still gives each device with a journal to write (`end` or `auto_end`, as in the merge vectors' `writes`),
+and the activities and occurrences they read as. tock's are written by `make sync-interop OUT=<dir>`
+(`internal/services/sync/interop_test.go`: two Macs with the file backend, and a Mac that joins a folder of the app);
+tock-ios commits them in `Tests/Interop` and reads them with its `JournalSync`. tock-ios writes its own (a phone and
+a tablet, and the phone the mixed folder starts from) into `internal/services/sync/testdata/ios`, which tock reads
+with `syncfolder` and `journal`.
 
 ## Privacy
 
@@ -480,17 +560,21 @@ Nothing else leaves the device.
 
 ## Open questions
 
-- **Stops written in turns.** With three or more activities running at once, each owner writes its own end. Once
-  the second activity's end is written it no longer runs, so the first one shows as stopped at the start of the third
-  until its owner writes, and an owner that has read the second end by then writes that later end. Version 1 accepts
-  this: it takes three devices that each start an activity before reading the others.
-- **A shown stop that runs out.** A device that does not own an activity only shows the end rule 1 gives it. Once
-  the activity that gave that end stops in turn, the first one runs again on every device until its owner writes its
-  end: the phone's activity stopped by starting one on the Mac shows as running again when the Mac stops its own, as
-  long as the phone has not synced in between. Fixing it changes the format: either an `auto_end` field that any
-  device may write and every device shows while `end` is `null`, the owner's `end` always winning, or a rule 1 that
-  keeps an end it gave once the next activity stops. Both need the spec, the test vectors and the iOS app to change
-  together.
+- **Stops written in turns.** A device writes the ends rule 1 gives from what it has read. Two devices that each
+  start an activity while a third one's runs, before they read each other's start, both write that activity's
+  `auto_end`, and the later clock wins; rule 1 then stops it at the earlier start while that activity still runs (see
+  [rule 1](#rules-after-the-merge)). When the earlier of the two new activities is stopped by an `end` before any
+  device has read both starts, it no longer runs and does not cut, so the third activity keeps the later `auto_end`
+  and overlaps it. The same
+  goes for an activity whose owner reads the second activity's end before it has seen the first one run with it, and
+  writes the later end as `end`, which shows over every `auto_end`. Version 1 accepts this: it takes two starts made
+  before the devices read each other, and a stop before any device read both.
+- **A start after an unwritten stop.** A device that shows two activities of other devices running, the earlier one
+  stopped by rule 1 at the later one's start, has not written that stop until a complete sync. A start then stops only
+  the later one (see [rule 1](#rules-after-the-merge)), so the earlier one runs until the new start and overlaps the
+  later one. Writing the rule's ends with the start would mean writing them from a sync that has not read every
+  segment. Version 1 accepts this: it takes an activity started while a sync is incomplete and two other activities
+  ran concurrently.
 - **Snapshots.** Version 1 has none. On tock's data a snapshot of the merged state is larger than the journals it
   replaces (49 MB against 45 MB), because most records are written once or twice and a snapshot keeps an `hlc` per
   field. If records start being rewritten often, a later version can add snapshots and delete the segments they

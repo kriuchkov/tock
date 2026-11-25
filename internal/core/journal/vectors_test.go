@@ -19,8 +19,8 @@ import (
 	"github.com/kriuchkov/tock/internal/timeutil"
 )
 
-// The test vectors of docs/sync.md, shared with tock-ios: hlc_vectors_test.go, merge_vectors_test.go and
-// repeat_vectors_test.go hold them, the tests below run them, and TestWriteVectors writes them as JSON.
+// The test vectors of docs/sync.md, shared with tock-ios: the *_vectors_test.go files hold them, the
+// tests below run them, and TestWriteVectors writes them as JSON.
 
 // hlcVector checks how clocks parse and compare, and how a device's clock moves.
 type hlcVector struct {
@@ -69,6 +69,43 @@ type write struct {
 type record struct {
 	UID    string         `json:"uid"`
 	Fields map[string]any `json:"fields"`
+}
+
+// startVector starts an activity on Device at Now, after reading the journals, and lists the changes
+// the device writes besides the new activity's own: the stop of the activity that runs as shown after
+// the rules. An end at now is written in time zone TZ.
+type startVector struct {
+	File     string                       `json:"-"`
+	Name     string                       `json:"name"`
+	Journals map[string][]json.RawMessage `json:"journals"`
+	Device   string                       `json:"device"`
+	Now      string                       `json:"now"`
+	TZ       string                       `json:"tz"`
+	Start    newActivity                  `json:"start"`
+	Expect   []write                      `json:"expect"`
+}
+
+// newActivity is the activity a start vector starts: its uid and its start as its record holds it.
+type newActivity struct {
+	UID   string `json:"uid"`
+	Start string `json:"start"`
+}
+
+// reopenVector reopens the activity UID on purpose on Device, after reading the journals, as an undo of
+// a stop or an edit that clears its end, and lists the change it writes and the visible records after it.
+type reopenVector struct {
+	File     string                       `json:"-"`
+	Name     string                       `json:"name"`
+	Journals map[string][]json.RawMessage `json:"journals"`
+	Device   string                       `json:"device"`
+	UID      string                       `json:"uid"`
+	Expect   reopenExpect                 `json:"expect"`
+}
+
+// reopenExpect is the change a reopen writes and the visible activities after it, as in mergeExpect.
+type reopenExpect struct {
+	Edits      []write  `json:"edits"`
+	Activities []record `json:"activities"`
 }
 
 // repeatVector lists the occurrences of a reminder on the days [From, To) at Now, in time zone TZ.
@@ -182,14 +219,88 @@ func TestMergeVectors(t *testing.T) {
 					assert.Equal(t, want, writes(t, state.ApplyRules(dev)), "%s: writes of %s", name, dev)
 				}
 
-				// Once every owner has written its ends, devices show the same records and the rule
-				// gives no more ends.
-				writeOwnEnds(state, devs)
-				require.Empty(t, state.Stops(), "%s: the rule holds once the owners write their ends", name)
-				checkVisible(t, state, v.Expect, name+", after the owners write")
+				// Once every device has written what the rules give it, the rule gives no more ends and
+				// devices show the same records, with the auto_end values written.
+				autoEnds := writeRules(state, devs)
+				require.Empty(t, state.Stops(), "%s: the rule holds once the devices write", name)
+				checkVisible(t, state, withAutoEnds(t, v.Expect, autoEnds), name+", after the devices write")
 			}
 		})
 	}
+}
+
+func TestStartVectors(t *testing.T) {
+	for _, vector := range startVectors() {
+		t.Run(vector.File, func(t *testing.T) {
+			v := roundTrip(t, vector)
+			t.Log(v.Name)
+			loc, err := time.LoadLocation(v.TZ)
+			if err != nil {
+				t.Skipf("timezone data unavailable: %v", err)
+			}
+			now, err := time.Parse(time.RFC3339Nano, v.Now)
+			require.NoError(t, err)
+			state := vectorState(t, v.Journals)
+
+			got := []write{}
+			for _, w := range state.StartStops(v.Device, v.Start.UID, mustJSON(v.Start.Start), now, loc) {
+				var value any
+				require.NoError(t, json.Unmarshal(w.Value, &value))
+				got = append(got, write{Type: string(journal.TypeActivity), UID: w.UID, Set: map[string]any{w.Field: value}})
+			}
+			assert.Equal(t, v.Expect, got)
+		})
+	}
+}
+
+func TestReopenVectors(t *testing.T) {
+	for _, vector := range reopenVectors() {
+		t.Run(vector.File, func(t *testing.T) {
+			v := roundTrip(t, vector)
+			t.Log(v.Name)
+			state := vectorState(t, v.Journals)
+
+			set := journal.Reopen()
+			values := make(map[string]any, len(set))
+			for path, value := range set {
+				var decoded any
+				require.NoError(t, json.Unmarshal(value, &decoded))
+				values[path] = decoded
+			}
+			assert.Equal(t, []write{{Type: string(journal.TypeActivity), UID: v.UID, Set: values}}, v.Expect.Edits,
+				"the vector's edits are the ones Reopen gives")
+
+			clock := journal.NewClock(latestClock(state))
+			state.Apply(journal.Change{HLC: clock.Next(time.UnixMilli(0)), Dev: v.Device, Type: journal.TypeActivity, UID: v.UID, Set: set})
+			checkVisible(t, state, mergeExpect{Activities: v.Expect.Activities, Reminders: []record{}}, "after the reopen")
+		})
+	}
+}
+
+// vectorState reads a vector's journals whole.
+func vectorState(t *testing.T, lines map[string][]json.RawMessage) *journal.State {
+	t.Helper()
+	journals := make(map[string][]byte, len(lines))
+	for dev, devLines := range lines {
+		journals[dev] = journalBytes(t, devLines)
+	}
+	state, _ := readJournals(journals, slices.Sorted(maps.Keys(journals)), 1)
+	return state
+}
+
+// latestClock returns the latest clock of any field in the state.
+func latestClock(state *journal.State) journal.HLC {
+	var latest journal.HLC
+	for _, typ := range []journal.RecordType{journal.TypeActivity, journal.TypeReminder} {
+		for _, rec := range state.Records(typ) {
+			for _, field := range rec.Fields {
+				if field.HLC.Compare(latest) > 0 {
+					latest = field.HLC
+				}
+			}
+		}
+	}
+	return latest
 }
 
 // journalBytes writes a vector's journal: an object as one line of compact JSON, a string as is,
@@ -251,47 +362,59 @@ func readInSteps(journals map[string][]byte, devs []string, step int) (*journal.
 	}
 }
 
-// writeOwnEnds has every device write the ends of the activities it owns, as each one would after
-// reading every change: all of them from the same state, on a clock that goes on from the latest
-// clock in the state.
-func writeOwnEnds(state *journal.State, devs []string) {
-	var latest journal.HLC
-	for _, typ := range []journal.RecordType{journal.TypeActivity, journal.TypeReminder} {
-		for _, rec := range state.Records(typ) {
-			for _, field := range rec.Fields {
-				if field.HLC.Compare(latest) > 0 {
-					latest = field.HLC
-				}
-			}
-		}
-	}
-
+// writeRules has every device write what the rules give it, as each one would after reading every
+// change: all of them from the same state, on a clock that goes on from the latest clock in the
+// state. It returns the auto_end values written, by uid: every device that writes one writes the
+// same value.
+func writeRules(state *journal.State, devs []string) map[string]json.RawMessage {
 	var changes []journal.Change
-	clock := journal.NewClock(latest)
+	autoEnds := map[string]json.RawMessage{}
+	clock := journal.NewClock(latestClock(state))
 	for _, dev := range devs {
-		for _, stop := range state.ApplyRules(dev).Writes {
+		for _, w := range state.ApplyRules(dev).Writes {
 			changes = append(changes, journal.Change{
 				HLC:  clock.Next(time.UnixMilli(0)),
 				Dev:  dev,
 				Type: journal.TypeActivity,
-				UID:  stop.UID,
-				Set:  map[string]json.RawMessage{"end": stop.End},
+				UID:  w.UID,
+				Set:  w.Set(),
 			})
+			if w.Field == journal.FieldAutoEnd {
+				autoEnds[w.UID] = w.Value
+			}
 		}
 	}
 	for _, change := range changes {
 		state.Apply(change)
 	}
+	return autoEnds
+}
+
+// withAutoEnds returns the expected records with the auto_end values the devices wrote.
+func withAutoEnds(t *testing.T, expect mergeExpect, autoEnds map[string]json.RawMessage) mergeExpect {
+	t.Helper()
+	activities := make([]record, 0, len(expect.Activities))
+	for _, rec := range expect.Activities {
+		rec.Fields = maps.Clone(rec.Fields)
+		if value, ok := autoEnds[rec.UID]; ok {
+			var autoEnd any
+			require.NoError(t, json.Unmarshal(value, &autoEnd))
+			rec.Fields[journal.FieldAutoEnd] = autoEnd
+		}
+		activities = append(activities, rec)
+	}
+	expect.Activities = activities
+	return expect
 }
 
 // writes returns the changes a device writes after the rules, in uid order.
 func writes(t *testing.T, rules journal.Rules) []write {
 	t.Helper()
 	out := []write{}
-	for _, stop := range rules.Writes {
-		var end any
-		require.NoError(t, json.Unmarshal(stop.End, &end))
-		out = append(out, write{Type: string(journal.TypeActivity), UID: stop.UID, Set: map[string]any{"end": end}})
+	for _, w := range rules.Writes {
+		var value any
+		require.NoError(t, json.Unmarshal(w.Value, &value))
+		out = append(out, write{Type: string(journal.TypeActivity), UID: w.UID, Set: map[string]any{w.Field: value}})
 	}
 	slices.SortFunc(out, func(a, b write) int { return strings.Compare(a.UID, b.UID) })
 	return out
@@ -408,8 +531,9 @@ func roundTrip[T any](t *testing.T, vector T) T {
 	return v
 }
 
-// TestWriteVectors writes the vectors as JSON files, one per vector, into <dir>/hlc, <dir>/merge and
-// <dir>/repeat for tock-ios when SYNC_VECTORS_OUT is an absolute path <dir>: make sync-vectors OUT=<dir>.
+// TestWriteVectors writes the vectors as JSON files, one per vector, into <dir>/hlc, <dir>/merge,
+// <dir>/start, <dir>/reopen and <dir>/repeat for tock-ios when SYNC_VECTORS_OUT is an absolute path
+// <dir>: make sync-vectors OUT=<dir>.
 // It first removes the *.json files there, so a renamed vector does not linger.
 func TestWriteVectors(t *testing.T) {
 	out := os.Getenv("SYNC_VECTORS_OUT")
@@ -418,12 +542,18 @@ func TestWriteVectors(t *testing.T) {
 	}
 	require.True(t, filepath.IsAbs(out), "SYNC_VECTORS_OUT must be an absolute path")
 
-	files := map[string]map[string]any{"hlc": {}, "merge": {}, "repeat": {}}
+	files := map[string]map[string]any{"hlc": {}, "merge": {}, "start": {}, "reopen": {}, "repeat": {}}
 	for _, v := range hlcVectors() {
 		files["hlc"][v.File] = v
 	}
 	for _, v := range mergeVectors() {
 		files["merge"][v.File] = v
+	}
+	for _, v := range startVectors() {
+		files["start"][v.File] = v
+	}
+	for _, v := range reopenVectors() {
+		files["reopen"][v.File] = v
 	}
 	for _, v := range repeatVectors() {
 		files["repeat"][v.File] = v
