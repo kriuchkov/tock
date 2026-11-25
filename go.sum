@@ -25,8 +25,8 @@ github.com/clipperhouse/stringish v0.1.1/go.mod h1:v/WhFtE1q0ovMta2+m+UbpZ+2/HEX
 github.com/clipperhouse/uax29/v2 v2.5.0 h1:x7T0T4eTHDONxFJsL94uKNKPHrclyFI0lm7+w94cO8U=
 github.com/clipperhouse/uax29/v2 v2.5.0/go.mod h1:Wn1g7MK6OoeDT0vL+Q0SQLDz/KpfsVRgg6W7ihQeh4g=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
-github.com/doug-martin/goqu/v9 v9.25.0 h1:g8zy34MwS1Q/RcEnY/9wB21xv9AQQXfE0mSlWmwsVtI=
-github.com/doug-martin/goqu/v9 v9.25.0/go.mod h1:N2bFjEJdaSS63muKeblweBurK81jQ+WSGja8gT6ykL8=
+github.com/doug-martin/goqu/v9 v9.27.0 h1:eiAjkaQxpDf6aLechblYKxw4SA8Rgm9lDDMfvhR6mHg=
+github.com/doug-martin/goqu/v9 v9.27.0/go.mod h1:N2bFjEJdaSS63muKeblweBurK81jQ+WSGja8gT6ykL8=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6baUTXGLOoWe4PQhGxaX0KpnayAqC48p4=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
