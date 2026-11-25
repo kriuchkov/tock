@@ -10,7 +10,7 @@ require (
 	github.com/doug-martin/goqu/v9 v9.25.0
 	github.com/go-faster/errors v0.8.0
 	github.com/google/uuid v1.6.0
-	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/muesli/termenv v0.16.0
 	github.com/samber/lo v1.53.0
